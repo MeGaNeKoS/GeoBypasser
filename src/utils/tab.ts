@@ -1,5 +1,5 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
-import { resolveProxy, testProxyConfig } from '@utils/proxy'
+import { resolveProxy, testProxyConfigQueued } from '@utils/proxy'
 import browser, { Tabs } from 'webextension-polyfill'
 import { getHostname, KeepAliveState, matchHostname } from '@utils/generic'
 import { ProxyListItem, ProxyListRuntimeItem } from '@customTypes/proxy'
@@ -119,7 +119,7 @@ export function maybeUpdateProxyKeepAlive (proxy: ProxyListItem, state: KeepAliv
 }
 
 export async function keepAliveProxyStatus (proxy: ProxyListRuntimeItem, testUrl: string) {
-  await testProxyConfig(proxy, testUrl, (result) => {
+  testProxyConfigQueued(proxy, testUrl, (result) => {
     if (result.success) {
       console.debug(`[KeepAlive] Proxy ${proxy.host}:${proxy.port} is alive.`)
       proxy.downNotification = 0

@@ -6,6 +6,14 @@ import { fetchWithTimeout, matchPatternList } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 
+type ProxyTestJob = {
+  proxy: ProxyListItem,
+  testUrl: string,
+  sendResult: (result: ProxyTestResult) => void,
+}
+const proxyTestQueues = new Map<string, Array<ProxyTestJob>>()
+const proxyTestRunning = new Set<string>()
+
 function getProxyById (proxyList: ProxyListItem[], id: string | undefined) {
   return proxyList.find(proxy => proxy.id === id) || null
 }
@@ -121,7 +129,7 @@ export function getProxyTypeByChallenger (
   )
 }
 
-export async function testProxyConfig (
+async function testProxyConfig (
   proxy: ProxyListItem, testUrl: string, sendResult: (result: ProxyTestResult) => void) {
   function testProxyHandler (requestInfo: Proxy.OnRequestDetailsType) {
     console.debug(`[${APP_NAME}Proxy] Testing proxy ${proxy.host}:${proxy.port} for URL: ${requestInfo.url}`)
@@ -159,4 +167,37 @@ export async function testProxyConfig (
   } finally {
     browser.proxy.onRequest.removeListener(testProxyHandler)
   }
+}
+
+export async function testProxyConfigQueued (
+  proxy: ProxyListItem,
+  testUrl: string,
+  sendResult: (result: ProxyTestResult) => void,
+) {
+  // Init queue if not present
+  if (!proxyTestQueues.has(testUrl)) proxyTestQueues.set(testUrl, [])
+
+  const queue = proxyTestQueues.get(testUrl)!
+  const job: ProxyTestJob = { proxy, testUrl, sendResult }
+  queue.push(job)
+
+  // If already running, just queue the job
+  if (proxyTestRunning.has(testUrl)) {
+    console.debug(`[${APP_NAME}Proxy] Queued test for ${testUrl} (now ${queue.length} queued)`)
+    return
+  }
+
+  // Otherwise, start processing
+  proxyTestRunning.add(testUrl)
+
+  while (queue.length > 0) {
+    const currentJob = queue.shift()!
+    try {
+      await testProxyConfig(currentJob.proxy, currentJob.testUrl, currentJob.sendResult)
+    } catch (e) {
+      console.error(`[${APP_NAME}Proxy] Error during proxy test for ${currentJob.testUrl}`, e)
+    }
+  }
+  // Done: clear running marker
+  proxyTestRunning.delete(testUrl)
 }
