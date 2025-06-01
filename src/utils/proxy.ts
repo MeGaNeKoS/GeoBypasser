@@ -1,8 +1,8 @@
-import type { ProxyListItem } from '@customTypes/proxy'
+import type { ProxyListItem, ProxyTestResult } from '@customTypes/proxy'
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import { proxyId } from '@customTypes/generic'
-import { Proxy, WebRequest } from 'webextension-polyfill'
-import { matchPatternList } from '@utils/generic'
+import browser, { Proxy, WebRequest } from 'webextension-polyfill'
+import { fetchWithTimeout, matchPatternList } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 
@@ -10,7 +10,7 @@ function getProxyById (proxyList: ProxyListItem[], id: string | undefined) {
   return proxyList.find(proxy => proxy.id === id) || null
 }
 
-function resolveProxy (config: GeoBypassRuntimeSettings, proxyId?: proxyId) {
+export function resolveProxy (config: GeoBypassRuntimeSettings, proxyId?: proxyId) {
   return getProxyById(config.proxyList, proxyId) ||
     getProxyById(config.proxyList, config.defaultProxy)
 }
@@ -119,4 +119,44 @@ export function getProxyTypeByChallenger (
   return proxyList.find(proxy =>
     proxy.host === host && proxy.port == port && (proxy.type === 'http' || proxy.type === 'https'),
   )
+}
+
+export async function testProxyConfig (
+  proxy: ProxyListItem, testUrl: string, sendResult: (result: ProxyTestResult) => void) {
+  function testProxyHandler (requestInfo: Proxy.OnRequestDetailsType) {
+    console.debug(`[${APP_NAME}Proxy] Testing proxy ${proxy.host}:${proxy.port} for URL: ${requestInfo.url}`)
+    return {
+      type: proxy.type,
+      host: proxy.host,
+      port: proxy.port,
+      username: proxy.username,
+      password: proxy.password,
+      proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS,
+      failoverTimeout: proxy.failoverTimeout || 3, // Default to 3 seconds if not set
+    }
+  }
+
+  browser.proxy.onRequest.addListener(
+    testProxyHandler,
+    { urls: [testUrl] },
+  )
+  try {
+    const res = await fetchWithTimeout(new URL(testUrl), { method: 'HEAD', cache: 'no-store' }, 5000)
+    let result
+    if (res.ok) {
+      result = { success: true }
+    } else {
+      result = { success: false, error: `HTTP error: ${res.status}` }
+    }
+    sendResult({ ...result, proxy: `${proxy.host}:${proxy.port}` } as ProxyTestResult)
+  } catch (err) {
+    console.log(err)
+    // check if the error is an AbortError
+    if (err instanceof Error) {
+      const userError = err.message
+      sendResult({ success: false, error: userError, proxy: `${proxy.host}:${proxy.port}` })
+    }
+  } finally {
+    browser.proxy.onRequest.removeListener(testProxyHandler)
+  }
 }

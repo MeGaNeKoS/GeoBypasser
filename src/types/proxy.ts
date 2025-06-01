@@ -9,7 +9,6 @@ export type ProxyConfig = {
   username?: string;
   password?: string;
   failoverTimeout?: number;
-  keepAlive?: boolean;
 };
 
 export type ProxyListItem = ProxyConfig & {
@@ -35,3 +34,14 @@ export type RuntimeProxyRule = ProxyRule & {
   compiledForceProxyUrlPatterns?: Matcher[];
   compiledStaticExtensions?: RegExp;
 };
+
+export type KeepAliveProxyRule = Record<string, {
+  active: boolean;
+  tabUrls: string[];
+  testProxyUrl?: string;
+}>
+
+
+export type ProxyTestResult =
+  | { success: true; proxy: string }
+  | { success: false; error: string; proxy: string }
