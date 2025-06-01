@@ -29,10 +29,13 @@ export function getHostname (url: string): string | null {
 
 export async function fetchWithTimeout (url: URL, options: RequestInit = {}, timeout = 5000) {
   const controller = new AbortController()
-  const abortError = new Error(`Connection timed out (proxy did not respond within ${timeout / 1000} seconds)`)
-  abortError.name = 'AbortError'
+
   const timer = setTimeout(
-    () => controller.abort(abortError), timeout)
+    () => {
+      const abortError = new Error(`Connection timed out (proxy did not respond within ${timeout / 1000} seconds)`)
+      abortError.name = 'AbortError'
+      controller.abort(abortError)
+    }, timeout)
   options.signal = controller.signal
   try {
     return await fetch(url, options)
