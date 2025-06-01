@@ -2,7 +2,7 @@ import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import { resolveProxy, testProxyConfig } from '@utils/proxy'
 import browser, { Tabs } from 'webextension-polyfill'
 import { getHostname, KeepAliveState, matchHostname } from '@utils/generic'
-import { ProxyListItem } from '@customTypes/proxy'
+import { ProxyListItem, ProxyListRuntimeItem } from '@customTypes/proxy'
 import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
 import Tab = Tabs.Tab
 
@@ -118,17 +118,26 @@ export function maybeUpdateProxyKeepAlive (proxy: ProxyListItem, state: KeepAliv
   }
 }
 
-export async function keepAliveProxyStatus (proxy: ProxyListItem, testUrl: string) {
+export async function keepAliveProxyStatus (proxy: ProxyListRuntimeItem, testUrl: string) {
   await testProxyConfig(proxy, testUrl, (result) => {
     if (result.success) {
       console.debug(`[KeepAlive] Proxy ${proxy.host}:${proxy.port} is alive.`)
+      proxy.downNotification = 0
     } else {
       console.warn(`[KeepAlive] Proxy ${proxy.host}:${proxy.port} failed: ${result.error}`)
-      browser.notifications.create('proxy-error', {
-        type: 'basic',
-        title: 'GeoBypass-er keep alive encountered an error!',
-        message: `Proxy ${proxy.host}:${proxy.port} failed: ${result.error || 'Unknown error'}`,
-      })
+      if (proxy.notifyIfDown) {
+        if ((proxy.downNotification || 0) < 4) {
+          browser.notifications.create('proxy-error', {
+            type: 'basic',
+            title: 'GeoBypass-er keep alive encountered an error!',
+            message: `Proxy ${proxy.host}:${proxy.port} failed: ${result.error || 'Unknown error'}`,
+          })
+          if (!proxy.downNotification) {
+            proxy.downNotification = 0
+          }
+          proxy.downNotification++
+        }
+      }
     }
   })
 }

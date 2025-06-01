@@ -14,8 +14,11 @@ export type ProxyConfig = {
 export type ProxyListItem = ProxyConfig & {
   id: proxyId;
   label?: string;
+  notifyIfDown?: boolean;
 };
-
+export type ProxyListRuntimeItem = ProxyListItem & {
+  downNotification?: number;
+}
 export type ProxyRule = {
   active: boolean;
   name: string;
