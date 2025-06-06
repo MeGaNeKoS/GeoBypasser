@@ -246,6 +246,13 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
     }
   })
 
+  browser.tabs.onRemoved.addListener((tabId) => {
+    if (tabProxyMap[tabId]) {
+      delete tabProxyMap[tabId]
+      console.debug(`[${APP_NAME}BG] Removed tabProxyMap entry for closed tab ${tabId}`)
+    }
+  })
+
   // Error listener
   browser.proxy.onError.addListener((error: Proxy.OnErrorErrorType) => {
     console.error(`[${APP_NAME}BG] Proxy error occurred:`, error?.message)
@@ -288,4 +295,3 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 
   console.info(`[${APP_NAME}BG] Proxy extension background script initialized and running.`)
 })()
-
