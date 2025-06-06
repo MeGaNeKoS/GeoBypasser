@@ -1,11 +1,13 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import browser, { Proxy, Tabs, WebRequest } from 'webextension-polyfill'
+
 import { getProxyTypeByChallenger, makeDefaultProxyHandler, makeProxyHandler, resolveProxy } from '@utils/proxy'
 import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@utils/generic'
 import { getConfig, getUserStorageMode } from '@utils/storage'
 import { ProxyListItem } from '@customTypes/proxy'
 import { APP_NAME } from '@constant/defaults'
 import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
+import { isTabProxyMessage } from '@utils/messages'
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
 import BlockingResponseOrPromiseOrVoid = WebRequest.BlockingResponseOrPromiseOrVoid
 import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
@@ -23,6 +25,7 @@ type currentKeepAliveHandler = {
 }
 
 const keepAliveStates: Record<string, KeepAliveState> = {}
+const tabProxyMap: Record<number, string> = {}
 
 function attachProxyHandlers (
   config: GeoBypassRuntimeSettings,
@@ -52,7 +55,7 @@ function attachProxyHandlers (
   const urls = getAllMatchUrls(config)
   console.info(`[${APP_NAME}BG] URL patterns for main proxy:`, urls)
 
-  const mainHandler = makeProxyHandler(config)
+  const mainHandler = makeProxyHandler(config, tabProxyMap)
   currentHandlers.main = mainHandler
 
   if (urls.length > 0) {
@@ -233,6 +236,16 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
   await initKeepAlive(config)
   setupKeepAliveListeners(config, keepAliveHandlers)
 
+  browser.runtime.onMessage.addListener((message: unknown) => {
+    if (!isTabProxyMessage(message)) return
+
+    if (message.type === 'setTabProxy') {
+      tabProxyMap[message.tabId] = message.proxyId
+    } else if (message.type === 'clearTabProxy') {
+      delete tabProxyMap[message.tabId]
+    }
+  })
+
   // Error listener
   browser.proxy.onError.addListener((error: Proxy.OnErrorErrorType) => {
     console.error(`[${APP_NAME}BG] Proxy error occurred:`, error?.message)
@@ -275,3 +288,4 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 
   console.info(`[${APP_NAME}BG] Proxy extension background script initialized and running.`)
 })()
+

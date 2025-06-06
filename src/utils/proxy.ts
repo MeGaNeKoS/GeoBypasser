@@ -23,8 +23,24 @@ export function resolveProxy (config: GeoBypassRuntimeSettings, proxyId?: proxyI
     getProxyById(config.proxyList, config.defaultProxy)
 }
 
-export function makeProxyHandler (config: GeoBypassRuntimeSettings) {
+export function makeProxyHandler (
+  config: GeoBypassRuntimeSettings,
+  tabProxyMap: Record<number, proxyId> = {},
+) {
   return async function handleProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
+    if (requestInfo.tabId !== undefined) {
+      const mapped = tabProxyMap[requestInfo.tabId]
+      if (mapped) {
+        const proxy = resolveProxy(config, mapped)
+        if (proxy) {
+          console.info(`[${APP_NAME}Proxy] Tab ${requestInfo.tabId} mapped to proxy ${mapped}`)
+          return [
+            { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+            ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
+          ]
+        }
+      }
+    }
     for (const rule of config.rules) {
       const {
         proxyId,
