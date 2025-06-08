@@ -24,8 +24,8 @@
     <button data-tab="general">General</button>
     <button data-tab="proxy">Proxy List</button>
     <button data-tab="rules">Rules</button>
-    <button data-tab="keepalive">Keep-Alive</button>
     <button data-tab="override">Website Overrides</button>
+    <button data-tab="keepalive">Keep-Alive</button>
     <button data-tab="diagnostics">Diagnostics</button>
     <button data-tab="about">About</button>
   </nav>
@@ -131,10 +131,6 @@
         </div>
       </div>
     </section>
-    <section id="keepalive" class="tab">
-      <h2>Keep-Alive Rules</h2>
-      <div id="keepAliveContainer"></div>
-    </section>
     <section id="override" class="tab">
       <h2>Website Overrides</h2>
       <table id="overrideTable">
@@ -142,6 +138,19 @@
         <tbody></tbody>
       </table>
       <button id="addOverride">Add Override</button>
+      <div id="overrideModal" class="modal hidden">
+        <div class="modal-content">
+          <h3>Add Override</h3>
+          <label>Domain <input type="text" id="overrideDomain"></label><br>
+          <label>Proxy <select id="overrideProxy"></select></label><br>
+          <button id="saveOverride">Save</button>
+          <button id="cancelOverride">Cancel</button>
+        </div>
+      </div>
+    </section>
+    <section id="keepalive" class="tab">
+      <h2>Keep-Alive Rules</h2>
+      <div id="keepAliveContainer"></div>
     </section>
     <section id="diagnostics" class="tab">
       <h2>Diagnostics</h2>

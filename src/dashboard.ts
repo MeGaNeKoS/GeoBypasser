@@ -1,6 +1,4 @@
-import browser from 'webextension-polyfill'
 import { getConfig, saveConfig, updateConfig } from '@utils/storage'
-import { APP_NAME } from '@constant/defaults'
 import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { matchPattern } from 'browser-extension-url-match'
@@ -47,6 +45,7 @@ function setValidation (el: HTMLInputElement, validate: (val: string) => boolean
       el.classList.remove('valid')
     }
   }
+
   el.addEventListener('input', run)
   run()
 }
@@ -81,6 +80,23 @@ function validateRegExp (val: string) {
   if (!m) return false
   try { new RegExp(m[1], m[2]) } catch { return false }
   return true
+}
+
+function validateDomain (val: string) {
+  let urlString = val.trim()
+
+  // If there's no protocol, add one
+  if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(urlString)) {
+    urlString = 'https://' + urlString
+  }
+
+  try {
+    new URL(urlString)
+    return true
+  } catch (e) {
+    console.error('Invalid URL:', e)
+    return false
+  }
 }
 
 function updateListDisplay (input: HTMLInputElement) {
@@ -323,7 +339,10 @@ function saveProxyFromModal () {
     config.proxyList.push(base)
   }
 
-  saveConfig(config).then(() => { renderAll(); closeProxyModal() })
+  saveConfig(config).then(() => {
+    renderAll()
+    closeProxyModal()
+  })
 }
 
 function renderRules () {
@@ -345,7 +364,10 @@ function renderRules () {
     if (!proxy) tr.classList.add('missing-proxy')
     tbody.appendChild(tr)
     const activeChk = tr.querySelector('input[data-active]') as HTMLInputElement
-    activeChk.onchange = () => { r.active = activeChk.checked; saveConfig(config) }
+    activeChk.onchange = () => {
+      r.active = activeChk.checked
+      saveConfig(config)
+    }
     const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
     selChk.onchange = () => {
       if (selChk.checked) selectedRules.add(idx)
@@ -354,7 +376,10 @@ function renderRules () {
     const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
     edit.onclick = () => openRuleModal(idx)
     const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
-    del.onclick = () => { config.rules.splice(idx,1); saveConfig(config).then(renderAll) }
+    del.onclick = () => {
+      config.rules.splice(idx, 1)
+      saveConfig(config).then(renderAll)
+    }
     const exp = tr.querySelector('button[data-export]') as HTMLButtonElement
     exp.onclick = () => exportRules([r])
   })
@@ -454,15 +479,20 @@ function saveRuleFromModal () {
     config.rules.push(rule as any)
   }
 
-  saveConfig(config).then(() => { renderAll(); closeRuleModal() })
+  saveConfig(config).then(() => {
+    renderAll()
+    closeRuleModal()
+  })
 }
 
 function renderOverrides () {
   const tbody = document.querySelector('#overrideTable tbody') as HTMLElement
   tbody.innerHTML = ''
   for (const [domain, proxyId] of Object.entries(config.perWebsiteOverride)) {
+    const proxy = config.proxyList.find(p => p.id === proxyId)
+    const proxyLabel = proxy ? (proxy.label || proxy.host) : proxyId
     const tr = document.createElement('tr')
-    tr.innerHTML = `<td>${domain}</td><td>${proxyId}</td>` +
+    tr.innerHTML = `<td>${domain}</td><td>${proxyLabel}</td>` +
       `<td><button data-domain="${domain}">Delete</button></td>`
     tbody.appendChild(tr)
     const btn = tr.querySelector('button') as HTMLButtonElement
@@ -473,13 +503,31 @@ function renderOverrides () {
   }
 }
 
-function addOverride () {
-  const domain = prompt('Domain')
-  if (!domain) return
-  const proxyId = prompt('Proxy id')
-  if (!proxyId) return
+function openOverrideModal () {
+  const modal = document.getElementById('overrideModal')!
+  const domain = document.getElementById('overrideDomain') as HTMLInputElement
+  const proxy = document.getElementById('overrideProxy') as HTMLSelectElement
+  domain.value = ''
+  proxy.innerHTML = ''
+  config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
+  proxy.value = config.proxyList[0]?.id || ''
+  setValidation(domain, validateDomain)
+  modal.classList.remove('hidden')
+}
+
+function closeOverrideModal () {
+  document.getElementById('overrideModal')!.classList.add('hidden')
+}
+
+function saveOverrideFromModal () {
+  const domain = (document.getElementById('overrideDomain') as HTMLInputElement).value.trim()
+  const proxyId = (document.getElementById('overrideProxy') as HTMLSelectElement).value
+  if (!validateDomain(domain) || !proxyId) return
   config.perWebsiteOverride[domain] = proxyId
-  saveConfig(config).then(renderAll)
+  saveConfig(config).then(() => {
+    renderAll()
+    closeOverrideModal()
+  })
 }
 
 function renderKeepAlive () {
@@ -541,7 +589,10 @@ function handleImportConfig (files: FileList | null) {
   files[0].text().then(t => {
     try {
       const obj = JSON.parse(t)
-      saveConfig(obj).then(() => { config = obj; renderAll() })
+      saveConfig(obj).then(() => {
+        config = obj
+        renderAll()
+      })
     } catch (e) { console.error(e) }
   })
 }
@@ -588,7 +639,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updatePassHeaderButton()
   })
   document.getElementById('addRule')!.addEventListener('click', addRule)
-  document.getElementById('addOverride')!.addEventListener('click', addOverride)
+  document.getElementById('addOverride')!.addEventListener('click', openOverrideModal)
   document.getElementById('exportRulesSelected')!.addEventListener('click', exportSelectedRules)
   document.getElementById('exportRulesAll')!.addEventListener('click', exportAllRules)
   document.getElementById('importRulesBtn')!.addEventListener('click', () =>
@@ -602,9 +653,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     handleImportConfig((ev.target as HTMLInputElement).files))
   document.getElementById('saveRule')!.addEventListener('click', saveRuleFromModal)
   document.getElementById('cancelRule')!.addEventListener('click', closeRuleModal)
-  document.getElementById('editRuleMatch')!.addEventListener('click', () => openListModal('ruleMatch', 'Match Patterns', validatePattern))
-  document.getElementById('editRuleBypassUrls')!.addEventListener('click', () => openListModal('ruleBypassUrls', 'Bypass URL Patterns', validatePattern))
-  document.getElementById('editRuleForceUrls')!.addEventListener('click', () => openListModal('ruleForceUrls', 'Force Proxy URL Patterns', validatePattern))
+  document.getElementById('editRuleMatch')!.addEventListener('click',
+    () => openListModal('ruleMatch', 'Match Patterns', validatePattern))
+  document.getElementById('editRuleBypassUrls')!.addEventListener('click',
+    () => openListModal('ruleBypassUrls', 'Bypass URL Patterns', validatePattern))
+  document.getElementById('editRuleForceUrls')!.addEventListener('click',
+    () => openListModal('ruleForceUrls', 'Force Proxy URL Patterns', validatePattern))
   document.getElementById('editRuleBypassTypes')!.addEventListener('click', () => openTypeModal('ruleBypassTypes'))
   document.getElementById('addListItem')!.addEventListener('click', () => {
     const container = document.getElementById('listModalItems')!
@@ -614,4 +668,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('cancelList')!.addEventListener('click', closeListModal)
   document.getElementById('saveTypes')!.addEventListener('click', saveTypeModal)
   document.getElementById('cancelTypes')!.addEventListener('click', closeTypeModal)
+  document.getElementById('saveOverride')!.addEventListener('click', saveOverrideFromModal)
+  document.getElementById('cancelOverride')!.addEventListener('click', closeOverrideModal)
 })
