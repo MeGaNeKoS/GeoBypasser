@@ -1,12 +1,19 @@
 import browser from 'webextension-polyfill'
 import { getConfig, saveConfig, updateConfig } from '@utils/storage'
 import { APP_NAME } from '@constant/defaults'
+import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
+import { matchPattern } from 'browser-extension-url-match'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let editingProxyIndex: number | null = null
+let editingRuleIndex: number | null = null
 let revealAllPasswords = false
 const revealedPasswords = new Set<number>()
+const selectedRules = new Set<number>()
+let listTargetInput: HTMLInputElement | null = null
+let currentListValidator: (val: string) => boolean = () => true
+let typeTargetInput: HTMLInputElement | null = null
 
 function switchTab (id: string) {
   document.querySelectorAll('section.tab').forEach(sec => sec.classList.remove('active'))
@@ -24,6 +31,148 @@ function createOption (id: string, label: string) {
 function updatePassHeaderButton () {
   const btn = document.getElementById('togglePassColumn') as HTMLButtonElement
   if (btn) btn.textContent = revealAllPasswords ? 'Hide' : 'Show'
+}
+
+function setValidation (el: HTMLInputElement, validate: (val: string) => boolean) {
+  function run () {
+    if (!el.value.trim()) {
+      el.classList.remove('valid', 'invalid')
+      return
+    }
+    if (validate(el.value)) {
+      el.classList.add('valid')
+      el.classList.remove('invalid')
+    } else {
+      el.classList.add('invalid')
+      el.classList.remove('valid')
+    }
+  }
+  el.addEventListener('input', run)
+  run()
+}
+
+function validatePatternList (val: string) {
+  try {
+    return val.split(/\s*,\s*/).filter(Boolean).every(p => {
+      matchPattern(p, { strict: false }).assertValid()
+      return true
+    })
+  } catch {
+    return false
+  }
+}
+
+function validatePattern (val: string) {
+  try {
+    matchPattern(val, { strict: false }).assertValid()
+    return true
+  } catch {
+    return false
+  }
+}
+
+function validateResourceTypes (val: string) {
+  return val.split(/\s*,\s*/).filter(Boolean).every(v => WEB_REQUEST_RESOURCE_TYPES.includes(v as any))
+}
+
+function validateRegExp (val: string) {
+  if (!val.trim()) return true
+  const m = val.match(/^\/(.*)\/([gimsuy]*)$/)
+  if (!m) return false
+  try { new RegExp(m[1], m[2]) } catch { return false }
+  return true
+}
+
+function updateListDisplay (input: HTMLInputElement) {
+  const span = document.getElementById(input.id + 'Display')
+  if (span) {
+    const arr = input.value.split(/\s*,\s*/).filter(Boolean)
+    span.textContent = arr.length ? arr.join(', ') : 'None'
+  }
+}
+
+function addListItem (container: HTMLElement, value = '') {
+  const div = document.createElement('div')
+  const inp = document.createElement('input')
+  inp.type = 'text'
+  inp.value = value
+  setValidation(inp, currentListValidator)
+  const btn = document.createElement('button')
+  btn.textContent = 'x'
+  btn.onclick = () => div.remove()
+  div.appendChild(inp)
+  div.appendChild(btn)
+  container.appendChild(div)
+}
+
+function openListModal (inputId: string, title: string, validator: (v: string) => boolean) {
+  listTargetInput = document.getElementById(inputId) as HTMLInputElement
+  currentListValidator = validator
+  const modal = document.getElementById('listModal')!
+  const heading = document.getElementById('listModalTitle')!
+  const container = document.getElementById('listModalItems')!
+  heading.textContent = title
+  container.innerHTML = ''
+  const arr = listTargetInput.value.split(/\s*,\s*/).filter(Boolean)
+  if (arr.length === 0) addListItem(container)
+  else arr.forEach(v => addListItem(container, v))
+  modal.classList.remove('hidden')
+}
+
+function closeListModal () {
+  document.getElementById('listModal')!.classList.add('hidden')
+  listTargetInput = null
+}
+
+function saveListModal () {
+  if (!listTargetInput) return
+  const container = document.getElementById('listModalItems')!
+  const values: string[] = []
+  container.querySelectorAll('input').forEach(inp => {
+    const v = (inp as HTMLInputElement).value.trim()
+    if (v) values.push(v)
+  })
+  listTargetInput.value = values.join(', ')
+  updateListDisplay(listTargetInput)
+  closeListModal()
+}
+
+function openTypeModal (inputId: string) {
+  typeTargetInput = document.getElementById(inputId) as HTMLInputElement
+  const modal = document.getElementById('typeModal')!
+  const container = document.getElementById('typeModalItems')!
+  container.innerHTML = ''
+  const selected = new Set(typeTargetInput.value.split(/\s*,\s*/).filter(Boolean))
+  WEB_REQUEST_RESOURCE_TYPES.forEach(t => {
+    const label = document.createElement('label')
+    const chk = document.createElement('input')
+    chk.type = 'checkbox'
+    chk.value = t
+    chk.checked = selected.has(t)
+    label.appendChild(chk)
+    label.append(' ', t)
+    container.appendChild(label)
+    container.appendChild(document.createElement('br'))
+  })
+  modal.classList.remove('hidden')
+}
+
+function closeTypeModal () {
+  document.getElementById('typeModal')!.classList.add('hidden')
+  typeTargetInput = null
+}
+
+function saveTypeModal () {
+  if (!typeTargetInput) return
+  const container = document.getElementById('typeModalItems')!
+  const vals: string[] = []
+  container.querySelectorAll('input[type="checkbox"]').forEach(inp => {
+    const el = inp as HTMLInputElement
+    if (el.checked) vals.push(el.value)
+  })
+  typeTargetInput.value = vals.join(', ')
+  updateListDisplay(typeTargetInput)
+  closeTypeModal()
 }
 
 function renderGeneral () {
@@ -182,34 +331,130 @@ function renderRules () {
   tbody.innerHTML = ''
   config.rules.forEach((r, idx) => {
     const tr = document.createElement('tr')
-    tr.innerHTML = `<td>${r.name}</td><td>${r.match.join(', ')}</td>` +
-      `<td>${r.proxyId}</td>` +
-      `<td><input type="checkbox" ${r.active ? 'checked' : ''}></td>` +
-      `<td><button data-remove="${idx}">Delete</button>` +
+    const proxy = config.proxyList.find(p => p.id === r.proxyId)
+    const proxyLabel = proxy ? (proxy.label || proxy.host) : r.proxyId
+    tr.innerHTML =
+      `<td><input type="checkbox" data-active ${r.active ? 'checked' : ''}></td>` +
+      `<td>${r.name}</td>` +
+      `<td>${r.match.join(', ')}</td>` +
+      `<td>${proxyLabel}</td>` +
+      `<td><input type="checkbox" data-select="${idx}"></td>` +
+      `<td><button data-edit="${idx}">Edit</button> ` +
+      `<button data-remove="${idx}">Delete</button> ` +
       `<button data-export="${idx}">Export</button></td>`
+    if (!proxy) tr.classList.add('missing-proxy')
     tbody.appendChild(tr)
-    const chk = tr.querySelector('input') as HTMLInputElement
-    chk.onchange = () => { r.active = chk.checked; saveConfig(config) }
+    const activeChk = tr.querySelector('input[data-active]') as HTMLInputElement
+    activeChk.onchange = () => { r.active = activeChk.checked; saveConfig(config) }
+    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+    selChk.onchange = () => {
+      if (selChk.checked) selectedRules.add(idx)
+      else selectedRules.delete(idx)
+    }
+    const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
+    edit.onclick = () => openRuleModal(idx)
     const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
     del.onclick = () => { config.rules.splice(idx,1); saveConfig(config).then(renderAll) }
     const exp = tr.querySelector('button[data-export]') as HTMLButtonElement
-    exp.onclick = () => {
-      const data = JSON.stringify([r], null, 2)
-      download(`rule-${r.name}.json`, data)
-    }
+    exp.onclick = () => exportRules([r])
   })
 }
 
 function addRule () {
-  const name = prompt('Rule name')
-  if (!name) return
-  const match = prompt('Match pattern (comma separated)')
-  if (!match) return
-  const proxyId = prompt('Proxy id')
-  if (!proxyId) return
-  const rule: ProxyRule = { name, match: match.split(/\s*,\s*/), proxyId, active: true }
-  config.rules.push(rule)
-  saveConfig(config).then(renderAll)
+  openRuleModal()
+}
+
+function openRuleModal (index?: number) {
+  editingRuleIndex = typeof index === 'number' ? index : null
+  const modal = document.getElementById('ruleModal')!
+  const title = document.getElementById('ruleModalTitle')!
+  const name = document.getElementById('ruleName') as HTMLInputElement
+  const match = document.getElementById('ruleMatch') as HTMLInputElement
+  const proxy = document.getElementById('ruleProxy') as HTMLSelectElement
+  const bypassUrls = document.getElementById('ruleBypassUrls') as HTMLInputElement
+  const bypassTypes = document.getElementById('ruleBypassTypes') as HTMLInputElement
+  const staticExt = document.getElementById('ruleStaticExt') as HTMLInputElement
+  const forceUrls = document.getElementById('ruleForceUrls') as HTMLInputElement
+  const fbDirect = document.getElementById('ruleFallbackDirect') as HTMLInputElement
+  const active = document.getElementById('ruleActive') as HTMLInputElement
+
+  proxy.innerHTML = ''
+  config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
+
+  if (editingRuleIndex !== null) {
+    const r = config.rules[editingRuleIndex]
+    title.textContent = 'Edit Rule'
+    name.value = r.name
+    match.value = r.match.join(', ')
+    proxy.value = r.proxyId
+    bypassUrls.value = (r.bypassUrlPatterns || []).join(', ')
+    bypassTypes.value = (r.bypassResourceTypes || []).join(', ')
+    staticExt.value = r.staticExtensions || ''
+    forceUrls.value = (r.forceProxyUrlPatterns || []).join(', ')
+    fbDirect.checked = !!r.fallbackDirect
+    active.checked = !!r.active
+  } else {
+    title.textContent = 'Add Rule'
+    name.value = ''
+    match.value = ''
+    proxy.value = config.proxyList[0]?.id || ''
+    bypassUrls.value = ''
+    bypassTypes.value = ''
+    staticExt.value = ''
+    forceUrls.value = ''
+    fbDirect.checked = true
+    active.checked = true
+  }
+
+  setValidation(match, validatePatternList)
+  setValidation(bypassUrls, validatePatternList)
+  setValidation(bypassTypes, validateResourceTypes)
+  setValidation(staticExt, validateRegExp)
+  setValidation(forceUrls, validatePatternList)
+  updateListDisplay(match)
+  updateListDisplay(bypassUrls)
+  updateListDisplay(bypassTypes)
+  updateListDisplay(forceUrls)
+
+  modal.classList.remove('hidden')
+}
+
+function closeRuleModal () {
+  document.getElementById('ruleModal')!.classList.add('hidden')
+}
+
+function saveRuleFromModal () {
+  const name = (document.getElementById('ruleName') as HTMLInputElement).value.trim()
+  const match = (document.getElementById('ruleMatch') as HTMLInputElement).value
+  const proxyId = (document.getElementById('ruleProxy') as HTMLSelectElement).value
+  const bypassUrls = (document.getElementById('ruleBypassUrls') as HTMLInputElement).value
+  const bypassTypes = (document.getElementById('ruleBypassTypes') as HTMLInputElement).value
+  const staticExt = (document.getElementById('ruleStaticExt') as HTMLInputElement).value
+  const forceUrls = (document.getElementById('ruleForceUrls') as HTMLInputElement).value
+  const fbDirect = (document.getElementById('ruleFallbackDirect') as HTMLInputElement).checked
+  const active = (document.getElementById('ruleActive') as HTMLInputElement).checked
+
+  if (!name || !match || !proxyId) return
+
+  const rule: ProxyRule = {
+    name,
+    match: match.split(/\s*,\s*/).filter(Boolean),
+    proxyId,
+    active,
+  }
+  if (bypassUrls.trim()) rule.bypassUrlPatterns = bypassUrls.split(/\s*,\s*/).filter(Boolean)
+  if (bypassTypes.trim()) rule.bypassResourceTypes = bypassTypes.split(/\s*,\s*/).filter(Boolean)
+  if (staticExt.trim()) rule.staticExtensions = staticExt.trim()
+  if (forceUrls.trim()) rule.forceProxyUrlPatterns = forceUrls.split(/\s*,\s*/).filter(Boolean)
+  if (fbDirect) rule.fallbackDirect = true
+
+  if (editingRuleIndex !== null) {
+    config.rules[editingRuleIndex] = rule as any
+  } else {
+    config.rules.push(rule as any)
+  }
+
+  saveConfig(config).then(() => { renderAll(); closeRuleModal() })
 }
 
 function renderOverrides () {
@@ -254,16 +499,30 @@ function renderKeepAlive () {
   }
 }
 
-function exportRules () {
-  const data = JSON.stringify(config.rules, null, 2)
+function exportRules (rules: ProxyRule[]) {
+  const data = JSON.stringify(rules, null, 2)
   download('rules.json', data)
+}
+
+function exportAllRules () {
+  exportRules(config.rules)
+}
+
+function exportSelectedRules () {
+  const arr = Array.from(selectedRules).map(i => config.rules[i])
+  if (arr.length === 0) {
+    exportAllRules()
+  } else {
+    exportRules(arr)
+  }
 }
 
 function handleImportRules (files: FileList | null) {
   if (!files || !files[0]) return
   files[0].text().then(t => {
     try {
-      const arr = JSON.parse(t) as ProxyRule[]
+      const parsed = JSON.parse(t)
+      const arr = Array.isArray(parsed) ? parsed as ProxyRule[] : [parsed as ProxyRule]
       config.rules.push(...arr)
       saveConfig(config).then(renderAll)
     } catch (e) {
@@ -330,7 +589,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
   document.getElementById('addRule')!.addEventListener('click', addRule)
   document.getElementById('addOverride')!.addEventListener('click', addOverride)
-  document.getElementById('exportRules')!.addEventListener('click', exportRules)
+  document.getElementById('exportRulesSelected')!.addEventListener('click', exportSelectedRules)
+  document.getElementById('exportRulesAll')!.addEventListener('click', exportAllRules)
   document.getElementById('importRulesBtn')!.addEventListener('click', () =>
     document.getElementById('importRules')!.click())
   document.getElementById('importRules')!.addEventListener('change', ev =>
@@ -340,4 +600,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('importConfig')!.click())
   document.getElementById('importConfig')!.addEventListener('change', ev =>
     handleImportConfig((ev.target as HTMLInputElement).files))
+  document.getElementById('saveRule')!.addEventListener('click', saveRuleFromModal)
+  document.getElementById('cancelRule')!.addEventListener('click', closeRuleModal)
+  document.getElementById('editRuleMatch')!.addEventListener('click', () => openListModal('ruleMatch', 'Match Patterns', validatePattern))
+  document.getElementById('editRuleBypassUrls')!.addEventListener('click', () => openListModal('ruleBypassUrls', 'Bypass URL Patterns', validatePattern))
+  document.getElementById('editRuleForceUrls')!.addEventListener('click', () => openListModal('ruleForceUrls', 'Force Proxy URL Patterns', validatePattern))
+  document.getElementById('editRuleBypassTypes')!.addEventListener('click', () => openTypeModal('ruleBypassTypes'))
+  document.getElementById('addListItem')!.addEventListener('click', () => {
+    const container = document.getElementById('listModalItems')!
+    addListItem(container)
+  })
+  document.getElementById('saveList')!.addEventListener('click', saveListModal)
+  document.getElementById('cancelList')!.addEventListener('click', closeListModal)
+  document.getElementById('saveTypes')!.addEventListener('click', saveTypeModal)
+  document.getElementById('cancelTypes')!.addEventListener('click', closeTypeModal)
 })

@@ -26,7 +26,7 @@ export type ProxyRule = {
   name: string;
   match: string[];
   bypassUrlPatterns?: string[];
-  bypassRequestTypes?: string[];
+  bypassResourceTypes?: string[];
   staticExtensions?: string;
   forceProxyUrlPatterns?: string[];
   fallbackDirect?: boolean;

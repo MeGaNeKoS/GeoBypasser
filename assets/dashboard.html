@@ -11,6 +11,9 @@
     section.active { display: block; }
     table { border-collapse: collapse; }
     th, td { border: 1px solid #555; padding: 4px; }
+    tr.missing-proxy { background: #500; }
+    input.valid { border-color: #4c4; }
+    input.invalid { border-color: #c44; }
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
     .modal.hidden { display: none; }
     .modal-content { background: #222; padding: 16px; border: 1px solid #555; }
@@ -82,14 +85,51 @@
       <h2>Rules</h2>
       <table id="ruleTable">
         <thead>
-          <tr><th>Name</th><th>Match</th><th>Proxy</th><th>Active</th><th></th></tr>
+          <tr><th>Active</th><th>Name</th><th>Match</th><th>Proxy</th><th>Select</th><th></th></tr>
         </thead>
         <tbody></tbody>
       </table>
       <button id="addRule">Add Rule</button>
-      <button id="exportRules">Export Rules</button>
+      <button id="exportRulesSelected">Export Selected</button>
+      <button id="exportRulesAll">Export All</button>
       <input type="file" id="importRules" style="display:none">
       <button id="importRulesBtn">Import Rules</button>
+
+      <div id="ruleModal" class="modal hidden">
+        <div class="modal-content">
+          <h3 id="ruleModalTitle">Add Rule</h3>
+          <label>Name <input type="text" id="ruleName"></label><br>
+          <label>Match <span id="ruleMatchDisplay"></span> <button id="editRuleMatch">Edit</button><input type="hidden" id="ruleMatch"></label><br>
+          <label>Proxy <select id="ruleProxy"></select></label><br>
+          <label>Bypass URLs <span id="ruleBypassUrlsDisplay"></span> <button id="editRuleBypassUrls">Edit</button><input type="hidden" id="ruleBypassUrls"></label><br>
+          <label>Bypass Resource Types <span id="ruleBypassTypesDisplay"></span> <button id="editRuleBypassTypes">Edit</button><input type="hidden" id="ruleBypassTypes"></label><br>
+          <label>Static Extensions <input type="text" id="ruleStaticExt" title="RegExp, e.g. /\\.jpg$/"></label><br>
+          <label>Force Proxy URLs <span id="ruleForceUrlsDisplay"></span> <button id="editRuleForceUrls">Edit</button><input type="hidden" id="ruleForceUrls"></label><br>
+          <label>Fallback Direct <input type="checkbox" id="ruleFallbackDirect" checked></label><br>
+          <label>Active <input type="checkbox" id="ruleActive" checked></label><br>
+          <button id="saveRule">Save</button>
+          <button id="cancelRule">Cancel</button>
+        </div>
+      </div>
+
+      <div id="listModal" class="modal hidden">
+        <div class="modal-content">
+          <h3 id="listModalTitle">Edit List</h3>
+          <div id="listModalItems"></div>
+          <button id="addListItem">Add</button>
+          <button id="saveList">Save</button>
+          <button id="cancelList">Cancel</button>
+        </div>
+      </div>
+
+      <div id="typeModal" class="modal hidden">
+        <div class="modal-content">
+          <h3>Select Resource Types</h3>
+          <div id="typeModalItems"></div>
+          <button id="saveTypes">Save</button>
+          <button id="cancelTypes">Cancel</button>
+        </div>
+      </div>
     </section>
     <section id="keepalive" class="tab">
       <h2>Keep-Alive Rules</h2>

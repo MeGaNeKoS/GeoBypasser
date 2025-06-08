@@ -98,7 +98,7 @@ export async function saveConfig (config: GeoBypassSettings) {
       name: rule.name,
       match: rule.match,
       bypassUrlPatterns: rule.bypassUrlPatterns,
-      bypassRequestTypes: rule.bypassRequestTypes,
+      bypassResourceTypes: rule.bypassResourceTypes,
       staticExtensions: rule.staticExtensions,
       forceProxyUrlPatterns: rule.forceProxyUrlPatterns,
       fallbackDirect: rule.fallbackDirect,

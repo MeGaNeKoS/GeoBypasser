@@ -77,7 +77,7 @@ export function makeProxyHandler (
     for (const rule of config.rules) {
       const {
         proxyId,
-        bypassRequestTypes,
+        bypassResourceTypes,
         fallbackDirect,
         compiledMatch,
         compiledBypassUrlPatterns,
@@ -118,7 +118,7 @@ export function makeProxyHandler (
       }
 
       // --- Bypass by request type ---
-      if (bypassRequestTypes && bypassRequestTypes.includes(requestInfo.type)) {
+      if (bypassResourceTypes && bypassResourceTypes.includes(requestInfo.type)) {
         console.info(
           `[${APP_NAME}Proxy] Bypassed by request type "${requestInfo.type}" for rule "${ruleName}" and url ${url}`)
         return

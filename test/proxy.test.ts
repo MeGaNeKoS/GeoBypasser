@@ -64,7 +64,7 @@ describe('makeProxyHandler', () => {
       match: ['<all_urls>'],
       forceProxyUrlPatterns: ['https://force/*'],
       bypassUrlPatterns: ['https://bypass/*'],
-      bypassRequestTypes: ['image'],
+      bypassResourceTypes: ['image'],
       staticExtensions: '/\\.jpg$/',
       fallbackDirect: true,
       proxyId: 'p1',
