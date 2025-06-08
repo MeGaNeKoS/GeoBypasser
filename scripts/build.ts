@@ -7,7 +7,7 @@ import { execSync } from 'child_process'
 const DIST_DIR = path.resolve('dist')
 const FIREFOX_MANIFEST = path.resolve('assets/manifests/firefox/manifest.json')
 const CHROME_MANIFEST = path.resolve('assets/manifests/chrome/manifest.json')
-const PUBLIC: string[] = []
+const PUBLIC: string[] = ['assets/dashboard.html']
 
 // Parse command-line arguments
 const args = process.argv.slice(2)

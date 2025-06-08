@@ -177,7 +177,7 @@ export function getProxyTypeByChallenger (
   port: OnAuthRequiredDetailsTypeChallengerType['port'],
   proxyList: ProxyListItem[]): ProxyListItem | undefined {
   return proxyList.find(proxy =>
-    proxy.host === host && proxy.port == port && (proxy.type === 'http' || proxy.type === 'https'),
+    proxy.host === host && proxy.port == port && proxy.type === 'http',
   )
 }
 
