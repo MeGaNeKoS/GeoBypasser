@@ -129,7 +129,10 @@ export function makeDefaultProxyHandler (config: GeoBypassSettings) {
     const proxy = getProxyById(config.proxyList, config.defaultProxy)
     if (proxy) {
       console.info(`[${APP_NAME}Proxy] Default handler: Using ${proxy.type} proxy -> ${proxy.host}:${proxy.port}`)
-      return [{ ...proxy }, (config.fallbackDirect ? { type: 'direct' } : {})]
+      return [
+        { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+        ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
+      ]
     } else {
       console.warn(`[${APP_NAME}Proxy] Default handler: No default proxy set.`)
     }
