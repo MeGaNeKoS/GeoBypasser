@@ -1,11 +1,19 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import browser, { Proxy, Tabs, WebRequest } from 'webextension-polyfill'
 
-import { getProxyTypeByChallenger, makeDefaultProxyHandler, makeProxyHandler, makeTabProxyHandler, makeDomainProxyHandler, resolveProxy } from '@utils/proxy'
+import {
+  getProxyTypeByChallenger,
+  makeDefaultProxyHandler,
+  makeDomainProxyHandler,
+  makeProxyHandler,
+  makeTabProxyHandler,
+  resolveProxy,
+} from '@utils/proxy'
 import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@utils/generic'
-import { getConfig, getUserStorageMode } from '@utils/storage'
-import { ProxyListItem } from '@customTypes/proxy'
+import { compileRules, getConfig, getUserStorageMode } from '@utils/storage'
+import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { APP_NAME } from '@constant/defaults'
+import { STORAGE_KEYS } from '@constant/storageKeys'
 import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
 import { isTabProxyMessage } from '@utils/messages'
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
@@ -32,83 +40,66 @@ const tabProxyMap: Record<number, string> = {}
 function attachProxyHandlers (
   config: GeoBypassRuntimeSettings,
   currentHandlers: currentProxyHandler,
+  changedKeys: string[] = [],
 ) {
-  console.debug(`[${APP_NAME}BG] attachProxyHandlers called with config:`, config)
+  const urls = getAllMatchUrls(config)
 
-  if (currentHandlers.main) {
-    browser.proxy.onRequest.removeListener(currentHandlers.main)
-    console.debug(`[${APP_NAME}BG] Removed old main proxy handler.`)
-  } else {
-    console.debug(`[${APP_NAME}BG] No previous main proxy handler to remove.`)
+  if (!currentHandlers.tab) {
+    currentHandlers.tab = makeTabProxyHandler(config, tabProxyMap)
   }
+
+  if (!currentHandlers.domain) {
+    currentHandlers.domain = makeDomainProxyHandler(config)
+  }
+
+  if (!currentHandlers.main || changedKeys.includes('rules')) {
+    if (urls.length > 0) {
+      currentHandlers.main = makeProxyHandler(config)
+      currentHandlers.oauthRequired = createAuthRequiredHandler(config.proxyList)
+    } else {
+      currentHandlers.main = undefined
+      currentHandlers.oauthRequired = undefined
+    }
+  }
+
+  if (changedKeys.includes('defaultProxy')) {
+    currentHandlers.default = config.defaultProxy
+      ? makeDefaultProxyHandler(config)
+      : undefined
+  } else if (!currentHandlers.default && config.defaultProxy) {
+    currentHandlers.default = makeDefaultProxyHandler(config)
+  }
+
+  (['tab', 'domain', 'main', 'default'] as const).forEach(type => {
+    const handler = currentHandlers[type]
+    if (handler && browser.proxy.onRequest.hasListener(handler)) {
+      browser.proxy.onRequest.removeListener(handler)
+    }
+  })
+
+  if (currentHandlers.oauthRequired && browser.webRequest.onAuthRequired.hasListener(currentHandlers.oauthRequired)) {
+    browser.webRequest.onAuthRequired.removeListener(currentHandlers.oauthRequired)
+  }
+
   if (currentHandlers.tab) {
-    browser.proxy.onRequest.removeListener(currentHandlers.tab)
-    console.debug(`[${APP_NAME}BG] Removed old tab proxy handler.`)
-  } else {
-    console.debug(`[${APP_NAME}BG] No previous tab proxy handler to remove.`)
+    browser.proxy.onRequest.addListener(currentHandlers.tab, { urls: ['<all_urls>'] })
   }
   if (currentHandlers.domain) {
-    browser.proxy.onRequest.removeListener(currentHandlers.domain)
-    console.debug(`[${APP_NAME}BG] Removed old domain proxy handler.`)
-  } else {
-    console.debug(`[${APP_NAME}BG] No previous domain proxy handler to remove.`)
+    browser.proxy.onRequest.addListener(currentHandlers.domain, { urls: ['<all_urls>'] })
+  }
+  if (currentHandlers.main) {
+    browser.proxy.onRequest.addListener(currentHandlers.main, { urls })
+    if (currentHandlers.oauthRequired) {
+      browser.webRequest.onAuthRequired.addListener(
+        currentHandlers.oauthRequired,
+        { urls: ['<all_urls>'] },
+        ['asyncBlocking'],
+      )
+    }
   }
   if (currentHandlers.default) {
-    browser.proxy.onRequest.removeListener(currentHandlers.default)
-    console.debug(`[${APP_NAME}BG] Removed old default proxy handler.`)
-  } else {
-    console.debug(`[${APP_NAME}BG] No previous default proxy handler to remove.`)
+    browser.proxy.onRequest.addListener(currentHandlers.default, { urls: ['<all_urls>'] })
   }
-  if (currentHandlers.oauthRequired) {
-    browser.webRequest.onAuthRequired.removeListener(currentHandlers.oauthRequired)
-    console.debug(`[${APP_NAME}BG] Removed old auth required handler.`)
-  } else {
-    console.debug(`[${APP_NAME}BG] No previous auth required handler to remove.`)
-  }
-
-  const urls = getAllMatchUrls(config)
-  console.info(`[${APP_NAME}BG] URL patterns for main proxy:`, urls)
-
-  const tabHandler = makeTabProxyHandler(config, tabProxyMap)
-  currentHandlers.tab = tabHandler
-  browser.proxy.onRequest.addListener(tabHandler, { urls: ['<all_urls>'] })
-  console.info(`[${APP_NAME}BG] Registered tab proxy handler for <all_urls>.`)
-
-  const domainHandler = makeDomainProxyHandler(config)
-  currentHandlers.domain = domainHandler
-  browser.proxy.onRequest.addListener(domainHandler, { urls: ['<all_urls>'] })
-  console.info(`[${APP_NAME}BG] Registered domain proxy handler for <all_urls>.`)
-
-  const mainHandler = makeProxyHandler(config)
-  currentHandlers.main = mainHandler
-
-  if (urls.length > 0) {
-    browser.proxy.onRequest.addListener(mainHandler, { urls })
-    console.info(`[${APP_NAME}BG] Registered main proxy handler for ${urls.length} URL patterns.`)
-
-    const oauthHandler = createAuthRequiredHandler(config.proxyList)
-    currentHandlers.oauthRequired = oauthHandler
-    browser.webRequest.onAuthRequired.addListener(
-      oauthHandler,
-      { urls: ['<all_urls>'] },
-      ['asyncBlocking'],
-    )
-    console.info(`[${APP_NAME}BG] Registered webRequest.onAuthRequired handler for protected resources.`)
-  } else {
-    console.warn(`[${APP_NAME}BG] No URL patterns provided; main proxy handler not registered.`)
-  }
-
-  let defaultHandler
-  if (config.defaultProxy) {
-    defaultHandler = makeDefaultProxyHandler(config)
-    currentHandlers.default = defaultHandler
-    browser.proxy.onRequest.addListener(defaultHandler, { urls: ['<all_urls>'] })
-    console.info(`[${APP_NAME}BG] Registered default proxy handler for <all_urls>.`)
-  } else {
-    console.info(`[${APP_NAME}BG] No default proxy specified; default proxy handler not registered.`)
-  }
-
-  return
 }
 
 function createAuthRequiredHandler (proxyList: ProxyListItem[]) {
@@ -246,12 +237,11 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 }
 
 (async () => {
-  let config: GeoBypassRuntimeSettings
   const handlers: currentProxyHandler = {}
   const keepAliveHandlers: currentKeepAliveHandler = {}
 
   console.info(`[${APP_NAME}BG] Loading initial config...`)
-  config = await getConfig()
+  const config = await getConfig()
   console.info(`[${APP_NAME}BG] Loaded initial config:`, config)
 
   attachProxyHandlers(config, handlers)
@@ -291,28 +281,58 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
   // Storage listener for live config updates
   browser.storage.onChanged.addListener(async (changes, areaName) => {
     console.info(`[${APP_NAME}BG] Storage change detected. Area: ${areaName}. Changes:`, changes)
+
     if (areaName === 'local' && changes.storageMode) {
       console.info(`[${APP_NAME}BG] Detected storageMode change, reloading config...`)
-      config = await getConfig()
-      attachProxyHandlers(config, handlers)
-
+      const newConfig = await getConfig()
+      Object.assign(config, newConfig)
+      attachProxyHandlers(config, handlers, ['rules', 'defaultProxy'])
       await initKeepAlive(config)
       setupKeepAliveListeners(config, keepAliveHandlers)
-
       console.info(`[${APP_NAME}BG] Handlers updated after storageMode switch.`)
       return
     }
 
     const currentStorageMode = await getUserStorageMode()
     const currentArea = currentStorageMode === 'cloud' ? 'sync' : 'local'
-    if (areaName === currentArea && changes.proxyExtensionConfig) {
-      console.info(`[${APP_NAME}BG] Detected config change in "${areaName}", reloading config...`)
-      config = await getConfig()
-      attachProxyHandlers(config, handlers)
+    if (areaName !== currentArea) return
 
-      await initKeepAlive(config)
-      setupKeepAliveListeners(config, keepAliveHandlers)
+    const changedKeys: string[] = []
+    if (changes[STORAGE_KEYS.proxyList]) {
+      config.proxyList = changes[STORAGE_KEYS.proxyList].newValue as ProxyListItem[]
+      changedKeys.push('proxyList')
+    }
+    if (changes[STORAGE_KEYS.defaultProxy]) {
+      config.defaultProxy = changes[STORAGE_KEYS.defaultProxy].newValue as string | undefined
+      changedKeys.push('defaultProxy')
+    }
+    if (changes[STORAGE_KEYS.fallbackDirect]) {
+      config.fallbackDirect = changes[STORAGE_KEYS.fallbackDirect].newValue as boolean | undefined
+      changedKeys.push('fallbackDirect')
+    }
+    if (changes[STORAGE_KEYS.testProxyUrl]) {
+      config.testProxyUrl = changes[STORAGE_KEYS.testProxyUrl].newValue as string
+      changedKeys.push('testProxyUrl')
+    }
+    if (changes[STORAGE_KEYS.rules]) {
+      config.rules = compileRules(changes[STORAGE_KEYS.rules].newValue as ProxyRule[])
+      changedKeys.push('rules')
+    }
+    if (changes[STORAGE_KEYS.keepAliveRules]) {
+      config.keepAliveRules = changes[STORAGE_KEYS.keepAliveRules].newValue as Record<string, {
+        active: boolean;
+        tabUrls: string[];
+        testProxyUrl?: string
+      }>
+      changedKeys.push('keepAliveRules')
+    }
 
+    if (changedKeys.length) {
+      attachProxyHandlers(config, handlers, changedKeys)
+      if (changedKeys.includes('keepAliveRules') || changedKeys.includes('testProxyUrl')) {
+        await initKeepAlive(config)
+        setupKeepAliveListeners(config, keepAliveHandlers)
+      }
       console.info(`[${APP_NAME}BG] Handlers updated after config change.`)
     }
   })
