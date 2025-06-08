@@ -7,9 +7,9 @@ import { APP_NAME } from '@constant/defaults'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 
 type ProxyTestJob = {
-  proxy: ProxyListItem,
-  testUrl: string,
-  sendResult: (result: ProxyTestResult) => void,
+  proxy: ProxyListItem;
+  testUrl: string;
+  sendResult: (result: ProxyTestResult) => void;
 }
 const proxyTestQueues = new Map<string, Array<ProxyTestJob>>()
 const proxyTestRunning = new Set<string>()

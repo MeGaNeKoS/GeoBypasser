@@ -322,7 +322,7 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
       config.keepAliveRules = changes[STORAGE_KEYS.keepAliveRules].newValue as Record<string, {
         active: boolean;
         tabUrls: string[];
-        testProxyUrl?: string
+        testProxyUrl?: string;
       }>
       changedKeys.push('keepAliveRules')
     }

@@ -8,7 +8,8 @@ export type GeoBypassSettings = {
   rules: ProxyRule[];
   keepAliveRules?: KeepAliveProxyRule;
   testProxyUrl: string;
-};
+}
+
 export type GeoBypassRuntimeSettings = Omit<GeoBypassSettings, 'rules'> & {
   rules: RuntimeProxyRule[];
-};
+}

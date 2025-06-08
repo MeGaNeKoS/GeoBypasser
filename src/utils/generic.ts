@@ -48,4 +48,4 @@ export type KeepAliveState = {
   activeTabs: Map<string, Set<number>>;
   interval: ReturnType<typeof setInterval> | null;
   testUrl: string;
-};
+}

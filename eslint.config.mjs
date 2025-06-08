@@ -1,6 +1,8 @@
 import globals from 'globals'
 import pluginJs from '@eslint/js'
 import tseslint from 'typescript-eslint'
+import stylistic from '@stylistic/eslint-plugin'
+import noTypeSemicolon from './eslint-rules/no-type-semicolon.js'
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -9,10 +11,16 @@ export default [
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    plugins: {
+      '@stylistic': stylistic,
+      local: { rules: { 'no-type-semicolon': noTypeSemicolon } },
+    },
     rules: {
       semi: ['error', 'never'],
       'no-extra-semi': 'error',
       'object-curly-spacing': ['error', 'always'],
+      'no-trailing-spaces': 'error',
+      'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1 }],
       'no-restricted-properties': [
         'error',
         {
@@ -26,6 +34,20 @@ export default [
           'message': 'Avoid using \'addEventListener\' directly on the window object.',
         },
       ],
+      '@stylistic/member-delimiter-style': [
+        'error',
+        {
+          multiline: {
+            delimiter: 'semi',
+            requireLast: true,
+          },
+          singleline: {
+            delimiter: 'semi',
+            requireLast: false,
+          },
+        },
+      ],
+      'local/no-type-semicolon': 'error',
     },
   },
 ]

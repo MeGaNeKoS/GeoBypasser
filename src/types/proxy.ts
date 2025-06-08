@@ -9,16 +9,18 @@ export type ProxyConfig = {
   username?: string;
   password?: string;
   failoverTimeout?: number;
-};
+}
 
 export type ProxyListItem = ProxyConfig & {
   id: proxyId;
   label?: string;
   notifyIfDown?: boolean;
-};
+}
+
 export type ProxyListRuntimeItem = ProxyListItem & {
   downNotification?: number;
 }
+
 export type ProxyRule = {
   active: boolean;
   name: string;
@@ -30,21 +32,20 @@ export type ProxyRule = {
   forceProxyUrlPatterns?: string[];
   fallbackDirect?: boolean;
   proxyId: string;
-};
+}
 
 export type RuntimeProxyRule = ProxyRule & {
   compiledMatch?: Matcher[];
   compiledBypassUrlPatterns?: Matcher[];
   compiledForceProxyUrlPatterns?: Matcher[];
   compiledStaticExtensions?: RegExp;
-};
+}
 
 export type KeepAliveProxyRule = Record<string, {
   active: boolean;
   tabUrls: string[];
   testProxyUrl?: string;
 }>
-
 
 export type ProxyTestResult =
   | { success: true; proxy: string }
