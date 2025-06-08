@@ -23,6 +23,7 @@ export type ProxyRule = {
   active: boolean;
   name: string;
   match: string[];
+  siteMatch?: string[];
   bypassUrlPatterns?: string[];
   bypassRequestTypes?: string[];
   staticExtensions?: string;

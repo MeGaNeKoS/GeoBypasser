@@ -2,7 +2,7 @@ import type { ProxyListItem, ProxyTestResult } from '@customTypes/proxy'
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import { proxyId } from '@customTypes/generic'
 import browser, { Proxy, WebRequest } from 'webextension-polyfill'
-import { fetchWithTimeout, matchPatternList } from '@utils/generic'
+import { fetchWithTimeout, matchPatternList, getHostname, matchHostname } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 
@@ -23,24 +23,64 @@ export function resolveProxy (config: GeoBypassRuntimeSettings, proxyId?: proxyI
     getProxyById(config.proxyList, config.defaultProxy)
 }
 
-export function makeProxyHandler (
+export function makeTabProxyHandler (
   config: GeoBypassRuntimeSettings,
   tabProxyMap: Record<number, proxyId> = {},
 ) {
-  return async function handleProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
-    if (requestInfo.tabId !== undefined) {
-      const mapped = tabProxyMap[requestInfo.tabId]
-      if (mapped) {
-        const proxy = resolveProxy(config, mapped)
-        if (proxy) {
-          console.info(`[${APP_NAME}Proxy] Tab ${requestInfo.tabId} mapped to proxy ${mapped}`)
-          return [
-            { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
-            ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
-          ]
+  return async function handleTabProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
+    if (requestInfo.tabId === undefined) return
+    const mapped = tabProxyMap[requestInfo.tabId]
+    if (!mapped) return
+    const proxy = resolveProxy(config, mapped)
+    if (proxy) {
+      console.info(`[${APP_NAME}Proxy] Tab ${requestInfo.tabId} mapped to proxy ${mapped}`)
+      return [
+        { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+        ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
+      ]
+    }
+  }
+}
+
+export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings) {
+  return async function handleDomainProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
+    if (requestInfo.tabId === undefined) return
+    let tab
+    try {
+      tab = await browser.tabs.get(requestInfo.tabId)
+    } catch {
+      return
+    }
+    if (!tab.url) return
+    const hostname = getHostname(tab.url)
+    if (!hostname) return
+
+    for (const rule of config.rules) {
+      const { proxyId, siteMatch, fallbackDirect, name: ruleName, active } = rule
+      if (!active || !siteMatch || siteMatch.length === 0) continue
+      for (const pattern of siteMatch) {
+        if (matchHostname(hostname, pattern)) {
+          const proxy = resolveProxy(config, proxyId)
+          if (proxy) {
+            console.info(`[${APP_NAME}Proxy] Domain rule "${ruleName}" matched for tab ${requestInfo.tabId}`)
+            return [
+              { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+              ...(fallbackDirect ? [{ type: 'direct' }] : []),
+            ]
+          } else {
+            console.warn(`[${APP_NAME}Proxy] Domain rule "${ruleName}" proxy not found`)
+          }
+          return
         }
       }
     }
+  }
+}
+
+export function makeProxyHandler (
+  config: GeoBypassRuntimeSettings,
+) {
+  return async function handleProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
     for (const rule of config.rules) {
       const {
         proxyId,

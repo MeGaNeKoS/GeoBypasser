@@ -1,7 +1,7 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import browser, { Proxy, Tabs, WebRequest } from 'webextension-polyfill'
 
-import { getProxyTypeByChallenger, makeDefaultProxyHandler, makeProxyHandler, resolveProxy } from '@utils/proxy'
+import { getProxyTypeByChallenger, makeDefaultProxyHandler, makeProxyHandler, makeTabProxyHandler, makeDomainProxyHandler, resolveProxy } from '@utils/proxy'
 import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@utils/generic'
 import { getConfig, getUserStorageMode } from '@utils/storage'
 import { ProxyListItem } from '@customTypes/proxy'
@@ -14,6 +14,8 @@ import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
 import Tab = Tabs.Tab
 
 type currentProxyHandler = {
+  tab?: (details: Proxy.OnRequestDetailsType) => void;
+  domain?: (details: Proxy.OnRequestDetailsType) => void;
   main?: (details: Proxy.OnRequestDetailsType) => void;
   default?: (details: Proxy.OnRequestDetailsType) => void;
   oauthRequired?: (details: OnAuthRequiredDetailsType) => BlockingResponseOrPromiseOrVoid;
@@ -39,6 +41,18 @@ function attachProxyHandlers (
   } else {
     console.debug(`[${APP_NAME}BG] No previous main proxy handler to remove.`)
   }
+  if (currentHandlers.tab) {
+    browser.proxy.onRequest.removeListener(currentHandlers.tab)
+    console.debug(`[${APP_NAME}BG] Removed old tab proxy handler.`)
+  } else {
+    console.debug(`[${APP_NAME}BG] No previous tab proxy handler to remove.`)
+  }
+  if (currentHandlers.domain) {
+    browser.proxy.onRequest.removeListener(currentHandlers.domain)
+    console.debug(`[${APP_NAME}BG] Removed old domain proxy handler.`)
+  } else {
+    console.debug(`[${APP_NAME}BG] No previous domain proxy handler to remove.`)
+  }
   if (currentHandlers.default) {
     browser.proxy.onRequest.removeListener(currentHandlers.default)
     console.debug(`[${APP_NAME}BG] Removed old default proxy handler.`)
@@ -55,7 +69,17 @@ function attachProxyHandlers (
   const urls = getAllMatchUrls(config)
   console.info(`[${APP_NAME}BG] URL patterns for main proxy:`, urls)
 
-  const mainHandler = makeProxyHandler(config, tabProxyMap)
+  const tabHandler = makeTabProxyHandler(config, tabProxyMap)
+  currentHandlers.tab = tabHandler
+  browser.proxy.onRequest.addListener(tabHandler, { urls: ['<all_urls>'] })
+  console.info(`[${APP_NAME}BG] Registered tab proxy handler for <all_urls>.`)
+
+  const domainHandler = makeDomainProxyHandler(config)
+  currentHandlers.domain = domainHandler
+  browser.proxy.onRequest.addListener(domainHandler, { urls: ['<all_urls>'] })
+  console.info(`[${APP_NAME}BG] Registered domain proxy handler for <all_urls>.`)
+
+  const mainHandler = makeProxyHandler(config)
   currentHandlers.main = mainHandler
 
   if (urls.length > 0) {
@@ -66,7 +90,7 @@ function attachProxyHandlers (
     currentHandlers.oauthRequired = oauthHandler
     browser.webRequest.onAuthRequired.addListener(
       oauthHandler,
-      { urls },
+      { urls: ['<all_urls>'] },
       ['asyncBlocking'],
     )
     console.info(`[${APP_NAME}BG] Registered webRequest.onAuthRequired handler for protected resources.`)

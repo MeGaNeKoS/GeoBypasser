@@ -65,6 +65,7 @@ export async function saveConfig (config: GeoBypassSettings) {
       // Only save original (non-compiled) fields
       name: rule.name,
       match: rule.match,
+      siteMatch: rule.siteMatch,
       bypassUrlPatterns: rule.bypassUrlPatterns,
       bypassRequestTypes: rule.bypassRequestTypes,
       staticExtensions: rule.staticExtensions,
