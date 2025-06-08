@@ -2,7 +2,7 @@ import globals from 'globals'
 import pluginJs from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import stylistic from '@stylistic/eslint-plugin'
-import noTypeSemicolon from './eslint-rules/no-type-semicolon.js'
+import noTypeSemicolon from './eslint-rules/no-type-semicolon.mjs'
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
