@@ -22,7 +22,6 @@ describe('compileRules', () => {
     ]
     const compiled = compileRules(rules)
     expect(compiled[0].compiledMatch).toBeDefined()
-    expect(compiled[0].compiledMatch!.length).toBe(1)
     expect(compiled[0].compiledStaticExtensions).toBeInstanceOf(RegExp)
   })
 })

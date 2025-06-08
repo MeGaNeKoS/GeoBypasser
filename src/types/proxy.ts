@@ -34,9 +34,9 @@ export type ProxyRule = {
 }
 
 export type RuntimeProxyRule = ProxyRule & {
-  compiledMatch?: Matcher[];
-  compiledBypassUrlPatterns?: Matcher[];
-  compiledForceProxyUrlPatterns?: Matcher[];
+  compiledMatch?: Matcher;
+  compiledBypassUrlPatterns?: Matcher;
+  compiledForceProxyUrlPatterns?: Matcher;
   compiledStaticExtensions?: RegExp;
 }
 

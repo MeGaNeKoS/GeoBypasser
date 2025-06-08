@@ -3,7 +3,7 @@ import { matchPattern } from 'browser-extension-url-match'
 
 describe('generic utilities', () => {
   it('matchPatternList matches urls', () => {
-    const matchers = [matchPattern('https://*.example.com/*').assertValid()]
+    const matchers = matchPattern('https://*.example.com/*').assertValid()
     expect(matchPatternList('https://foo.example.com/x', matchers)).toBe(true)
     expect(matchPatternList('https://bar.com', matchers)).toBe(false)
   })

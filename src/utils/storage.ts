@@ -6,12 +6,22 @@ import { STORAGE_KEYS, STORAGE_MODE, TAB_PROXY_MAP } from '@constant/storageKeys
 
 import type { RuntimeProxyRule } from '@customTypes/proxy'
 import { matchPattern } from 'browser-extension-url-match'
+import { MatchPatternOptions } from 'browser-extension-url-match/dist/types'
 
 function isValidTabProxyMap (obj: unknown): obj is Record<number, proxyId> {
   if (typeof obj !== 'object' || obj === null) return false
   return Object.entries(obj).every(([key, value]) =>
     !isNaN(Number(key)) && typeof value === 'string',
   )
+}
+
+function safeCompile (pattern: string[] | string, options?: Partial<MatchPatternOptions>) {
+  try {
+    return matchPattern(pattern, options).assertValid()
+  } catch (err) {
+    console.error(`Invalid pattern "${pattern}":`, err)
+    return
+  }
 }
 
 export async function getUserStorageMode (): Promise<storageMode> {
@@ -31,11 +41,9 @@ export function compileRules (rules: GeoBypassSettings['rules'] = []): RuntimePr
     }
 
     // Compile match patterns using Matcher type
-    const compiledMatch = rule.match.map(p => matchPattern(p, { strict: false }).assertValid())
-    const compiledBypassUrlPatterns = (rule.bypassUrlPatterns || []).map(
-      p => matchPattern(p, { strict: false }).assertValid())
-    const compiledForceProxyUrlPatterns = (rule.forceProxyUrlPatterns || []).map(
-      p => matchPattern(p, { strict: false }).assertValid())
+    const compiledMatch = safeCompile(rule.match, { strict: false })
+    const compiledBypassUrlPatterns = safeCompile(rule.bypassUrlPatterns || [], { strict: false })
+    const compiledForceProxyUrlPatterns = safeCompile(rule.forceProxyUrlPatterns || [], { strict: false })
 
     return {
       ...rule,
