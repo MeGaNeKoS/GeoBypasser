@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>GeoBypass Settings</title>
+  <style>
+    body { background-color: #111; color: #eee; font-family: sans-serif; }
+    nav { display: flex; gap: 8px; margin-bottom: 12px; }
+    nav button { padding: 4px 8px; }
+    section { display: none; }
+    section.active { display: block; }
+    table { border-collapse: collapse; }
+    th, td { border: 1px solid #555; padding: 4px; }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
+    .modal.hidden { display: none; }
+    .modal-content { background: #222; padding: 16px; border: 1px solid #555; }
+  </style>
+</head>
+<body>
+  <nav id="tabs">
+    <button data-tab="general">General</button>
+    <button data-tab="proxy">Proxy List</button>
+    <button data-tab="rules">Rules</button>
+    <button data-tab="keepalive">Keep-Alive</button>
+    <button data-tab="override">Website Overrides</button>
+    <button data-tab="diagnostics">Diagnostics</button>
+    <button data-tab="about">About</button>
+  </nav>
+  <div id="content">
+    <section id="general" class="tab">
+      <h2>General</h2>
+      <label>Default Proxy: <select id="defaultProxy"></select></label><br>
+      <label>Fallback Direct <input type="checkbox" id="fallbackDirect"></label><br>
+      <label>Test Proxy URL <input type="text" id="testProxyUrl"></label><br>
+      <label>Storage Mode
+        <select id="storageMode">
+          <option value="local">Local</option>
+          <option value="cloud">Cloud</option>
+        </select>
+      </label>
+    </section>
+    <section id="proxy" class="tab">
+      <h2>Proxy List</h2>
+      <table id="proxyTable">
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th>Type</th>
+            <th>Host</th>
+            <th>Port</th>
+            <th>User</th>
+            <th>Password <button id="togglePassColumn">Show</button></th>
+            <th>Notify if down</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <button id="addProxy">Add Proxy</button>
+
+      <div id="proxyModal" class="modal hidden">
+        <div class="modal-content">
+          <h3 id="proxyModalTitle">Add Proxy</h3>
+          <label>Label <input type="text" id="proxyLabel"></label><br>
+          <label>Type
+            <select id="proxyType">
+              <option value="http">http</option>
+              <option value="socks">socks5</option>
+            </select>
+          </label><br>
+          <label>Host <input type="text" id="proxyHost"></label><br>
+          <label>Port <input type="number" id="proxyPort" min="1" max="65535"></label><br>
+          <label>Username <input type="text" id="proxyUser"></label><br>
+          <label>Password <input type="text" id="proxyPass"></label><br>
+          <label>Notify if down <input type="checkbox" id="proxyNotify"></label><br>
+          <button id="saveProxy">Save</button>
+          <button id="cancelProxy">Cancel</button>
+        </div>
+      </div>
+    </section>
+    <section id="rules" class="tab">
+      <h2>Rules</h2>
+      <table id="ruleTable">
+        <thead>
+          <tr><th>Name</th><th>Match</th><th>Proxy</th><th>Active</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <button id="addRule">Add Rule</button>
+      <button id="exportRules">Export Rules</button>
+      <input type="file" id="importRules" style="display:none">
+      <button id="importRulesBtn">Import Rules</button>
+    </section>
+    <section id="keepalive" class="tab">
+      <h2>Keep-Alive Rules</h2>
+      <div id="keepAliveContainer"></div>
+    </section>
+    <section id="override" class="tab">
+      <h2>Website Overrides</h2>
+      <table id="overrideTable">
+        <thead><tr><th>Domain</th><th>Proxy</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button id="addOverride">Add Override</button>
+    </section>
+    <section id="diagnostics" class="tab">
+      <h2>Diagnostics</h2>
+      <button id="exportConfig">Export Config</button>
+      <input type="file" id="importConfig" style="display:none">
+      <button id="importConfigBtn">Import Config</button>
+    </section>
+    <section id="about" class="tab">
+      <h2>About</h2>
+      <pre id="hierarchy"></pre>
+    </section>
+  </div>
+  <script src="dashboard.js"></script>
+</body>
+</html>
