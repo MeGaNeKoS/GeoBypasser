@@ -10,10 +10,10 @@ import {
   resolveProxy,
 } from '@utils/proxy'
 import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@utils/generic'
-import { compileRules, getConfig, getUserStorageMode } from '@utils/storage'
+import { compileRules, getConfig, getUserStorageMode, getTabProxyMap, saveTabProxyMap } from '@utils/storage'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { APP_NAME } from '@constant/defaults'
-import { STORAGE_KEYS } from '@constant/storageKeys'
+import { STORAGE_KEYS, TAB_PROXY_MAP } from '@constant/storageKeys'
 import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
 import { isTabProxyMessage } from '@utils/messages'
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
@@ -244,6 +244,11 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
   const config = await getConfig()
   console.info(`[${APP_NAME}BG] Loaded initial config:`, config)
 
+  Object.assign(tabProxyMap, await getTabProxyMap())
+  if (Object.keys(tabProxyMap).length) {
+    console.info(`[${APP_NAME}BG] Loaded tab proxy mappings from storage.`)
+  }
+
   attachProxyHandlers(config, handlers)
   console.info(`[${APP_NAME}BG] Proxy handlers attached for initial config.`)
 
@@ -255,8 +260,10 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 
     if (message.type === 'setTabProxy') {
       tabProxyMap[message.tabId] = message.proxyId
+      saveTabProxyMap(tabProxyMap)
     } else if (message.type === 'clearTabProxy') {
       delete tabProxyMap[message.tabId]
+      saveTabProxyMap(tabProxyMap)
     }
   })
 
@@ -264,6 +271,7 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
     if (tabProxyMap[tabId]) {
       delete tabProxyMap[tabId]
       console.debug(`[${APP_NAME}BG] Removed tabProxyMap entry for closed tab ${tabId}`)
+      saveTabProxyMap(tabProxyMap)
     }
   })
 
@@ -291,6 +299,13 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
       setupKeepAliveListeners(config, keepAliveHandlers)
       console.info(`[${APP_NAME}BG] Handlers updated after storageMode switch.`)
       return
+    }
+
+    if (areaName === 'local' && changes[TAB_PROXY_MAP]) {
+      const newMap = changes[TAB_PROXY_MAP].newValue as Record<number, string> || {}
+      Object.keys(tabProxyMap).forEach(k => delete tabProxyMap[Number(k)])
+      Object.assign(tabProxyMap, newMap)
+      console.info(`[${APP_NAME}BG] tabProxyMap updated from storage.`)
     }
 
     const currentStorageMode = await getUserStorageMode()
@@ -325,6 +340,10 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
         testProxyUrl?: string;
       }>
       changedKeys.push('keepAliveRules')
+    }
+    if (changes[STORAGE_KEYS.perWebsiteOverride]) {
+      config.perWebsiteOverride = changes[STORAGE_KEYS.perWebsiteOverride].newValue as Record<string, string>
+      changedKeys.push('perWebsiteOverride')
     }
 
     if (changedKeys.length) {

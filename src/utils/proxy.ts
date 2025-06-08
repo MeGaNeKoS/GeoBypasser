@@ -2,7 +2,7 @@ import type { ProxyListItem, ProxyTestResult } from '@customTypes/proxy'
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import { proxyId } from '@customTypes/generic'
 import browser, { Proxy, WebRequest } from 'webextension-polyfill'
-import { fetchWithTimeout, matchPatternList, getHostname, matchHostname } from '@utils/generic'
+import { fetchWithTimeout, getHostname, matchPatternList } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 
@@ -54,24 +54,17 @@ export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings) {
     if (!tab.url) return
     const hostname = getHostname(tab.url)
     if (!hostname) return
-
-    for (const rule of config.rules) {
-      const { proxyId, siteMatch, fallbackDirect, name: ruleName, active } = rule
-      if (!active || !siteMatch || siteMatch.length === 0) continue
-      for (const pattern of siteMatch) {
-        if (matchHostname(hostname, pattern)) {
-          const proxy = resolveProxy(config, proxyId)
-          if (proxy) {
-            console.info(`[${APP_NAME}Proxy] Domain rule "${ruleName}" matched for tab ${requestInfo.tabId}`)
-            return [
-              { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
-              ...(fallbackDirect ? [{ type: 'direct' }] : []),
-            ]
-          } else {
-            console.warn(`[${APP_NAME}Proxy] Domain rule "${ruleName}" proxy not found`)
-          }
-          return
-        }
+    const overrideId = config.perWebsiteOverride?.[hostname]
+    if (overrideId) {
+      const proxy = resolveProxy(config, overrideId)
+      if (proxy) {
+        console.info(`[${APP_NAME}Proxy] Domain override for "${hostname}" matched for tab ${requestInfo.tabId}`)
+        return [
+          { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+          ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
+        ]
+      } else {
+        console.warn(`[${APP_NAME}Proxy] Domain override proxy not found for "${hostname}"`)
       }
     }
   }

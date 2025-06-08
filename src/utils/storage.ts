@@ -1,11 +1,18 @@
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import browser from 'webextension-polyfill'
-import type { storageMode } from '@customTypes/generic'
+import type { proxyId, storageMode } from '@customTypes/generic'
 import { APP_NAME, DEFAULT_SETTINGS } from '@constant/defaults'
-import { STORAGE_KEYS, STORAGE_MODE } from '@constant/storageKeys'
+import { STORAGE_KEYS, STORAGE_MODE, TAB_PROXY_MAP } from '@constant/storageKeys'
 
 import type { RuntimeProxyRule } from '@customTypes/proxy'
 import { matchPattern } from 'browser-extension-url-match'
+
+function isValidTabProxyMap (obj: unknown): obj is Record<number, proxyId> {
+  if (typeof obj !== 'object' || obj === null) return false
+  return Object.entries(obj).every(([key, value]) =>
+    !isNaN(Number(key)) && typeof value === 'string',
+  )
+}
 
 export async function getUserStorageMode (): Promise<storageMode> {
   const result = await browser.storage.local.get(STORAGE_MODE)
@@ -46,11 +53,16 @@ export async function getConfig (): Promise<GeoBypassRuntimeSettings> {
   const result = await storage.get(Object.values(STORAGE_KEYS)) as Record<string, unknown>
   const config: GeoBypassSettings = {
     proxyList: (result[STORAGE_KEYS.proxyList] as GeoBypassSettings['proxyList']) ?? DEFAULT_SETTINGS.proxyList,
-    defaultProxy: (result[STORAGE_KEYS.defaultProxy] as GeoBypassSettings['defaultProxy']) ?? DEFAULT_SETTINGS.defaultProxy,
-    fallbackDirect: (result[STORAGE_KEYS.fallbackDirect] as GeoBypassSettings['fallbackDirect']) ?? DEFAULT_SETTINGS.fallbackDirect,
-    testProxyUrl: (result[STORAGE_KEYS.testProxyUrl] as GeoBypassSettings['testProxyUrl']) ?? DEFAULT_SETTINGS.testProxyUrl,
+    defaultProxy: (result[STORAGE_KEYS.defaultProxy] as GeoBypassSettings['defaultProxy']) ??
+      DEFAULT_SETTINGS.defaultProxy,
+    fallbackDirect: (result[STORAGE_KEYS.fallbackDirect] as GeoBypassSettings['fallbackDirect']) ??
+      DEFAULT_SETTINGS.fallbackDirect,
+    testProxyUrl: (result[STORAGE_KEYS.testProxyUrl] as GeoBypassSettings['testProxyUrl']) ??
+      DEFAULT_SETTINGS.testProxyUrl,
     rules: (result[STORAGE_KEYS.rules] as GeoBypassSettings['rules']) ?? DEFAULT_SETTINGS.rules,
     keepAliveRules: result[STORAGE_KEYS.keepAliveRules] as GeoBypassSettings['keepAliveRules'],
+    perWebsiteOverride: (result[STORAGE_KEYS.perWebsiteOverride] as GeoBypassSettings['perWebsiteOverride']) ??
+      DEFAULT_SETTINGS.perWebsiteOverride,
   }
 
   if (!result || Object.keys(result).length === 0) {
@@ -77,7 +89,6 @@ export async function saveConfig (config: GeoBypassSettings) {
       // Only save original (non-compiled) fields
       name: rule.name,
       match: rule.match,
-      siteMatch: rule.siteMatch,
       bypassUrlPatterns: rule.bypassUrlPatterns,
       bypassRequestTypes: rule.bypassRequestTypes,
       staticExtensions: rule.staticExtensions,
@@ -87,6 +98,7 @@ export async function saveConfig (config: GeoBypassSettings) {
       active: typeof rule.active !== 'undefined' ? rule.active : true,
     })),
     [STORAGE_KEYS.keepAliveRules]: config.keepAliveRules,
+    [STORAGE_KEYS.perWebsiteOverride]: config.perWebsiteOverride,
   })
   console.info(`[${APP_NAME}] Saved config to ${storageMode} storage.`)
 }
@@ -101,6 +113,29 @@ export async function updateConfig (config: Partial<GeoBypassSettings>) {
   if (config.testProxyUrl !== undefined) update[STORAGE_KEYS.testProxyUrl] = config.testProxyUrl
   if (config.rules !== undefined) update[STORAGE_KEYS.rules] = config.rules
   if (config.keepAliveRules !== undefined) update[STORAGE_KEYS.keepAliveRules] = config.keepAliveRules
+  if (config.perWebsiteOverride !== undefined) update[STORAGE_KEYS.perWebsiteOverride] = config.perWebsiteOverride
   await storage.set(update)
   console.info(`[${APP_NAME}] Updated partial config in ${storageMode} storage.`)
+}
+
+export async function getTabProxyMap (): Promise<Record<number, proxyId>> {
+  try {
+    const result = await browser.storage.local.get(TAB_PROXY_MAP)
+    const raw = result[TAB_PROXY_MAP]
+    if (isValidTabProxyMap(raw)) {
+      return raw
+    }
+
+    await browser.storage.local.remove(TAB_PROXY_MAP)
+    console.warn(`[${APP_NAME}] Invalid tabProxyMap data found and removed.`)
+    return {}
+  } catch (error) {
+    console.error(`[${APP_NAME}] Failed to get tabProxyMap:`, error)
+    return {}
+  }
+}
+
+export async function saveTabProxyMap (map: Record<number, proxyId>) {
+  await browser.storage.local.set({ [TAB_PROXY_MAP]: map })
+  console.info(`[${APP_NAME}] Saved tabProxyMap to local storage.`)
 }

@@ -1,4 +1,5 @@
 export const STORAGE_MODE = 'storageMode'
+export const TAB_PROXY_MAP = 'tabProxyMap'
 
 export const STORAGE_KEYS = {
   proxyList: 'proxyList',
@@ -7,5 +8,6 @@ export const STORAGE_KEYS = {
   rules: 'rules',
   keepAliveRules: 'keepAliveRules',
   testProxyUrl: 'testProxyUrl',
+  perWebsiteOverride: 'perWebsiteOverride',
 } as const
 
