@@ -38,15 +38,15 @@ function renderGeneral () {
   const testUrl = document.getElementById('testProxyUrl') as HTMLInputElement
   testUrl.value = config.testProxyUrl
 
-  const mode = document.getElementById('storageMode') as HTMLSelectElement
-  browser.storage.local.get('storageMode').then(res => {
-    mode.value = res.storageMode === 'cloud' ? 'cloud' : 'local'
-  })
+  // const mode = document.getElementById('storageMode') as HTMLSelectElement
+  // browser.storage.local.get('storageMode').then(res => {
+  //   mode.value = res.storageMode === 'cloud' ? 'cloud' : 'local'
+  // })
 
   select.onchange = () => updateConfig({ defaultProxy: select.value || undefined })
   fallback.onchange = () => updateConfig({ fallbackDirect: fallback.checked })
   testUrl.onchange = () => updateConfig({ testProxyUrl: testUrl.value })
-  mode.onchange = () => browser.storage.local.set({ storageMode: mode.value })
+  // mode.onchange = () => browser.storage.local.set({ storageMode: mode.value })
 }
 
 function renderProxyList () {
