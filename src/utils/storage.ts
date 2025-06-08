@@ -107,13 +107,13 @@ export async function updateConfig (config: Partial<GeoBypassSettings>) {
   const storageMode = await getUserStorageMode()
   const storage = storageMode === 'cloud' ? browser.storage.sync : browser.storage.local
   const update: Record<string, unknown> = {}
-  if (config.proxyList !== undefined) update[STORAGE_KEYS.proxyList] = config.proxyList
-  if (config.defaultProxy !== undefined) update[STORAGE_KEYS.defaultProxy] = config.defaultProxy
-  if (config.fallbackDirect !== undefined) update[STORAGE_KEYS.fallbackDirect] = config.fallbackDirect
-  if (config.testProxyUrl !== undefined) update[STORAGE_KEYS.testProxyUrl] = config.testProxyUrl
-  if (config.rules !== undefined) update[STORAGE_KEYS.rules] = config.rules
-  if (config.keepAliveRules !== undefined) update[STORAGE_KEYS.keepAliveRules] = config.keepAliveRules
-  if (config.perWebsiteOverride !== undefined) update[STORAGE_KEYS.perWebsiteOverride] = config.perWebsiteOverride
+  if ('proxyList' in config) update[STORAGE_KEYS.proxyList] = config.proxyList
+  if ('defaultProxy' in config) update[STORAGE_KEYS.defaultProxy] = config.defaultProxy
+  if ('fallbackDirect' in config) update[STORAGE_KEYS.fallbackDirect] = config.fallbackDirect
+  if ('testProxyUrl' in config) update[STORAGE_KEYS.testProxyUrl] = config.testProxyUrl
+  if ('rules' in config) update[STORAGE_KEYS.rules] = config.rules
+  if ('keepAliveRules' in config) update[STORAGE_KEYS.keepAliveRules] = config.keepAliveRules
+  if ('perWebsiteOverride' in config) update[STORAGE_KEYS.perWebsiteOverride] = config.perWebsiteOverride
   await storage.set(update)
   console.info(`[${APP_NAME}] Updated partial config in ${storageMode} storage.`)
 }
