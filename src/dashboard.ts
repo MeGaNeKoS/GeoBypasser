@@ -10,6 +10,9 @@ let editingRuleIndex: number | null = null
 let revealAllPasswords = false
 const revealedPasswords = new Set<number>()
 const selectedRules = new Set<number>()
+const selectedProxies = new Set<number>()
+const selectedOverrides = new Set<string>()
+const selectedKeepAlive = new Set<string>()
 let listTargetInput: HTMLInputElement | null = null
 let currentListValidator: (val: string) => boolean = () => true
 let typeTargetInput: HTMLInputElement | null = null
@@ -240,7 +243,8 @@ function renderProxyList () {
       `<td>${p.port}</td>` +
       `<td>${p.username || ''}</td>` +
       `<td class="password">${p.password ? (visible ? p.password : '******') : ''}</td>` +
-      `<td><input type="checkbox" ${p.notifyIfDown ? 'checked' : ''}></td>` +
+      `<td><input type="checkbox" data-notify ${p.notifyIfDown ? 'checked' : ''}></td>` +
+      `<td><input type="checkbox" data-select="${idx}"></td>` +
       `<td><button data-edit="${idx}">Edit</button> ` +
       `<button data-remove="${idx}">Delete</button></td>`
 
@@ -263,10 +267,15 @@ function renderProxyList () {
       passCell.append(' ', toggle)
     }
 
-    const chk = tr.querySelector('input') as HTMLInputElement
-    chk.onchange = () => {
-      p.notifyIfDown = chk.checked
+    const notifyChk = tr.querySelector('input[data-notify]') as HTMLInputElement
+    notifyChk.onchange = () => {
+      p.notifyIfDown = notifyChk.checked
       saveConfig(config)
+    }
+    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+    selChk.onchange = () => {
+      if (selChk.checked) selectedProxies.add(idx)
+      else selectedProxies.delete(idx)
     }
     const editBtn = tr.querySelector('button[data-edit]') as HTMLButtonElement
     editBtn.onclick = () => openProxyModal(idx)
@@ -503,13 +512,21 @@ function renderOverrides () {
     const proxy = config.proxyList.find(p => p.id === proxyId)
     const proxyLabel = proxy ? (proxy.label || proxy.host) : proxyId
     const tr = document.createElement('tr')
-    tr.innerHTML = `<td>${domain}</td><td>${proxyLabel}</td>` +
+    tr.innerHTML =
+      `<td>${domain}</td>` +
+      `<td>${proxyLabel}</td>` +
+      `<td><input type="checkbox" data-select="${domain}"></td>` +
       `<td><button data-domain="${domain}">Delete</button></td>`
     tbody.appendChild(tr)
     const btn = tr.querySelector('button') as HTMLButtonElement
     btn.onclick = () => {
       delete config.perWebsiteOverride[domain]
       saveConfig(config).then(renderAll)
+    }
+    const sel = tr.querySelector('input[data-select]') as HTMLInputElement
+    sel.onchange = () => {
+      if (sel.checked) selectedOverrides.add(domain)
+      else selectedOverrides.delete(domain)
     }
   }
 }
@@ -577,19 +594,19 @@ function closeKeepAliveModal () {
 }
 
 function saveKeepAliveFromModal () {
-  const proxy = (document.getElementById('keepAliveProxy') as HTMLSelectElement).value
+  const proxyId = (document.getElementById('keepAliveProxy') as HTMLSelectElement).value
   const patterns = (document.getElementById('keepAlivePatterns') as HTMLInputElement).value
     .split(/\s*,\s*/).filter(Boolean)
   const testUrl = (document.getElementById('keepAliveTestUrl') as HTMLInputElement).value.trim()
   const active = (document.getElementById('keepAliveActive') as HTMLInputElement).checked
-  if (!proxy || patterns.length === 0) return
+  if (!proxyId || patterns.length === 0) return
   if (!config.keepAliveRules) config.keepAliveRules = {}
   const rule: { active: boolean; tabUrls: string[]; testProxyUrl?: string } = { active, tabUrls: patterns }
   if (testUrl) rule.testProxyUrl = testUrl
-  if (editingKeepAliveId && editingKeepAliveId !== proxy) {
+  if (editingKeepAliveId && editingKeepAliveId !== proxyId) {
     delete config.keepAliveRules[editingKeepAliveId]
   }
-  config.keepAliveRules[proxy] = rule
+  config.keepAliveRules[proxyId] = rule
   saveConfig(config).then(() => {
     renderAll()
     closeKeepAliveModal()
@@ -602,19 +619,25 @@ function renderKeepAlive () {
   for (const [proxyId, rule] of Object.entries(config.keepAliveRules || {})) {
     const tr = document.createElement('tr')
     const proxy = config.proxyList.find(p => p.id === proxyId)
-    const label = proxy ? (proxy.label || proxy.host) : proxyId
+    const proxyLabel = proxy ? (proxy.label || proxy.host) : proxyId
     tr.innerHTML =
-      `<td>${label}</td>` +
+      `<td>${proxyLabel}</td>` +
       `<td>${rule.tabUrls.join(', ')}</td>` +
       `<td>${rule.testProxyUrl || ''}</td>` +
+      `<td><input type="checkbox" data-select="${proxyId}"></td>` +
       `<td><button data-edit="${proxyId}">Edit</button> ` +
       `<button data-remove="${proxyId}">Delete</button></td>` +
       `<td><input type="checkbox" ${rule.active ? 'checked' : ''}></td>`
     tbody.appendChild(tr)
-    const chk = tr.querySelector('input') as HTMLInputElement
+    const chk = tr.querySelector('input:not([data-select])') as HTMLInputElement
     chk.onchange = () => {
       rule.active = chk.checked
       saveConfig(config)
+    }
+    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+    selChk.onchange = () => {
+      if (selChk.checked) selectedKeepAlive.add(proxyId)
+      else selectedKeepAlive.delete(proxyId)
     }
     const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
     edit.onclick = () => openKeepAliveModal(proxyId)
@@ -626,17 +649,43 @@ function renderKeepAlive () {
   }
 }
 
+function stripRule (r: any): ProxyRule {
+  return {
+    active: typeof r.active === 'undefined' ? true : r.active,
+    name: r.name,
+    match: r.match,
+    bypassUrlPatterns: r.bypassUrlPatterns,
+    bypassResourceTypes: r.bypassResourceTypes,
+    staticExtensions: r.staticExtensions,
+    forceProxyUrlPatterns: r.forceProxyUrlPatterns,
+    fallbackDirect: r.fallbackDirect,
+    proxyId: r.proxyId,
+  }
+}
+
+function getExportableConfig () {
+  return {
+    proxyList: config.proxyList,
+    defaultProxy: config.defaultProxy,
+    fallbackDirect: config.fallbackDirect,
+    rules: config.rules.map(stripRule),
+    keepAliveRules: config.keepAliveRules,
+    testProxyUrl: config.testProxyUrl,
+    perWebsiteOverride: config.perWebsiteOverride,
+  }
+}
+
 function exportRules (rules: ProxyRule[]) {
   const data = JSON.stringify(rules, null, 2)
   download('rules.json', data)
 }
 
 function exportAllRules () {
-  exportRules(config.rules)
+  exportRules(config.rules.map(stripRule))
 }
 
 function exportSelectedRules () {
-  const arr = Array.from(selectedRules).map(i => config.rules[i])
+  const arr = Array.from(selectedRules).map(i => stripRule(config.rules[i]))
   if (arr.length === 0) {
     exportAllRules()
   } else {
@@ -658,20 +707,259 @@ function handleImportRules (files: FileList | null) {
   })
 }
 
-function exportConfig () {
-  const data = JSON.stringify(config, null, 2)
-  download('config.json', data)
+function exportProxies (list: ProxyListItem[]) {
+  download('proxies.json', JSON.stringify(list, null, 2))
 }
 
-function handleImportConfig (files: FileList | null) {
+function exportAllProxies () {
+  exportProxies(config.proxyList)
+}
+
+function exportSelectedProxies () {
+  const arr = Array.from(selectedProxies).map(i => config.proxyList[i])
+  if (arr.length === 0) exportAllProxies()
+  else exportProxies(arr)
+}
+
+function handleImportProxies (files: FileList | null) {
+  if (!files || !files[0]) return
+  files[0].text().then(t => {
+    try {
+      const parsed = JSON.parse(t)
+      const arr = Array.isArray(parsed) ? parsed as ProxyListItem[] : [parsed as ProxyListItem]
+      config.proxyList.push(...arr)
+      saveConfig(config).then(renderAll)
+    } catch (e) { console.error(e) }
+  })
+}
+
+function exportOverrides (obj: Record<string, string>) {
+  download('overrides.json', JSON.stringify(obj, null, 2))
+}
+
+function exportAllOverrides () {
+  exportOverrides(config.perWebsiteOverride)
+}
+
+function exportSelectedOverrides () {
+  const out: Record<string, string> = {}
+  selectedOverrides.forEach(d => {
+    const val = config.perWebsiteOverride[d]
+    if (val) out[d] = val
+  })
+  if (Object.keys(out).length === 0) exportAllOverrides()
+  else exportOverrides(out)
+}
+
+function handleImportOverrides (files: FileList | null) {
   if (!files || !files[0]) return
   files[0].text().then(t => {
     try {
       const obj = JSON.parse(t)
-      saveConfig(obj).then(() => {
-        config = obj
-        renderAll()
-      })
+      if (obj && typeof obj === 'object') {
+        Object.assign(config.perWebsiteOverride, obj)
+        saveConfig(config).then(renderAll)
+      }
+    } catch (e) { console.error(e) }
+  })
+}
+
+function exportKeepAlive (obj: Record<string, any>) {
+  download('keepalive.json', JSON.stringify(obj, null, 2))
+}
+
+function exportAllKeepAlive () {
+  exportKeepAlive(config.keepAliveRules || {})
+}
+
+function exportSelectedKeepAlive () {
+  const out: Record<string, any> = {}
+  selectedKeepAlive.forEach(id => {
+    const rule = config.keepAliveRules?.[id]
+    if (rule) out[id] = rule
+  })
+  if (Object.keys(out).length === 0) exportAllKeepAlive()
+  else exportKeepAlive(out)
+}
+
+function handleImportKeepAlive (files: FileList | null) {
+  if (!files || !files[0]) return
+  files[0].text().then(t => {
+    try {
+      const obj = JSON.parse(t)
+      if (obj && typeof obj === 'object') {
+        if (!config.keepAliveRules) config.keepAliveRules = {}
+        Object.assign(config.keepAliveRules, obj)
+        saveConfig(config).then(renderAll)
+      }
+    } catch (e) { console.error(e) }
+  })
+}
+
+function exportConfig () {
+  const data = JSON.stringify(getExportableConfig(), null, 2)
+  download('config.json', data)
+}
+
+function openExportConfigModal () {
+  const container = document.getElementById('exportConfigItems')!
+  container.innerHTML = ''
+
+  const proxiesHeader = document.createElement('h4')
+  proxiesHeader.textContent = 'Proxies'
+  container.appendChild(proxiesHeader)
+  const proxyToggle = document.createElement('button')
+  proxyToggle.className = 'sectionToggle'
+  proxyToggle.dataset.group = 'proxy'
+  proxyToggle.textContent = 'Select All'
+  container.appendChild(proxyToggle)
+  container.appendChild(document.createElement('br'))
+  config.proxyList.forEach((p, idx) => {
+    const label = document.createElement('label')
+    const chk = document.createElement('input')
+    chk.type = 'checkbox'
+    chk.value = String(idx)
+    chk.dataset.group = 'proxy'
+    chk.checked = true
+    label.appendChild(chk)
+    label.append(' ', p.label || p.host)
+    container.appendChild(label)
+    container.appendChild(document.createElement('br'))
+  })
+
+  const rulesHeader = document.createElement('h4')
+  rulesHeader.textContent = 'Rules'
+  container.appendChild(rulesHeader)
+  const ruleToggle = document.createElement('button')
+  ruleToggle.className = 'sectionToggle'
+  ruleToggle.dataset.group = 'rule'
+  ruleToggle.textContent = 'Select All'
+  container.appendChild(ruleToggle)
+  container.appendChild(document.createElement('br'))
+  config.rules.forEach((r, idx) => {
+    const label = document.createElement('label')
+    const chk = document.createElement('input')
+    chk.type = 'checkbox'
+    chk.value = String(idx)
+    chk.dataset.group = 'rule'
+    chk.checked = true
+    label.appendChild(chk)
+    label.append(' ', r.name)
+    container.appendChild(label)
+    container.appendChild(document.createElement('br'))
+  })
+
+  const ovHeader = document.createElement('h4')
+  ovHeader.textContent = 'Overrides'
+  container.appendChild(ovHeader)
+  const ovToggle = document.createElement('button')
+  ovToggle.className = 'sectionToggle'
+  ovToggle.dataset.group = 'override'
+  ovToggle.textContent = 'Select All'
+  container.appendChild(ovToggle)
+  container.appendChild(document.createElement('br'))
+  for (const domain of Object.keys(config.perWebsiteOverride)) {
+    const label = document.createElement('label')
+    const chk = document.createElement('input')
+    chk.type = 'checkbox'
+    chk.value = domain
+    chk.dataset.group = 'override'
+    chk.checked = true
+    label.appendChild(chk)
+    label.append(' ', domain)
+    container.appendChild(label)
+    container.appendChild(document.createElement('br'))
+  }
+
+  const kaHeader = document.createElement('h4')
+  kaHeader.textContent = 'Keep-Alive'
+  container.appendChild(kaHeader)
+  const kaToggle = document.createElement('button')
+  kaToggle.className = 'sectionToggle'
+  kaToggle.dataset.group = 'keepalive'
+  kaToggle.textContent = 'Select All'
+  container.appendChild(kaToggle)
+  container.appendChild(document.createElement('br'))
+  for (const proxyId of Object.keys(config.keepAliveRules || {})) {
+    const proxy = config.proxyList.find(p => p.id === proxyId)
+    const display = proxy ? (proxy.label || proxy.host) : proxyId
+    const label = document.createElement('label')
+    const chk = document.createElement('input')
+    chk.type = 'checkbox'
+    chk.value = proxyId
+    chk.dataset.group = 'keepalive'
+    chk.checked = true
+    label.appendChild(chk)
+    label.append(' ', display)
+    container.appendChild(label)
+    container.appendChild(document.createElement('br'))
+  }
+
+  container.querySelectorAll('.sectionToggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = (btn as HTMLElement).getAttribute('data-group')!
+      toggleExportSection(group)
+    })
+  })
+
+  document.getElementById('exportConfigModal')!.classList.remove('hidden')
+}
+
+function exportConfigSelectAll () {
+  document.querySelectorAll('#exportConfigItems input[type="checkbox"]').forEach(el => {
+    (el as HTMLInputElement).checked = true
+  })
+}
+
+function toggleExportSection (group: string) {
+  const boxes = document.querySelectorAll(`#exportConfigItems input[data-group="${group}"]`) as NodeListOf<HTMLInputElement>
+  const allSelected = Array.from(boxes).every(b => b.checked)
+  boxes.forEach(b => { b.checked = !allSelected })
+}
+
+function closeExportConfigModal () {
+  document.getElementById('exportConfigModal')!.classList.add('hidden')
+}
+
+function exportConfigFromModal () {
+  const obj: any = {}
+  const container = document.getElementById('exportConfigItems')!
+  const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
+  if (proxyIdxs.length) obj.proxyList = proxyIdxs.map(i => config.proxyList[i])
+  const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
+  if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => stripRule(config.rules[i]))
+  const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
+  if (ovDomains.length) {
+    obj.perWebsiteOverride = {}
+    ovDomains.forEach(d => { obj.perWebsiteOverride[d] = config.perWebsiteOverride[d] })
+  }
+  const kaIds = Array.from(container.querySelectorAll('input[data-group="keepalive"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
+  if (kaIds.length) {
+    obj.keepAliveRules = {}
+    kaIds.forEach(id => { if (config.keepAliveRules?.[id]) obj.keepAliveRules[id] = config.keepAliveRules[id] })
+  }
+  download('config.json', JSON.stringify(obj, null, 2))
+  closeExportConfigModal()
+}
+
+function handleImportConfig (files: FileList | null) {
+  if (!files || !files[0]) return
+  files[0].text().then(async t => {
+    try {
+      const obj = JSON.parse(t)
+      const base = getExportableConfig()
+      const updated: any = {
+        proxyList: obj.proxyList ?? base.proxyList,
+        defaultProxy: obj.defaultProxy ?? base.defaultProxy,
+        fallbackDirect: obj.fallbackDirect ?? base.fallbackDirect,
+        testProxyUrl: obj.testProxyUrl ?? base.testProxyUrl,
+        rules: obj.rules ?? base.rules,
+        keepAliveRules: obj.keepAliveRules ?? base.keepAliveRules,
+        perWebsiteOverride: obj.perWebsiteOverride ?? base.perWebsiteOverride,
+      }
+      await saveConfig(updated)
+      config = await getConfig()
+      renderAll()
     } catch (e) { console.error(e) }
   })
 }
@@ -756,6 +1044,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('addProxy')!.addEventListener('click', () => openProxyModal())
   document.getElementById('saveProxy')!.addEventListener('click', saveProxyFromModal)
   document.getElementById('cancelProxy')!.addEventListener('click', closeProxyModal)
+  document.getElementById('exportProxiesSelected')!.addEventListener('click', exportSelectedProxies)
+  document.getElementById('exportProxiesAll')!.addEventListener('click', exportAllProxies)
+  document.getElementById('importProxiesBtn')!.addEventListener('click', () =>
+    document.getElementById('importProxies')!.click())
+  document.getElementById('importProxies')!.addEventListener('change', ev =>
+    handleImportProxies((ev.target as HTMLInputElement).files))
   document.getElementById('togglePassColumn')!.addEventListener('click', () => {
     revealAllPasswords = !revealAllPasswords
     revealedPasswords.clear()
@@ -764,7 +1058,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
   document.getElementById('addRule')!.addEventListener('click', addRule)
   document.getElementById('addOverride')!.addEventListener('click', openOverrideModal)
+  document.getElementById('exportOverridesSelected')!.addEventListener('click', exportSelectedOverrides)
+  document.getElementById('exportOverridesAll')!.addEventListener('click', exportAllOverrides)
+  document.getElementById('importOverridesBtn')!.addEventListener('click', () =>
+    document.getElementById('importOverrides')!.click())
+  document.getElementById('importOverrides')!.addEventListener('change', ev =>
+    handleImportOverrides((ev.target as HTMLInputElement).files))
   document.getElementById('addKeepAliveRule')!.addEventListener('click', () => openKeepAliveModal())
+  document.getElementById('exportKeepAliveSelected')!.addEventListener('click', exportSelectedKeepAlive)
+  document.getElementById('exportKeepAliveAll')!.addEventListener('click', exportAllKeepAlive)
+  document.getElementById('importKeepAliveBtn')!.addEventListener('click', () =>
+    document.getElementById('importKeepAlive')!.click())
+  document.getElementById('importKeepAlive')!.addEventListener('change', ev =>
+    handleImportKeepAlive((ev.target as HTMLInputElement).files))
   document.getElementById('exportRulesSelected')!.addEventListener('click', exportSelectedRules)
   document.getElementById('exportRulesAll')!.addEventListener('click', exportAllRules)
   document.getElementById('importRulesBtn')!.addEventListener('click', () =>
@@ -820,4 +1126,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     ;(document.getElementById('proxyUser') as HTMLInputElement).value = proxy.username || ''
     ;(document.getElementById('proxyPass') as HTMLInputElement).value = proxy.password || ''
   })
+  document.getElementById('openExportConfig')!.addEventListener('click', openExportConfigModal)
+  document.getElementById('exportConfigConfirm')!.addEventListener('click', exportConfigFromModal)
+  document.getElementById('exportConfigCancel')!.addEventListener('click', closeExportConfigModal)
+  document.getElementById('exportConfigSelectAll')!.addEventListener('click', exportConfigSelectAll)
+  document.getElementById('importConfigBtn')!.addEventListener('click', () =>
+    document.getElementById('importConfig')!.click())
+  document.getElementById('importConfig')!.addEventListener('change', ev =>
+    handleImportConfig((ev.target as HTMLInputElement).files))
 })
