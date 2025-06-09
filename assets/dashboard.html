@@ -112,15 +112,6 @@
         </div>
       </div>
 
-      <div id="listModal" class="modal hidden">
-        <div class="modal-content">
-          <h3 id="listModalTitle">Edit List</h3>
-          <div id="listModalItems"></div>
-          <button id="addListItem">Add</button>
-          <button id="saveList">Save</button>
-          <button id="cancelList">Cancel</button>
-        </div>
-      </div>
 
       <div id="typeModal" class="modal hidden">
         <div class="modal-content">
@@ -151,6 +142,18 @@
     <section id="keepalive" class="tab">
       <h2>Keep-Alive Rules</h2>
       <div id="keepAliveContainer"></div>
+      <button id="addKeepAliveRule">Add Rule</button>
+      <div id="keepAliveModal" class="modal hidden">
+        <div class="modal-content">
+          <h3 id="keepAliveModalTitle">Add Keep-Alive Rule</h3>
+          <label>Proxy <select id="keepAliveProxy"></select></label><br>
+          <label>List of URLs <span id="keepAlivePatternsDisplay"></span> <button id="editKeepAlivePatterns">Edit</button><input type="hidden" id="keepAlivePatterns"></label><br>
+          <label>Test URL <input type="text" id="keepAliveTestUrl"></label><br>
+          <label>Active <input type="checkbox" id="keepAliveActive" checked></label><br>
+          <button id="saveKeepAlive">Save</button>
+          <button id="cancelKeepAlive">Cancel</button>
+        </div>
+      </div>
     </section>
     <section id="diagnostics" class="tab">
       <h2>Diagnostics</h2>
@@ -162,6 +165,15 @@
       <h2>About</h2>
       <pre id="hierarchy"></pre>
     </section>
+  </div>
+  <div id="listModal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="listModalTitle">Edit List</h3>
+      <div id="listModalItems"></div>
+      <button id="addListItem">Add</button>
+      <button id="saveList">Save</button>
+      <button id="cancelList">Cancel</button>
+    </div>
   </div>
   <script src="dashboard.js"></script>
 </body>

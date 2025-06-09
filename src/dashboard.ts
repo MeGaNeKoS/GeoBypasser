@@ -12,6 +12,7 @@ const selectedRules = new Set<number>()
 let listTargetInput: HTMLInputElement | null = null
 let currentListValidator: (val: string) => boolean = () => true
 let typeTargetInput: HTMLInputElement | null = null
+let editingKeepAliveId: string | null = null
 
 function switchTab (id: string) {
   document.querySelectorAll('section.tab').forEach(sec => sec.classList.remove('active'))
@@ -97,6 +98,15 @@ function validateDomain (val: string) {
     console.error('Invalid URL:', e)
     return false
   }
+}
+
+function validateHostnamePattern (val: string) {
+  const trimmed = val.trim()
+  if (trimmed.startsWith('*.')) {
+    const domain = trimmed.slice(2)
+    return /^[a-zA-Z0-9.-]+$/.test(domain)
+  }
+  return /^[a-zA-Z0-9.-]+$/.test(trimmed)
 }
 
 function updateListDisplay (input: HTMLInputElement) {
@@ -530,19 +540,85 @@ function saveOverrideFromModal () {
   })
 }
 
+function openKeepAliveModal (id?: string) {
+  editingKeepAliveId = typeof id === 'string' ? id : null
+  const modal = document.getElementById('keepAliveModal')!
+  const title = document.getElementById('keepAliveModalTitle')!
+  const proxy = document.getElementById('keepAliveProxy') as HTMLSelectElement
+  const patterns = document.getElementById('keepAlivePatterns') as HTMLInputElement
+  const testUrl = document.getElementById('keepAliveTestUrl') as HTMLInputElement
+  const active = document.getElementById('keepAliveActive') as HTMLInputElement
+
+  proxy.innerHTML = ''
+  config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
+
+  if (editingKeepAliveId) {
+    const rule = config.keepAliveRules?.[editingKeepAliveId]
+    title.textContent = 'Edit Keep-Alive Rule'
+    proxy.value = editingKeepAliveId
+    patterns.value = rule?.tabUrls.join(', ') || ''
+    testUrl.value = rule?.testProxyUrl || ''
+    active.checked = !!rule?.active
+  } else {
+    title.textContent = 'Add Keep-Alive Rule'
+    proxy.value = config.proxyList[0]?.id || ''
+    patterns.value = ''
+    testUrl.value = ''
+    active.checked = true
+  }
+  updateListDisplay(patterns)
+  setValidation(patterns, validateHostnamePattern)
+  modal.classList.remove('hidden')
+}
+
+function closeKeepAliveModal () {
+  document.getElementById('keepAliveModal')!.classList.add('hidden')
+}
+
+function saveKeepAliveFromModal () {
+  const proxy = (document.getElementById('keepAliveProxy') as HTMLSelectElement).value
+  const patterns = (document.getElementById('keepAlivePatterns') as HTMLInputElement).value
+    .split(/\s*,\s*/).filter(Boolean)
+  const testUrl = (document.getElementById('keepAliveTestUrl') as HTMLInputElement).value.trim()
+  const active = (document.getElementById('keepAliveActive') as HTMLInputElement).checked
+  if (!proxy || patterns.length === 0) return
+  if (!config.keepAliveRules) config.keepAliveRules = {}
+  const rule: { active: boolean; tabUrls: string[]; testProxyUrl?: string } = { active, tabUrls: patterns }
+  if (testUrl) rule.testProxyUrl = testUrl
+  if (editingKeepAliveId && editingKeepAliveId !== proxy) {
+    delete config.keepAliveRules[editingKeepAliveId]
+  }
+  config.keepAliveRules[proxy] = rule
+  saveConfig(config).then(() => {
+    renderAll()
+    closeKeepAliveModal()
+  })
+}
+
 function renderKeepAlive () {
   const container = document.getElementById('keepAliveContainer') as HTMLElement
   container.innerHTML = ''
   for (const [proxyId, rule] of Object.entries(config.keepAliveRules || {})) {
     const div = document.createElement('div')
-    div.innerHTML = `<strong>${proxyId}</strong> ` +
+    const proxy = config.proxyList.find(p => p.id === proxyId)
+    const label = proxy ? (proxy.label || proxy.host) : proxyId
+    div.innerHTML = `<strong>${label}</strong> ` +
       `<label>Active <input type="checkbox" ${rule.active ? 'checked' : ''}></label> ` +
-      `<span>Patterns: ${rule.tabUrls.join(', ')}</span>`
+      `<span>List of URLs: ${rule.tabUrls.join(', ')}</span> ` +
+      `<button data-edit="${proxyId}">Edit</button> ` +
+      `<button data-remove="${proxyId}">Delete</button>`
     container.appendChild(div)
     const chk = div.querySelector('input') as HTMLInputElement
     chk.onchange = () => {
       rule.active = chk.checked
       saveConfig(config)
+    }
+    const edit = div.querySelector('button[data-edit]') as HTMLButtonElement
+    edit.onclick = () => openKeepAliveModal(proxyId)
+    const del = div.querySelector('button[data-remove]') as HTMLButtonElement
+    del.onclick = () => {
+      delete config.keepAliveRules?.[proxyId]
+      saveConfig(config).then(renderAll)
     }
   }
 }
@@ -640,6 +716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
   document.getElementById('addRule')!.addEventListener('click', addRule)
   document.getElementById('addOverride')!.addEventListener('click', openOverrideModal)
+  document.getElementById('addKeepAliveRule')!.addEventListener('click', () => openKeepAliveModal())
   document.getElementById('exportRulesSelected')!.addEventListener('click', exportSelectedRules)
   document.getElementById('exportRulesAll')!.addEventListener('click', exportAllRules)
   document.getElementById('importRulesBtn')!.addEventListener('click', () =>
@@ -670,4 +747,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('cancelTypes')!.addEventListener('click', closeTypeModal)
   document.getElementById('saveOverride')!.addEventListener('click', saveOverrideFromModal)
   document.getElementById('cancelOverride')!.addEventListener('click', closeOverrideModal)
+  document.getElementById('saveKeepAlive')!.addEventListener('click', saveKeepAliveFromModal)
+  document.getElementById('cancelKeepAlive')!.addEventListener('click', closeKeepAliveModal)
+  document.getElementById('editKeepAlivePatterns')!.addEventListener('click', () =>
+    openListModal('keepAlivePatterns', 'List of URLs', validateHostnamePattern))
 })
