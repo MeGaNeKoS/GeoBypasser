@@ -596,26 +596,28 @@ function saveKeepAliveFromModal () {
 }
 
 function renderKeepAlive () {
-  const container = document.getElementById('keepAliveContainer') as HTMLElement
-  container.innerHTML = ''
+  const tbody = document.querySelector('#keepAliveTable tbody') as HTMLElement
+  tbody.innerHTML = ''
   for (const [proxyId, rule] of Object.entries(config.keepAliveRules || {})) {
-    const div = document.createElement('div')
+    const tr = document.createElement('tr')
     const proxy = config.proxyList.find(p => p.id === proxyId)
     const label = proxy ? (proxy.label || proxy.host) : proxyId
-    div.innerHTML = `<strong>${label}</strong> ` +
-      `<label>Active <input type="checkbox" ${rule.active ? 'checked' : ''}></label> ` +
-      `<span>List of URLs: ${rule.tabUrls.join(', ')}</span> ` +
-      `<button data-edit="${proxyId}">Edit</button> ` +
-      `<button data-remove="${proxyId}">Delete</button>`
-    container.appendChild(div)
-    const chk = div.querySelector('input') as HTMLInputElement
+    tr.innerHTML =
+      `<td>${label}</td>` +
+      `<td>${rule.tabUrls.join(', ')}</td>` +
+      `<td>${rule.testProxyUrl || ''}</td>` +
+      `<td><button data-edit="${proxyId}">Edit</button> ` +
+      `<button data-remove="${proxyId}">Delete</button></td>` +
+      `<td><input type="checkbox" ${rule.active ? 'checked' : ''}></td>`
+    tbody.appendChild(tr)
+    const chk = tr.querySelector('input') as HTMLInputElement
     chk.onchange = () => {
       rule.active = chk.checked
       saveConfig(config)
     }
-    const edit = div.querySelector('button[data-edit]') as HTMLButtonElement
+    const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
     edit.onclick = () => openKeepAliveModal(proxyId)
-    const del = div.querySelector('button[data-remove]') as HTMLButtonElement
+    const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
     del.onclick = () => {
       delete config.keepAliveRules?.[proxyId]
       saveConfig(config).then(renderAll)
