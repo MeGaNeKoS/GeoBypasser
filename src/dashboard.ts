@@ -1,6 +1,7 @@
 import { getConfig, saveConfig, updateConfig } from '@utils/storage'
 import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
+import { testProxyConfigQueued } from '@utils/proxy'
 import { matchPattern } from 'browser-extension-url-match'
 
 let config: Awaited<ReturnType<typeof getConfig>>
@@ -675,6 +676,50 @@ function handleImportConfig (files: FileList | null) {
   })
 }
 
+async function runProxyTest (proxy: ProxyListItem) {
+  const result = document.getElementById('diagResult') as HTMLElement
+  result.textContent = 'Testing...'
+  const url = (document.getElementById('diagTestUrl') as HTMLInputElement).value || config.testProxyUrl
+  await testProxyConfigQueued(proxy, url, r => {
+    if (r.success) {
+      result.textContent = `Success for ${r.proxy}`
+    } else {
+      result.textContent = `Failed for ${r.proxy}: ${r.error}`
+    }
+  })
+}
+
+function getCustomProxyInput (): ProxyListItem | null {
+  const type = (document.getElementById('diagType') as HTMLSelectElement).value as any
+  const host = (document.getElementById('diagHost') as HTMLInputElement).value.trim()
+  const portStr = (document.getElementById('diagPort') as HTMLInputElement).value
+  const username = (document.getElementById('diagUser') as HTMLInputElement).value.trim()
+  const password = (document.getElementById('diagPass') as HTMLInputElement).value.trim()
+  const port = Number(portStr)
+  if (!host || !port) return null
+  const proxy: ProxyListItem = {
+    id: crypto.randomUUID(),
+    type,
+    host,
+    port,
+    proxyDNS: true,
+  }
+  if (username) proxy.username = username
+  if (password) proxy.password = password
+  return proxy
+}
+
+function renderDiagnostics () {
+  const select = document.getElementById('diagSelectProxy') as HTMLSelectElement
+  const testUrl = document.getElementById('diagTestUrl') as HTMLInputElement
+  select.innerHTML = ''
+  config.proxyList.forEach((p, idx) => {
+    const opt = createOption(String(idx), p.label || p.host)
+    select.appendChild(opt)
+  })
+  testUrl.value = config.testProxyUrl
+}
+
 function download (filename: string, text: string) {
   const a = document.createElement('a')
   a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
@@ -695,6 +740,7 @@ function renderAll () {
   renderRules()
   renderKeepAlive()
   renderOverrides()
+  renderDiagnostics()
   renderHierarchy()
 }
 
@@ -725,11 +771,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('importRules')!.click())
   document.getElementById('importRules')!.addEventListener('change', ev =>
     handleImportRules((ev.target as HTMLInputElement).files))
-  document.getElementById('exportConfig')!.addEventListener('click', exportConfig)
-  document.getElementById('importConfigBtn')!.addEventListener('click', () =>
-    document.getElementById('importConfig')!.click())
-  document.getElementById('importConfig')!.addEventListener('change', ev =>
-    handleImportConfig((ev.target as HTMLInputElement).files))
   document.getElementById('saveRule')!.addEventListener('click', saveRuleFromModal)
   document.getElementById('cancelRule')!.addEventListener('click', closeRuleModal)
   document.getElementById('editRuleMatch')!.addEventListener('click',
@@ -753,4 +794,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('cancelKeepAlive')!.addEventListener('click', closeKeepAliveModal)
   document.getElementById('editKeepAlivePatterns')!.addEventListener('click', () =>
     openListModal('keepAlivePatterns', 'List of URLs', validateHostnamePattern))
+
+  document.getElementById('diagTestSelected')!.addEventListener('click', () => {
+    const sel = document.getElementById('diagSelectProxy') as HTMLSelectElement
+    const idx = Number(sel.value)
+    const proxy = config.proxyList[idx]
+    if (proxy) runProxyTest(proxy)
+  })
+  document.getElementById('diagEditSelected')!.addEventListener('click', () => {
+    const sel = document.getElementById('diagSelectProxy') as HTMLSelectElement
+    const idx = Number(sel.value)
+    if (!isNaN(idx)) openProxyModal(idx)
+  })
+  document.getElementById('diagTestCustom')!.addEventListener('click', () => {
+    const proxy = getCustomProxyInput()
+    if (proxy) runProxyTest(proxy)
+  })
+  document.getElementById('diagAddProxy')!.addEventListener('click', () => {
+    const proxy = getCustomProxyInput()
+    if (!proxy) return
+    openProxyModal()
+    ;(document.getElementById('proxyType') as HTMLSelectElement).value = proxy.type
+    ;(document.getElementById('proxyHost') as HTMLInputElement).value = proxy.host
+    ;(document.getElementById('proxyPort') as HTMLInputElement).value = String(proxy.port)
+    ;(document.getElementById('proxyUser') as HTMLInputElement).value = proxy.username || ''
+    ;(document.getElementById('proxyPass') as HTMLInputElement).value = proxy.password || ''
+  })
 })

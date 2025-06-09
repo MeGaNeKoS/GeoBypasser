@@ -61,25 +61,6 @@
       </table>
       <button id="addProxy">Add Proxy</button>
 
-      <div id="proxyModal" class="modal hidden">
-        <div class="modal-content">
-          <h3 id="proxyModalTitle">Add Proxy</h3>
-          <label>Label <input type="text" id="proxyLabel"></label><br>
-          <label>Type
-            <select id="proxyType">
-              <option value="http">http</option>
-              <option value="socks">socks5</option>
-            </select>
-          </label><br>
-          <label>Host <input type="text" id="proxyHost"></label><br>
-          <label>Port <input type="number" id="proxyPort" min="1" max="65535"></label><br>
-          <label>Username <input type="text" id="proxyUser"></label><br>
-          <label>Password <input type="text" id="proxyPass"></label><br>
-          <label>Notify if down <input type="checkbox" id="proxyNotify"></label><br>
-          <button id="saveProxy">Save</button>
-          <button id="cancelProxy">Cancel</button>
-        </div>
-      </div>
     </section>
     <section id="rules" class="tab">
       <h2>Rules</h2>
@@ -162,9 +143,29 @@
     </section>
     <section id="diagnostics" class="tab">
       <h2>Diagnostics</h2>
-      <button id="exportConfig">Export Config</button>
-      <input type="file" id="importConfig" style="display:none">
-      <button id="importConfigBtn">Import Config</button>
+      <label>Test URL <input type="text" id="diagTestUrl"></label>
+      <div>
+        <h3>Test Saved Proxy</h3>
+        <label>Proxy <select id="diagSelectProxy"></select></label>
+        <button id="diagTestSelected">Test</button>
+        <button id="diagEditSelected">Edit</button>
+      </div>
+      <div>
+        <h3>Test Custom Proxy</h3>
+        <label>Type
+          <select id="diagType">
+            <option value="http">http</option>
+            <option value="socks">socks5</option>
+          </select>
+        </label>
+        <label>Host <input type="text" id="diagHost"></label>
+        <label>Port <input type="number" id="diagPort" min="1" max="65535"></label>
+        <label>User <input type="text" id="diagUser"></label>
+        <label>Password <input type="text" id="diagPass"></label>
+        <button id="diagTestCustom">Test</button>
+        <button id="diagAddProxy">Add to List</button>
+      </div>
+      <pre id="diagResult"></pre>
     </section>
     <section id="about" class="tab">
       <h2>About</h2>
@@ -178,6 +179,26 @@
       <button id="addListItem">Add</button>
       <button id="saveList">Save</button>
       <button id="cancelList">Cancel</button>
+    </div>
+  </div>
+
+  <div id="proxyModal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="proxyModalTitle">Add Proxy</h3>
+      <label>Label <input type="text" id="proxyLabel"></label><br>
+      <label>Type
+        <select id="proxyType">
+          <option value="http">http</option>
+          <option value="socks">socks5</option>
+        </select>
+      </label><br>
+      <label>Host <input type="text" id="proxyHost"></label><br>
+      <label>Port <input type="number" id="proxyPort" min="1" max="65535"></label><br>
+      <label>Username <input type="text" id="proxyUser"></label><br>
+      <label>Password <input type="text" id="proxyPass"></label><br>
+      <label>Notify if down <input type="checkbox" id="proxyNotify"></label><br>
+      <button id="saveProxy">Save</button>
+      <button id="cancelProxy">Cancel</button>
     </div>
   </div>
   <script src="dashboard.js"></script>
