@@ -12,6 +12,7 @@
     table { border-collapse: collapse; }
     th, td { border: 1px solid #555; padding: 4px; }
     tr.missing-proxy { background: #500; }
+    tr.invalid-rule { background: #550; }
     input.valid { border-color: #4c4; }
     input.invalid { border-color: #c44; }
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
@@ -134,7 +135,7 @@
       <h2>Keep-Alive Rules</h2>
       <table id="keepAliveTable">
         <thead>
-          <tr><th>Proxy</th><th>List of URLs</th><th>Test URL</th><th>Select</th><th></th><th>Active</th></tr>
+          <tr><th>Active</th><th>Proxy</th><th>List of URLs</th><th>Test URL</th><th>Select</th><th></th></tr>
         </thead>
         <tbody></tbody>
       </table>

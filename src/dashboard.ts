@@ -1,4 +1,4 @@
-import { getConfig, saveConfig, updateConfig } from '@utils/storage'
+import { getConfig, saveConfig, updateConfig, compileRules } from '@utils/storage'
 import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
@@ -111,6 +111,14 @@ function validateHostnamePattern (val: string) {
     return /^[a-zA-Z0-9.-]+$/.test(domain)
   }
   return /^[a-zA-Z0-9.-]+$/.test(trimmed)
+}
+
+function isRuleInvalid (r: any) {
+  if (!r.compiledMatch) return true
+  if (r.bypassUrlPatterns && r.bypassUrlPatterns.length && !r.compiledBypassUrlPatterns) return true
+  if (r.forceProxyUrlPatterns && r.forceProxyUrlPatterns.length && !r.compiledForceProxyUrlPatterns) return true
+  if (r.staticExtensions && r.staticExtensions.trim() && !r.compiledStaticExtensions) return true
+  return false
 }
 
 function updateListDisplay (input: HTMLInputElement) {
@@ -382,6 +390,7 @@ function renderRules () {
       `<button data-remove="${idx}">Delete</button> ` +
       `<button data-export="${idx}">Export</button></td>`
     if (!proxy) tr.classList.add('missing-proxy')
+    if (isRuleInvalid(r)) tr.classList.add('invalid-rule')
     tbody.appendChild(tr)
     const activeChk = tr.querySelector('input[data-active]') as HTMLInputElement
     activeChk.onchange = () => {
@@ -425,6 +434,11 @@ function openRuleModal (index?: number) {
 
   proxy.innerHTML = ''
   config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
+  const kaExists = editingKeepAliveId ? config.proxyList.some(p => p.id === editingKeepAliveId) : false
+  if (editingKeepAliveId && !kaExists) {
+    proxy.appendChild(createOption(editingKeepAliveId, `Missing Proxy (${editingKeepAliveId})`))
+  }
+
 
   if (editingRuleIndex !== null) {
     const r = config.rules[editingRuleIndex]
@@ -493,10 +507,11 @@ function saveRuleFromModal () {
   if (forceUrls.trim()) rule.forceProxyUrlPatterns = forceUrls.split(/\s*,\s*/).filter(Boolean)
   if (fbDirect) rule.fallbackDirect = true
 
+  const compiled = compileRules([rule])[0] as any
   if (editingRuleIndex !== null) {
-    config.rules[editingRuleIndex] = rule as any
+    config.rules[editingRuleIndex] = compiled
   } else {
-    config.rules.push(rule as any)
+    config.rules.push(compiled)
   }
 
   saveConfig(config).then(() => {
@@ -569,6 +584,10 @@ function openKeepAliveModal (id?: string) {
 
   proxy.innerHTML = ''
   config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
+  const kaExists = editingKeepAliveId ? config.proxyList.some(p => p.id === editingKeepAliveId) : false
+  if (editingKeepAliveId && !kaExists) {
+    proxy.appendChild(createOption(editingKeepAliveId, `Missing Proxy (${editingKeepAliveId})`))
+  }
 
   if (editingKeepAliveId) {
     const rule = config.keepAliveRules?.[editingKeepAliveId]
@@ -621,15 +640,16 @@ function renderKeepAlive () {
     const proxy = config.proxyList.find(p => p.id === proxyId)
     const proxyLabel = proxy ? (proxy.label || proxy.host) : proxyId
     tr.innerHTML =
+      `<td><input type="checkbox" data-active ${rule.active ? 'checked' : ''}></td>` +
       `<td>${proxyLabel}</td>` +
       `<td>${rule.tabUrls.join(', ')}</td>` +
       `<td>${rule.testProxyUrl || ''}</td>` +
       `<td><input type="checkbox" data-select="${proxyId}"></td>` +
       `<td><button data-edit="${proxyId}">Edit</button> ` +
-      `<button data-remove="${proxyId}">Delete</button></td>` +
-      `<td><input type="checkbox" ${rule.active ? 'checked' : ''}></td>`
+      `<button data-remove="${proxyId}">Delete</button></td>`
+    if (!proxy) tr.classList.add('missing-proxy')
     tbody.appendChild(tr)
-    const chk = tr.querySelector('input:not([data-select])') as HTMLInputElement
+    const chk = tr.querySelector('input[data-active]') as HTMLInputElement
     chk.onchange = () => {
       rule.active = chk.checked
       saveConfig(config)
@@ -699,7 +719,8 @@ function handleImportRules (files: FileList | null) {
     try {
       const parsed = JSON.parse(t)
       const arr = Array.isArray(parsed) ? parsed as ProxyRule[] : [parsed as ProxyRule]
-      config.rules.push(...arr)
+      const compiled = compileRules(arr)
+      config.rules.push(...compiled)
       saveConfig(config).then(renderAll)
     } catch (e) {
       console.error(e)
@@ -727,7 +748,14 @@ function handleImportProxies (files: FileList | null) {
     try {
       const parsed = JSON.parse(t)
       const arr = Array.isArray(parsed) ? parsed as ProxyListItem[] : [parsed as ProxyListItem]
-      config.proxyList.push(...arr)
+      const existing = new Set(config.proxyList.map(p => `${p.type}-${p.host}:${p.port}-${p.username || ''}`))
+      for (const p of arr) {
+        const sig = `${p.type}-${p.host}:${p.port}-${p.username || ''}`
+        if (!existing.has(sig)) {
+          existing.add(sig)
+          config.proxyList.push(p)
+        }
+      }
       saveConfig(config).then(renderAll)
     } catch (e) { console.error(e) }
   })
@@ -928,7 +956,7 @@ function exportConfigFromModal () {
   if (proxyIdxs.length) obj.proxyList = proxyIdxs.map(i => config.proxyList[i])
   const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
   if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => stripRule(config.rules[i]))
-  const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
+  const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter((c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
   if (ovDomains.length) {
     obj.perWebsiteOverride = {}
     ovDomains.forEach(d => { obj.perWebsiteOverride[d] = config.perWebsiteOverride[d] })
@@ -949,13 +977,23 @@ function handleImportConfig (files: FileList | null) {
       const obj = JSON.parse(t)
       const base = getExportableConfig()
       const updated: any = {
-        proxyList: obj.proxyList ?? base.proxyList,
+        proxyList: base.proxyList,
         defaultProxy: obj.defaultProxy ?? base.defaultProxy,
         fallbackDirect: obj.fallbackDirect ?? base.fallbackDirect,
         testProxyUrl: obj.testProxyUrl ?? base.testProxyUrl,
         rules: obj.rules ?? base.rules,
         keepAliveRules: obj.keepAliveRules ?? base.keepAliveRules,
         perWebsiteOverride: obj.perWebsiteOverride ?? base.perWebsiteOverride,
+      }
+      if (obj.proxyList) {
+        const existing = new Set(updated.proxyList.map((p: ProxyListItem) => `${p.type}-${p.host}:${p.port}-${p.username || ''}`))
+        for (const p of obj.proxyList as ProxyListItem[]) {
+          const sig = `${p.type}-${p.host}:${p.port}-${p.username || ''}`
+          if (!existing.has(sig)) {
+            existing.add(sig)
+            updated.proxyList.push(p)
+          }
+        }
       }
       await saveConfig(updated)
       config = await getConfig()
