@@ -5,6 +5,7 @@ import { getHostname, KeepAliveState, matchHostname } from '@utils/generic'
 import { ProxyListItem, ProxyListRuntimeItem } from '@customTypes/proxy'
 import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
 import Tab = Tabs.Tab
+import { APP_NAME } from '@constant/defaults'
 
 export function makeOnUpdateHandler (
   config: GeoBypassRuntimeSettings,
@@ -129,7 +130,7 @@ export async function keepAliveProxyStatus (proxy: ProxyListRuntimeItem, testUrl
         if ((proxy.downNotification || 0) < 4) {
           browser.notifications.create('proxy-error', {
             type: 'basic',
-            title: 'GeoBypass-er keep alive encountered an error!',
+            title: `${APP_NAME} keep alive encountered an error!`,
             message: `Proxy ${proxy.host}:${proxy.port} failed: ${result.error || 'Unknown error'}`,
           })
           if (!proxy.downNotification) {

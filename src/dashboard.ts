@@ -3,6 +3,7 @@ import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { matchPattern } from 'browser-extension-url-match'
+import browser from 'webextension-polyfill'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let editingProxyIndex: number | null = null
@@ -507,7 +508,7 @@ function saveRuleFromModal () {
   if (forceUrls.trim()) rule.forceProxyUrlPatterns = forceUrls.split(/\s*,\s*/).filter(Boolean)
   if (fbDirect) rule.fallbackDirect = true
 
-  const compiled = compileRules([rule])[0] as any
+  const compiled = compileRules([rule])[0]
   if (editingRuleIndex !== null) {
     config.rules[editingRuleIndex] = compiled
   } else {
@@ -1058,9 +1059,12 @@ function clearTabProxies () {
   saveTabProxyMap({})
 }
 
-function renderHierarchy () {
-  const pre = document.getElementById('hierarchy') as HTMLElement
-  pre.textContent = `1. Tab proxy\n2. Main site rule\n3. Request domain rule\n4. Default proxy\n5. Direct connection`
+function renderAbout () {
+  const { name, version } = browser.runtime.getManifest()
+  const nameEl = document.getElementById('aboutName')!
+  const versionEl = document.getElementById('aboutVersion')!
+  nameEl.textContent = name
+  versionEl.textContent = version
 }
 
 function renderAll () {
@@ -1071,7 +1075,7 @@ function renderAll () {
   renderKeepAlive()
   renderOverrides()
   renderDiagnostics()
-  renderHierarchy()
+  renderAbout()
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
