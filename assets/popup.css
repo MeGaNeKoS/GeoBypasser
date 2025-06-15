@@ -1,0 +1,137 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: Montserrat, sans-serif;
+  background-color: #111;
+  color: #eee;
+}
+
+body {
+  width: 100vw;
+  max-width: 350px;
+  min-width: 200px;
+  margin: 0 auto;
+  padding: 10px;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+body.mobile-popup {
+  font-size: 1rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0;
+}
+
+#closeBtn {
+  width: auto;
+  padding: 2px 6px;
+  font-size: 14px;
+  align-self: flex-start;
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+}
+
+#closeBtn:hover {
+  color: red;
+}
+
+select {
+  background: #222;
+  color: #eee;
+  border: 1px solid #555;
+  padding: 4px 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+button {
+  background: #222;
+  color: #eee;
+  border: 1px solid #555;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #eee;
+  color: #222;
+}
+
+#controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.control-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+#mainControls {
+  display: flex;
+  flex-direction: row;     /* 👈 horizontal layout */
+  align-items: center;     /* 👈 align items vertically */
+  gap: 8px;                /* 👈 space between children */
+}
+
+#actionButtons {
+  display: flex;
+  gap: 4px;
+}
+
+#connector {
+  margin: 0 2px;
+}
+
+#actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+footer {
+  border-top: 1px solid #555;
+  margin-top: 8px;
+  padding-top: 6px;
+  text-align: center;
+}
+
+@media (max-width: 400px) {
+  body {
+    width: 100%;
+    padding: 5px;
+  }
+  .control-group {
+    flex-direction: column;
+  }
+  #actionButtons {
+    width: 100%;
+    justify-content: space-between;
+  }
+  button, select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  #actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

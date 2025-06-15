@@ -15,6 +15,10 @@ function getHostname (url?: string) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (/android|iphone|ipad|mobile/i.test(navigator.userAgent)) {
+    document.body.classList.add('mobile-popup')
+  }
+
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
   const config = await getConfig()
   const tabMap = await getTabProxyMap()
@@ -24,6 +28,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   domainEl.textContent = host || 'N/A'
 
   const currentProxyEl = document.getElementById('currentProxy')!
+
+  const scopeSelect = document.getElementById('scopeSelect') as HTMLSelectElement
+  const setBtn = document.getElementById('setProxy') as HTMLButtonElement
+  const clearBtn = document.getElementById('clearProxy') as HTMLButtonElement
 
   function getLabel (id?: string | null) {
     if (!id) return 'None'
@@ -54,35 +62,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   updateCurrentDisplay()
 
-  document.getElementById('setTab')?.addEventListener('click', async () => {
-    if (!tab) return
+  setBtn.addEventListener('click', async () => {
     const proxyId = select.value
-    const msg: SetTabProxyMessage = { type: 'setTabProxy', tabId: tab.id!, proxyId }
-    await browser.runtime.sendMessage(msg)
-    if (tab.id !== undefined) tabMap[tab.id] = proxyId
+    if (scopeSelect.value === 'tab') {
+      if (!tab) return
+      const msg: SetTabProxyMessage = { type: 'setTabProxy', tabId: tab.id!, proxyId }
+      await browser.runtime.sendMessage(msg)
+      if (tab.id !== undefined) tabMap[tab.id] = proxyId
+    } else if (scopeSelect.value === 'site') {
+      if (!host) return
+      config.perWebsiteOverride[host] = proxyId
+      await updateConfig({ perWebsiteOverride: config.perWebsiteOverride })
+    }
     updateCurrentDisplay()
   })
 
-  document.getElementById('setDomain')?.addEventListener('click', async () => {
-    if (!host) return
-    const proxyId = select.value
-    config.perWebsiteOverride[host] = proxyId
-    await updateConfig({ perWebsiteOverride: config.perWebsiteOverride })
-    updateCurrentDisplay()
-  })
-
-  document.getElementById('clearTab')?.addEventListener('click', async () => {
-    if (!tab) return
-    const msg: ClearTabProxyMessage = { type: 'clearTabProxy', tabId: tab.id! }
-    await browser.runtime.sendMessage(msg)
-    if (tab.id !== undefined) delete tabMap[tab.id]
-    updateCurrentDisplay()
-  })
-
-  document.getElementById('clearDomain')?.addEventListener('click', async () => {
-    if (!host) return
-    delete config.perWebsiteOverride[host]
-    await updateConfig({ perWebsiteOverride: config.perWebsiteOverride })
+  clearBtn.addEventListener('click', async () => {
+    if (scopeSelect.value === 'tab') {
+      if (!tab) return
+      const msg: ClearTabProxyMessage = { type: 'clearTabProxy', tabId: tab.id! }
+      await browser.runtime.sendMessage(msg)
+      if (tab.id !== undefined) delete tabMap[tab.id]
+    } else if (scopeSelect.value === 'site') {
+      if (!host) return
+      delete config.perWebsiteOverride[host]
+      await updateConfig({ perWebsiteOverride: config.perWebsiteOverride })
+    }
     updateCurrentDisplay()
   })
 
@@ -93,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!proxy) { status.textContent = 'Proxy not found'; return }
     status.textContent = 'Testing...'
     await testProxyConfigQueued(proxy, config.testProxyUrl, r => {
-      status.textContent = r.success ? 'Success' : `Failed: ${r.error}`
+      status.textContent = r.success ? `Success connect through ${r.proxy}` : `Failed: ${r.error}`
     })
   })
 

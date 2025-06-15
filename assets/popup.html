@@ -2,16 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoBypass</title>
-  <style>
-    body { background:#111; color:#eee; font-family:sans-serif; margin:0; padding:10px; width:300px; }
-    header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-    h1 { font-size:16px; margin:0; }
-    button { padding:2px 6px; }
-    #controls { display:flex; gap:4px; margin-top:8px; }
-    #actions { display:flex; gap:4px; margin-top:8px; }
-    footer { border-top:1px solid #555; margin-top:8px; padding-top:6px; text-align:center; }
-  </style>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header>
@@ -23,10 +16,18 @@
 
   <div id="controls">
     <select id="proxySelect"></select>
-    <button id="setTab">Set for Tab</button>
-    <button id="setDomain">Set for Site</button>
-    <button id="clearTab">Clear Tab</button>
-    <button id="clearDomain">Clear Site</button>
+
+    <div id="mainControls" class="control-group">
+      <div id="actionButtons" class="control-group">
+        <button id="setProxy">Set Proxy</button>
+        <button id="clearProxy">Clear Proxy</button>
+      </div>
+      <span id="connector">for</span>
+      <select id="scopeSelect">
+        <option value="tab">Tab</option>
+        <option value="site">Site</option>
+      </select>
+    </div>
   </div>
 
   <div id="actions">
