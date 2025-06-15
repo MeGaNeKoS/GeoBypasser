@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>GeoBypass</title>
+  <style>
+    body { background:#111; color:#eee; font-family:sans-serif; margin:0; padding:10px; width:300px; }
+    header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    h1 { font-size:16px; margin:0; }
+    button { padding:2px 6px; }
+    #controls { display:flex; gap:4px; margin-top:8px; }
+    #actions { display:flex; gap:4px; margin-top:8px; }
+    footer { border-top:1px solid #555; margin-top:8px; padding-top:6px; text-align:center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GeoBypass</h1>
+    <button id="closeBtn">X</button>
+  </header>
+  <div>Active Tab: <span id="activeDomain">-</span></div>
+  <div>Current Proxy: <span id="currentProxy">None</span></div>
+
+  <div id="controls">
+    <select id="proxySelect"></select>
+    <button id="setTab">Set for Tab</button>
+    <button id="setDomain">Set for Site</button>
+    <button id="clearTab">Clear Tab</button>
+    <button id="clearDomain">Clear Site</button>
+  </div>
+
+  <div id="actions">
+    <button id="testProxy">Test Proxy</button>
+    <span id="status"></span>
+  </div>
+
+  <footer>
+    <a href="#" id="openDashboard">Open Dashboard</a>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
