@@ -7,6 +7,12 @@ import { execSync } from 'child_process'
 const DIST_DIR = path.resolve('dist')
 const FIREFOX_MANIFEST = path.resolve('assets/manifests/firefox/manifest.json')
 const CHROME_MANIFEST = path.resolve('assets/manifests/chrome/manifest.json')
+
+const BROWSER_MANIFESTS: Record<string, string> = {
+  firefox: FIREFOX_MANIFEST,
+  chrome: CHROME_MANIFEST,
+}
+
 const PUBLIC: string[] = ['assets/dashboard.html', 'assets/popup.html']
 
 // Parse command-line arguments
@@ -19,24 +25,19 @@ async function cleanDist () {
   console.log('Dist directory cleaned.')
 }
 
-async function copyFilesForFirefox () {
-  console.log('Copying Firefox-specific files...')
-  await fs.copy(FIREFOX_MANIFEST, path.join(DIST_DIR, 'manifest.json'))
-  for (const asset of PUBLIC) {
-    const destination = path.join(DIST_DIR, path.basename(asset))
-    await fs.copy(asset, destination)
+async function copyFiles (browser: string) {
+  const manifestPath = BROWSER_MANIFESTS[browser]
+  if (!manifestPath) {
+    throw new Error(`Unsupported browser: ${browser}`)
   }
-  console.log('Files copied for Firefox.')
-}
 
-async function copyFilesForChrome () {
-  console.log('Copying Chrome-specific files...')
-  await fs.copy(CHROME_MANIFEST, path.join(DIST_DIR, 'manifest.json'))
+  console.log(`Copying files for ${browser}...`)
+  await fs.copy(manifestPath, path.join(DIST_DIR, 'manifest.json'))
   for (const asset of PUBLIC) {
     const destination = path.join(DIST_DIR, path.basename(asset))
     await fs.copy(asset, destination)
   }
-  console.log('Files copied for Chrome.')
+  console.log(`Files copied for ${browser}.`)
 }
 
 async function typeCheck () {
@@ -79,14 +80,18 @@ async function packageForFirefox () {
 async function packageForChrome () {
   console.log('Packaging for Chrome...')
   try {
-    const zip = new AdmZip()
+    const manifestPath = path.join(DIST_DIR, 'manifest.json')
+    const manifest = await fs.readJson(manifestPath)
 
+    const zip = new AdmZip()
     zip.addLocalFolder(DIST_DIR)
 
     const outputDir = path.resolve('build')
     await fs.ensureDir(outputDir)
 
-    const outputFile = path.join(outputDir, 'gpt_enhancer_chrome.zip')
+    const sanitizedName = manifest.name.toLowerCase().replace(/\s+/g, '_')
+    const outputFile = path.join(outputDir, `${sanitizedName}_${manifest.version}_chrome.zip`)
+
     zip.writeZip(outputFile)
 
     console.log(`Chrome package created at ${outputFile}`)
@@ -99,24 +104,17 @@ async function packageForChrome () {
 async function buildAll (targetBrowser: string) {
   await cleanDist()
   await bundleScripts()
-
-  switch (targetBrowser) {
-    case 'firefox':
-      await copyFilesForFirefox()
-      break
-    case 'chrome':
-      await copyFilesForChrome()
-      break
-    default:
-      throw new Error(`Unsupported browser: ${targetBrowser}`)
+  if (!Object.keys(BROWSER_MANIFESTS).includes(targetBrowser)) {
+    throw new Error(`Unsupported browser: ${targetBrowser}`)
   }
+  await copyFiles(targetBrowser)
 }
 
 async function main () {
   const task = args[0]
   const targetBrowser = args[1]
 
-  const supportedBrowsers = ['firefox', 'chrome']
+  const supportedBrowsers = Object.keys(BROWSER_MANIFESTS)
 
   try {
     switch (task) {
@@ -133,10 +131,8 @@ async function main () {
           console.error('No target browser specified for \'copy\' task.')
           process.exit(1)
         }
-        if (targetBrowser === 'firefox') {
-          await copyFilesForFirefox()
-        } else if (targetBrowser === 'chrome') {
-          await copyFilesForChrome()
+        if (supportedBrowsers.includes(targetBrowser)) {
+          await copyFiles(targetBrowser)
         } else {
           console.error(`Unsupported browser for 'copy': ${targetBrowser}`)
           process.exit(1)
@@ -161,15 +157,15 @@ async function main () {
           console.error('No target browser specified for \'package\' task.')
           process.exit(1)
         }
-        if (targetBrowser === 'firefox') {
-          await buildAll(targetBrowser)
-          await packageForFirefox()
-        } else if (targetBrowser === 'chrome') {
-          await buildAll(targetBrowser)
-          await packageForChrome()
-        } else {
+        if (!supportedBrowsers.includes(targetBrowser)) {
           console.error(`Unsupported browser for 'package': ${targetBrowser}`)
           process.exit(1)
+        }
+        await buildAll(targetBrowser)
+        if (targetBrowser === 'firefox') {
+          await packageForFirefox()
+        } else if (targetBrowser === 'chrome') {
+          await packageForChrome()
         }
         break
 
