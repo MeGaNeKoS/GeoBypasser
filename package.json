@@ -15,6 +15,7 @@
     "build:prod:chrome": "ts-node scripts/build.ts build chrome --minify",
     "package:dev:chrome": "ts-node scripts/build.ts package chrome",
     "package:prod:chrome": "ts-node scripts/build.ts package chrome --minify",
+    "test:firefox:android": "ts-node scripts/test-firefox-android.ts",
     "test": "jest"
   },
   "author": "めがねこ",
