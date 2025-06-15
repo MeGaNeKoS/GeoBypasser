@@ -9,6 +9,7 @@ import { compileRules } from '@utils/storage'
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import { browser } from './setup'
 import type { ProxyListItem } from '@customTypes/proxy'
+import { DIRECT_PROXY_ID } from '@constant/proxy'
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -90,6 +91,15 @@ describe('makeProxyHandler', () => {
   it('bypasses via static extension', async () => {
     const res = await handler({ url: 'https://x/1.jpg', type: 'script' } as any)
     expect(res).toBeUndefined()
+  })
+
+  it('supports direct rule', async () => {
+    const cfg2 = baseConfig()
+    cfg2.rules = compileRules([
+      { active: true, name: 'd', match: ['<all_urls>'], proxyId: DIRECT_PROXY_ID },
+    ])
+    const res = await makeProxyHandler(cfg2)({ url: 'https://x', type: 'script' } as any)
+    expect(res).toEqual([{ type: 'direct' }])
   })
 })
 

@@ -1,6 +1,7 @@
 import { getConfig, saveConfig, updateConfig, compileRules, saveTabProxyMap } from '@utils/storage'
 import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
+import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { matchPattern } from 'browser-extension-url-match'
 import browser from 'webextension-polyfill'
@@ -380,7 +381,11 @@ function renderRules () {
   config.rules.forEach((r, idx) => {
     const tr = document.createElement('tr')
     const proxy = config.proxyList.find(p => p.id === r.proxyId)
-    const proxyLabel = proxy ? (proxy.label || proxy.host) : r.proxyId
+    const proxyLabel = r.proxyId === DIRECT_PROXY_ID
+      ? 'Direct'
+      : proxy
+        ? (proxy.label || proxy.host)
+        : r.proxyId
     tr.innerHTML =
       `<td><input type="checkbox" data-active ${r.active ? 'checked' : ''}></td>` +
       `<td>${r.name}</td>` +
@@ -434,6 +439,7 @@ function openRuleModal (index?: number) {
   const active = document.getElementById('ruleActive') as HTMLInputElement
 
   proxy.innerHTML = ''
+  proxy.appendChild(createOption(DIRECT_PROXY_ID, 'Direct'))
   config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
   const kaExists = editingKeepAliveId ? config.proxyList.some(p => p.id === editingKeepAliveId) : false
   if (editingKeepAliveId && !kaExists) {
