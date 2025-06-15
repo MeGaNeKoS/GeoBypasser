@@ -1,4 +1,4 @@
-import { getConfig, saveConfig, updateConfig, compileRules } from '@utils/storage'
+import { getConfig, saveConfig, updateConfig, compileRules, saveTabProxyMap } from '@utils/storage'
 import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
@@ -1054,6 +1054,10 @@ function download (filename: string, text: string) {
   URL.revokeObjectURL(a.href)
 }
 
+function clearTabProxies () {
+  saveTabProxyMap({})
+}
+
 function renderHierarchy () {
   const pre = document.getElementById('hierarchy') as HTMLElement
   pre.textContent = `1. Tab proxy\n2. Main site rule\n3. Request domain rule\n4. Default proxy\n5. Direct connection`
@@ -1172,4 +1176,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('importConfig')!.click())
   document.getElementById('importConfig')!.addEventListener('change', ev =>
     handleImportConfig((ev.target as HTMLInputElement).files))
+  document.getElementById('clearTabProxies')!.addEventListener('click', clearTabProxies)
 })
