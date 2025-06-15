@@ -4,9 +4,9 @@ GeoBypass is an experimental browser extension that routes only geo restricted r
 
 ```mermaid
 graph TD
-    User-->Browser
-    Browser--"geo-blocked requests"-->Proxy
-    Browser--normal traffic-->Direct
+    User --> Browser
+    Browser -- "Geo-blocked Requests" --> Proxy
+    Browser -- Normal Requests --> Internet
 ```
 
 ## Prerequisites
