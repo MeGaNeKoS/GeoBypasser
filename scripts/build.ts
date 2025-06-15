@@ -13,7 +13,7 @@ const BROWSER_MANIFESTS: Record<string, string> = {
   chrome: CHROME_MANIFEST,
 }
 
-const PUBLIC: string[] = ['assets/dashboard.html', 'assets/popup.html']
+const PUBLIC: string[] = ['assets/dashboard.html', 'assets/popup.html', 'assets/dashboard.css']
 
 // Parse command-line arguments
 const args = process.argv.slice(2)

@@ -2,35 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoBypass-er Settings</title>
-  <style>
-    body { background-color: #111; color: #eee; font-family: sans-serif; }
-    nav { display: flex; gap: 8px; margin-bottom: 12px; }
-    nav button { padding: 4px 8px; }
-    section { display: none; }
-    section.active { display: block; }
-    table { border-collapse: collapse; }
-    th, td { border: 1px solid #555; padding: 4px; }
-    tr.missing-proxy { background: #500; }
-    tr.invalid-rule { background: #550; }
-    input.valid { border-color: #4c4; }
-    input.invalid { border-color: #c44; }
-    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
-    .modal.hidden { display: none; }
-    .modal-content { background: #222; padding: 16px; border: 1px solid #555; }
-  </style>
+  <link rel="stylesheet" href="dashboard.css">
+
 </head>
 <body>
-  <nav id="tabs">
-    <button data-tab="general">General</button>
-    <button data-tab="proxy">Proxy List</button>
-    <button data-tab="rules">Rules</button>
-    <button data-tab="override">Website Overrides</button>
-    <button data-tab="keepalive">Keep-Alive</button>
-    <button data-tab="diagnostics">Diagnostics</button>
-    <button data-tab="impexp">Import/Export</button>
-    <button data-tab="about">About</button>
-  </nav>
+  <div id="navBar">
+    <button id="navToggle" class="nav-toggle">General</button>
+    <nav id="tabs">
+      <button data-tab="general">General</button>
+      <button data-tab="proxy">Proxy List</button>
+      <button data-tab="rules">Rules</button>
+      <button data-tab="override">Website Overrides</button>
+      <button data-tab="keepalive">Keep-Alive</button>
+      <button data-tab="diagnostics">Diagnostics</button>
+      <button data-tab="impexp">Import/Export</button>
+      <button data-tab="about">About</button>
+    </nav>
+  </div>
   <div id="content">
     <section id="general" class="tab">
       <h2>General</h2>
@@ -57,14 +47,14 @@
             <th>User</th>
             <th>Password <button id="togglePassColumn">Show</button></th>
             <th>Notify if down</th>
-            <th>Select</th>
-            <th></th>
+            <th class="select-col">Select</th>
+            <th class="action-col"></th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
       <button id="addProxy">Add Proxy</button>
-      <button id="exportProxiesSelected">Export Selected</button>
+      <button id="exportProxiesSelected" class="export-selected">Export Selected</button>
       <button id="exportProxiesAll">Export All</button>
       <input type="file" id="importProxies" style="display:none">
       <button id="importProxiesBtn">Import Proxies</button>
@@ -74,12 +64,12 @@
       <h2>Rules</h2>
       <table id="ruleTable">
         <thead>
-          <tr><th>Active</th><th>Name</th><th>Match</th><th>Proxy</th><th>Select</th><th></th></tr>
+          <tr><th>Active</th><th>Name</th><th>Match</th><th>Proxy</th><th class="select-col">Select</th><th class="action-col"></th></tr>
         </thead>
         <tbody></tbody>
       </table>
       <button id="addRule">Add Rule</button>
-      <button id="exportRulesSelected">Export Selected</button>
+      <button id="exportRulesSelected" class="export-selected">Export Selected</button>
       <button id="exportRulesAll">Export All</button>
       <input type="file" id="importRules" style="display:none">
       <button id="importRulesBtn">Import Rules</button>
@@ -114,11 +104,11 @@
     <section id="override" class="tab">
       <h2>Website Overrides</h2>
       <table id="overrideTable">
-        <thead><tr><th>Domain</th><th>Proxy</th><th>Select</th><th></th></tr></thead>
+        <thead><tr><th>Domain</th><th>Proxy</th><th class="select-col">Select</th><th class="action-col"></th></tr></thead>
         <tbody></tbody>
       </table>
       <button id="addOverride">Add Override</button>
-      <button id="exportOverridesSelected">Export Selected</button>
+      <button id="exportOverridesSelected" class="export-selected">Export Selected</button>
       <button id="exportOverridesAll">Export All</button>
       <input type="file" id="importOverrides" style="display:none">
       <button id="importOverridesBtn">Import Overrides</button>
@@ -136,12 +126,12 @@
       <h2>Keep-Alive Rules</h2>
       <table id="keepAliveTable">
         <thead>
-          <tr><th>Active</th><th>Proxy</th><th>List of URLs</th><th>Test URL</th><th>Select</th><th></th></tr>
+          <tr><th>Active</th><th>Proxy</th><th>List of URLs</th><th>Test URL</th><th class="select-col">Select</th><th class="action-col"></th></tr>
         </thead>
         <tbody></tbody>
       </table>
       <button id="addKeepAliveRule">Add Rule</button>
-      <button id="exportKeepAliveSelected">Export Selected</button>
+      <button id="exportKeepAliveSelected" class="export-selected">Export Selected</button>
       <button id="exportKeepAliveAll">Export All</button>
       <input type="file" id="importKeepAlive" style="display:none">
       <button id="importKeepAliveBtn">Import Rules</button>

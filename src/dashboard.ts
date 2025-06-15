@@ -19,11 +19,22 @@ let listTargetInput: HTMLInputElement | null = null
 let currentListValidator: (val: string) => boolean = () => true
 let typeTargetInput: HTMLInputElement | null = null
 let editingKeepAliveId: string | null = null
+const activeRows = new WeakMap<HTMLTableElement, HTMLTableRowElement | null>()
 
 function switchTab (id: string) {
   document.querySelectorAll('section.tab').forEach(sec => sec.classList.remove('active'))
+  document.querySelectorAll('#tabs button').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === id)
+  })
   const el = document.getElementById(id)
   if (el) el.classList.add('active')
+  const activeBtn = document.querySelector(`#tabs button[data-tab="${id}"]`) as HTMLButtonElement | null
+  const navToggle = document.getElementById('navToggle') as HTMLButtonElement | null
+  if (activeBtn && navToggle) navToggle.textContent = activeBtn.textContent || id
+  if (window.innerWidth <= 600) {
+    document.getElementById('tabs')?.classList.remove('open')
+    navToggle?.classList.remove('open')
+  }
 }
 
 function createOption (id: string, label: string) {
@@ -36,6 +47,79 @@ function createOption (id: string, label: string) {
 function updatePassHeaderButton () {
   const btn = document.getElementById('togglePassColumn') as HTMLButtonElement
   if (btn) btn.textContent = revealAllPasswords ? 'Hide' : 'Show'
+}
+
+function attachRowHandlers (
+  tr: HTMLTableRowElement,
+  table: HTMLTableElement,
+  exportBtn: HTMLElement
+) {
+  const isTouch = window.matchMedia('(pointer: coarse)').matches
+  let timer: number | null = null
+
+  function openActions () {
+    const prev = activeRows.get(table)
+    if (prev && prev !== tr) prev.classList.remove('show-actions')
+    activeRows.set(table, tr)
+    tr.classList.add('show-actions')
+    table.dataset.showActions = 'true'
+    table.dataset.showSelect = 'true'
+    exportBtn.style.display = 'inline-block'
+  }
+
+  function closeActions () {
+    tr.classList.remove('show-actions')
+    if (activeRows.get(table) === tr) activeRows.set(table, null)
+    updateSelectVisibility(table, exportBtn)
+  }
+
+  function showSelectOnly () {
+    table.dataset.showSelect = 'true'
+    exportBtn.style.display = 'inline-block'
+  }
+
+  if (isTouch) {
+    tr.addEventListener('touchstart', () => {
+      timer = window.setTimeout(() => {
+        openActions()
+        timer = null
+      }, 500)
+    })
+    tr.addEventListener('touchend', () => {
+      if (timer !== null) {
+        clearTimeout(timer)
+        if (tr.classList.contains('show-actions')) {
+          closeActions()
+        } else if (table.dataset.showSelect) {
+          updateSelectVisibility(table, exportBtn)
+        } else {
+          showSelectOnly()
+        }
+      }
+    })
+  } else {
+    tr.addEventListener('click', ev => {
+      if ((ev.target as HTMLElement).closest('button,input')) return
+      if (tr.classList.contains('show-actions')) {
+        closeActions()
+      } else {
+        openActions()
+      }
+    })
+  }
+}
+
+function updateSelectVisibility (table: HTMLTableElement, exportBtn: HTMLElement) {
+  const anyChecked = table.querySelectorAll('td.row-select input:checked').length > 0
+  const anyActions = table.querySelector('tr.show-actions')
+  if (anyChecked || anyActions) {
+    table.dataset.showSelect = 'true'
+    exportBtn.style.display = 'inline-block'
+  } else {
+    delete table.dataset.showSelect
+    exportBtn.style.display = 'none'
+  }
+  if (!anyActions) delete table.dataset.showActions
 }
 
 function setValidation (el: HTMLInputElement, validate: (val: string) => boolean) {
@@ -254,11 +338,13 @@ function renderProxyList () {
       `<td>${p.username || ''}</td>` +
       `<td class="password">${p.password ? (visible ? p.password : '******') : ''}</td>` +
       `<td><input type="checkbox" data-notify ${p.notifyIfDown ? 'checked' : ''}></td>` +
-      `<td><input type="checkbox" data-select="${idx}"></td>` +
-      `<td><button data-edit="${idx}">Edit</button> ` +
+      `<td class="row-select"><input type="checkbox" data-select="${idx}"></td>` +
+      `<td class="row-actions"><button data-edit="${idx}">Edit</button> ` +
       `<button data-remove="${idx}">Delete</button></td>`
 
     tbody.appendChild(tr)
+    attachRowHandlers(tr, document.getElementById('proxyTable') as HTMLTableElement,
+      document.getElementById('exportProxiesSelected') as HTMLElement)
 
     const passCell = tr.querySelector('td.password') as HTMLTableCellElement
     if (p.password) {
@@ -282,11 +368,15 @@ function renderProxyList () {
       p.notifyIfDown = notifyChk.checked
       saveConfig(config)
     }
-    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
-    selChk.onchange = () => {
-      if (selChk.checked) selectedProxies.add(idx)
-      else selectedProxies.delete(idx)
-    }
+      const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+      selChk.onchange = () => {
+        if (selChk.checked) selectedProxies.add(idx)
+        else selectedProxies.delete(idx)
+        updateSelectVisibility(
+          document.getElementById('proxyTable') as HTMLTableElement,
+          document.getElementById('exportProxiesSelected') as HTMLElement
+        )
+      }
     const editBtn = tr.querySelector('button[data-edit]') as HTMLButtonElement
     editBtn.onclick = () => openProxyModal(idx)
     const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
@@ -391,23 +481,29 @@ function renderRules () {
       `<td>${r.name}</td>` +
       `<td>${r.match.join(', ')}</td>` +
       `<td>${proxyLabel}</td>` +
-      `<td><input type="checkbox" data-select="${idx}"></td>` +
-      `<td><button data-edit="${idx}">Edit</button> ` +
+      `<td class="row-select"><input type="checkbox" data-select="${idx}"></td>` +
+      `<td class="row-actions"><button data-edit="${idx}">Edit</button> ` +
       `<button data-remove="${idx}">Delete</button> ` +
       `<button data-export="${idx}">Export</button></td>`
     if (!proxy) tr.classList.add('missing-proxy')
     if (isRuleInvalid(r)) tr.classList.add('invalid-rule')
     tbody.appendChild(tr)
+    attachRowHandlers(tr, document.getElementById('ruleTable') as HTMLTableElement,
+      document.getElementById('exportRulesSelected') as HTMLElement)
     const activeChk = tr.querySelector('input[data-active]') as HTMLInputElement
     activeChk.onchange = () => {
       r.active = activeChk.checked
       saveConfig(config)
     }
-    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
-    selChk.onchange = () => {
-      if (selChk.checked) selectedRules.add(idx)
-      else selectedRules.delete(idx)
-    }
+      const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+      selChk.onchange = () => {
+        if (selChk.checked) selectedRules.add(idx)
+        else selectedRules.delete(idx)
+        updateSelectVisibility(
+          document.getElementById('ruleTable') as HTMLTableElement,
+          document.getElementById('exportRulesSelected') as HTMLElement
+        )
+      }
     const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
     edit.onclick = () => openRuleModal(idx)
     const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
@@ -537,21 +633,27 @@ function renderOverrides () {
     tr.innerHTML =
       `<td>${domain}</td>` +
       `<td>${proxyLabel}</td>` +
-      `<td><input type="checkbox" data-select="${domain}"></td>` +
-      `<td><button data-domain="${domain}">Delete</button></td>`
+      `<td class="row-select"><input type="checkbox" data-select="${domain}"></td>` +
+      `<td class="row-actions"><button data-domain="${domain}">Delete</button></td>`
     tbody.appendChild(tr)
+    attachRowHandlers(tr, document.getElementById('overrideTable') as HTMLTableElement,
+      document.getElementById('exportOverridesSelected') as HTMLElement)
     const btn = tr.querySelector('button') as HTMLButtonElement
     btn.onclick = () => {
       delete config.perWebsiteOverride[domain]
       saveConfig(config).then(renderAll)
     }
-    const sel = tr.querySelector('input[data-select]') as HTMLInputElement
-    sel.onchange = () => {
-      if (sel.checked) selectedOverrides.add(domain)
-      else selectedOverrides.delete(domain)
+      const sel = tr.querySelector('input[data-select]') as HTMLInputElement
+      sel.onchange = () => {
+        if (sel.checked) selectedOverrides.add(domain)
+        else selectedOverrides.delete(domain)
+        updateSelectVisibility(
+          document.getElementById('overrideTable') as HTMLTableElement,
+          document.getElementById('exportOverridesSelected') as HTMLElement
+        )
+      }
     }
   }
-}
 
 function openOverrideModal () {
   const modal = document.getElementById('overrideModal')!
@@ -651,21 +753,27 @@ function renderKeepAlive () {
       `<td>${proxyLabel}</td>` +
       `<td>${rule.tabUrls.join(', ')}</td>` +
       `<td>${rule.testProxyUrl || ''}</td>` +
-      `<td><input type="checkbox" data-select="${proxyId}"></td>` +
-      `<td><button data-edit="${proxyId}">Edit</button> ` +
+      `<td class="row-select"><input type="checkbox" data-select="${proxyId}"></td>` +
+      `<td class="row-actions"><button data-edit="${proxyId}">Edit</button> ` +
       `<button data-remove="${proxyId}">Delete</button></td>`
     if (!proxy) tr.classList.add('missing-proxy')
     tbody.appendChild(tr)
+    attachRowHandlers(tr, document.getElementById('keepAliveTable') as HTMLTableElement,
+      document.getElementById('exportKeepAliveSelected') as HTMLElement)
     const chk = tr.querySelector('input[data-active]') as HTMLInputElement
     chk.onchange = () => {
       rule.active = chk.checked
       saveConfig(config)
     }
-    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
-    selChk.onchange = () => {
-      if (selChk.checked) selectedKeepAlive.add(proxyId)
-      else selectedKeepAlive.delete(proxyId)
-    }
+      const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+      selChk.onchange = () => {
+        if (selChk.checked) selectedKeepAlive.add(proxyId)
+        else selectedKeepAlive.delete(proxyId)
+        updateSelectVisibility(
+          document.getElementById('keepAliveTable') as HTMLTableElement,
+          document.getElementById('exportKeepAliveSelected') as HTMLElement
+        )
+      }
     const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
     edit.onclick = () => openKeepAliveModal(proxyId)
     const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
@@ -856,6 +964,10 @@ function openExportConfigModal () {
     chk.value = String(idx)
     chk.dataset.group = 'proxy'
     chk.checked = true
+    chk.addEventListener('change', () => {
+      updateExportToggleLabel('proxy')
+      updateExportSelectAllLabel()
+    })
     label.appendChild(chk)
     label.append(' ', p.label || p.host)
     container.appendChild(label)
@@ -878,6 +990,10 @@ function openExportConfigModal () {
     chk.value = String(idx)
     chk.dataset.group = 'rule'
     chk.checked = true
+    chk.addEventListener('change', () => {
+      updateExportToggleLabel('rule')
+      updateExportSelectAllLabel()
+    })
     label.appendChild(chk)
     label.append(' ', r.name)
     container.appendChild(label)
@@ -900,6 +1016,10 @@ function openExportConfigModal () {
     chk.value = domain
     chk.dataset.group = 'override'
     chk.checked = true
+    chk.addEventListener('change', () => {
+      updateExportToggleLabel('override')
+      updateExportSelectAllLabel()
+    })
     label.appendChild(chk)
     label.append(' ', domain)
     container.appendChild(label)
@@ -924,6 +1044,10 @@ function openExportConfigModal () {
     chk.value = proxyId
     chk.dataset.group = 'keepalive'
     chk.checked = true
+    chk.addEventListener('change', () => {
+      updateExportToggleLabel('keepalive')
+      updateExportSelectAllLabel()
+    })
     label.appendChild(chk)
     label.append(' ', display)
     container.appendChild(label)
@@ -937,19 +1061,43 @@ function openExportConfigModal () {
     })
   })
 
+  ;['proxy', 'rule', 'override', 'keepalive'].forEach(updateExportToggleLabel)
+  updateExportSelectAllLabel()
+
   document.getElementById('exportConfigModal')!.classList.remove('hidden')
 }
 
 function exportConfigSelectAll () {
-  document.querySelectorAll('#exportConfigItems input[type="checkbox"]').forEach(el => {
-    (el as HTMLInputElement).checked = true
-  })
+  const boxes = document.querySelectorAll('#exportConfigItems input[type="checkbox"]') as NodeListOf<HTMLInputElement>
+  const allSelected = Array.from(boxes).every(b => b.checked)
+  boxes.forEach(b => { b.checked = !allSelected })
+  ;['proxy', 'rule', 'override', 'keepalive'].forEach(updateExportToggleLabel)
+  updateExportSelectAllLabel()
 }
 
 function toggleExportSection (group: string) {
   const boxes = document.querySelectorAll(`#exportConfigItems input[data-group="${group}"]`) as NodeListOf<HTMLInputElement>
   const allSelected = Array.from(boxes).every(b => b.checked)
   boxes.forEach(b => { b.checked = !allSelected })
+  updateExportToggleLabel(group)
+  updateExportSelectAllLabel()
+}
+
+function updateExportToggleLabel (group: string) {
+  const btn = document.querySelector(`#exportConfigItems .sectionToggle[data-group="${group}"]`) as HTMLButtonElement
+  if (!btn) return
+  const boxes = document.querySelectorAll(`#exportConfigItems input[data-group="${group}"]`) as NodeListOf<HTMLInputElement>
+  const allSelected = Array.from(boxes).every(b => b.checked)
+  btn.textContent = allSelected ? 'Deselect All' : 'Select All'
+  updateExportSelectAllLabel()
+}
+
+function updateExportSelectAllLabel () {
+  const btn = document.getElementById('exportConfigSelectAll') as HTMLButtonElement | null
+  if (!btn) return
+  const boxes = document.querySelectorAll('#exportConfigItems input[type="checkbox"]') as NodeListOf<HTMLInputElement>
+  const allSelected = Array.from(boxes).every(b => b.checked)
+  btn.textContent = allSelected ? 'Deselect Entire Config' : 'Select Entire Config'
 }
 
 function closeExportConfigModal () {
@@ -1090,6 +1238,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.querySelectorAll('#tabs button').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')!))
+  })
+  document.getElementById('navToggle')?.addEventListener('click', () => {
+    const tabs = document.getElementById('tabs')
+    const navToggle = document.getElementById('navToggle') as HTMLButtonElement | null
+    if (!tabs) return
+    const open = tabs.classList.toggle('open')
+    if (navToggle) navToggle.classList.toggle('open', open)
   })
   switchTab('general')
 
