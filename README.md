@@ -54,6 +54,20 @@ flowchart TD
     E -- no --> G[Direct connection]
 ```
 
+## Popup usage
+
+The extension provides a small popup for quick per‑tab control.
+
+- The header shows the active tab's domain and which proxy is currently applied (tab or site rule).
+- Choose a proxy from the dropdown and press **Set for Tab** to apply it to the active tab.
+- Press **Set for Site** to assign the selected proxy to the current domain.
+- Select **Direct** in the dropdown to force a direct connection for the tab or domain.
+- Use **Clear Tab** to remove the proxy override for the active tab.
+- Use **Clear Site** to remove a domain override for the current website.
+- **Test Proxy** runs a short connectivity test on the selected proxy and shows the result.
+- "Open Dashboard" opens the full settings page for advanced options.
+- The popup remains open after actions for quick adjustments.
+
 ## Running tests
 
 ```bash
