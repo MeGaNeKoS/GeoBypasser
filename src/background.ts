@@ -290,7 +290,7 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
     { urls: ['<all_urls>'] }
   )
 
-  browser.runtime.onMessage.addListener(async (message: any) => {
+  browser.runtime.onMessage.addListener(async (message: unknown) => {
     if (isTabProxyMessage(message)) {
       if (message.type === 'setTabProxy') {
         tabProxyMap[message.tabId] = message.proxyId

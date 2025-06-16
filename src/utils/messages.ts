@@ -1,4 +1,4 @@
-import { TabProxyMessage, NetworkMessage, MonitorNetworkMessage, UnmonitorNetworkMessage, IsMonitoredMessage } from '@customTypes/messages'
+import { TabProxyMessage, NetworkMessage } from '@customTypes/messages'
 
 export function isTabProxyMessage (msg: unknown): msg is TabProxyMessage {
   if (

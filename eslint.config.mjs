@@ -21,19 +21,6 @@ export default [
       'object-curly-spacing': ['error', 'always'],
       'no-trailing-spaces': 'error',
       'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1 }],
-      'no-restricted-properties': [
-        'error',
-        {
-          'object': 'document',
-          'property': 'addEventListener',
-          'message': 'Avoid using \'addEventListener\' directly on the document object.',
-        },
-        {
-          'object': 'window',
-          'property': 'addEventListener',
-          'message': 'Avoid using \'addEventListener\' directly on the window object.',
-        },
-      ],
       '@stylistic/member-delimiter-style': [
         'error',
         {

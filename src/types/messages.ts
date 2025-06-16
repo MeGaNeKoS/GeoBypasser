@@ -1,9 +1,9 @@
-import { proxyId } from './generic'
+import { ProxyId } from './generic'
 
 export type SetTabProxyMessage = {
   type: 'setTabProxy';
   tabId: number;
-  proxyId: proxyId;
+  proxyId: ProxyId;
 }
 
 export type ClearTabProxyMessage = {
@@ -14,18 +14,18 @@ export type ClearTabProxyMessage = {
 export type TabProxyMessage = SetTabProxyMessage | ClearTabProxyMessage
 
 export type MonitorNetworkMessage = {
-  type: 'monitorTabNetwork'
-  tabId: number
+  type: 'monitorTabNetwork';
+  tabId: number;
 }
 
 export type UnmonitorNetworkMessage = {
-  type: 'unmonitorTabNetwork'
-  tabId: number
+  type: 'unmonitorTabNetwork';
+  tabId: number;
 }
 
 export type IsMonitoredMessage = {
-  type: 'isTabNetworkMonitored'
-  tabId: number
+  type: 'isTabNetworkMonitored';
+  tabId: number;
 }
 
 export type NetworkMessage =

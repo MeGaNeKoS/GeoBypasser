@@ -1,9 +1,9 @@
-import { proxyId, proxyType } from '@customTypes/generic'
+import { ProxyId, ProxyType } from '@customTypes/generic'
 import { Matcher } from 'browser-extension-url-match/dist/types'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 
 export type ProxyConfig = {
-  type: proxyType;
+  type: ProxyType;
   proxyDNS: boolean;
   host: string;
   port: number;
@@ -13,7 +13,7 @@ export type ProxyConfig = {
 }
 
 export type ProxyListItem = ProxyConfig & {
-  id: proxyId;
+  id: ProxyId;
   label?: string;
   notifyIfDown?: boolean;
 }
@@ -22,7 +22,7 @@ export type ProxyListRuntimeItem = ProxyListItem & {
   downNotification?: number;
 }
 
-export type RuleProxyId = proxyId | typeof DIRECT_PROXY_ID;
+export type RuleProxyId = ProxyId | typeof DIRECT_PROXY_ID;
 
 export type ProxyRule = {
   active: boolean;

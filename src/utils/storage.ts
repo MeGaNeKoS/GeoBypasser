@@ -1,6 +1,6 @@
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import browser from 'webextension-polyfill'
-import type { proxyId, storageMode } from '@customTypes/generic'
+import type { ProxyId, StorageMode } from '@customTypes/generic'
 import { APP_NAME, DEFAULT_SETTINGS } from '@constant/defaults'
 import { STORAGE_KEYS, STORAGE_MODE, TAB_PROXY_MAP } from '@constant/storageKeys'
 
@@ -8,7 +8,7 @@ import type { RuntimeProxyRule } from '@customTypes/proxy'
 import { matchPattern } from 'browser-extension-url-match'
 import { MatchPatternOptions } from 'browser-extension-url-match/dist/types'
 
-function isValidTabProxyMap (obj: unknown): obj is Record<number, proxyId> {
+function isValidTabProxyMap (obj: unknown): obj is Record<number, ProxyId> {
   if (typeof obj !== 'object' || obj === null) return false
   return Object.entries(obj).every(([key, value]) =>
     !isNaN(Number(key)) && typeof value === 'string',
@@ -24,7 +24,7 @@ function safeCompile (pattern: string[] | string, options?: Partial<MatchPattern
   }
 }
 
-export async function getUserStorageMode (): Promise<storageMode> {
+export async function getUserStorageMode (): Promise<StorageMode> {
   const result = await browser.storage.local.get(STORAGE_MODE)
   const mode = result.storageMode === 'cloud' ? 'cloud' : 'local'
   console.info(`[${APP_NAME}] Current storage mode: ${mode}`)
@@ -126,7 +126,7 @@ export async function updateConfig (config: Partial<GeoBypassSettings>) {
   console.info(`[${APP_NAME}] Updated partial config in ${storageMode} storage.`)
 }
 
-export async function getTabProxyMap (): Promise<Record<number, proxyId>> {
+export async function getTabProxyMap (): Promise<Record<number, ProxyId>> {
   try {
     const result = await browser.storage.local.get(TAB_PROXY_MAP)
     const raw = result[TAB_PROXY_MAP]
@@ -143,7 +143,7 @@ export async function getTabProxyMap (): Promise<Record<number, proxyId>> {
   }
 }
 
-export async function saveTabProxyMap (map: Record<number, proxyId>) {
+export async function saveTabProxyMap (map: Record<number, ProxyId>) {
   await browser.storage.local.set({ [TAB_PROXY_MAP]: map })
   console.info(`[${APP_NAME}] Saved tabProxyMap to local storage.`)
 }

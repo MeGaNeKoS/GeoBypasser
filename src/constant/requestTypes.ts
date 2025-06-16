@@ -20,5 +20,5 @@ export const WEB_REQUEST_RESOURCE_TYPES = [
   'xmlhttprequest',
   'xslt',
   'other',
-] as const;
+] as const
 export type WebRequestResourceType = typeof WEB_REQUEST_RESOURCE_TYPES[number];

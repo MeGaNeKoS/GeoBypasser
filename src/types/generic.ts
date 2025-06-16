@@ -1,3 +1,3 @@
-export type proxyType = 'socks' | 'http';
-export type storageMode = 'local' | 'cloud';
-export type proxyId = string;
+export type ProxyType = 'socks' | 'http';
+export type StorageMode = 'local' | 'cloud';
+export type ProxyId = string;

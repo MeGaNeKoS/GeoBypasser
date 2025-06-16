@@ -1,10 +1,12 @@
 import { getConfig, saveConfig, updateConfig, compileRules, saveTabProxyMap } from '@utils/storage'
-import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
-import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
+import { WEB_REQUEST_RESOURCE_TYPES, WebRequestResourceType } from '@constant/requestTypes'
+import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { matchPattern } from 'browser-extension-url-match'
 import browser from 'webextension-polyfill'
+import { ProxyType } from '@customTypes/generic'
+import type { GeoBypassSettings } from '@customTypes/settings'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let editingProxyIndex: number | null = null
@@ -166,7 +168,7 @@ function validatePattern (val: string) {
 }
 
 function validateResourceTypes (val: string) {
-  return val.split(/\s*,\s*/).filter(Boolean).every(v => WEB_REQUEST_RESOURCE_TYPES.includes(v as any))
+  return val.split(/\s*,\s*/).filter(Boolean).every(v => WEB_REQUEST_RESOURCE_TYPES.includes(v as WebRequestResourceType))
 }
 
 function validateRegExp (val: string) {
@@ -203,7 +205,7 @@ function validateHostnamePattern (val: string) {
   return /^[a-zA-Z0-9.-]+$/.test(trimmed)
 }
 
-function isRuleInvalid (r: any) {
+function isRuleInvalid (r: RuntimeProxyRule) {
   if (!r.compiledMatch) return true
   if (r.bypassUrlPatterns && r.bypassUrlPatterns.length && !r.compiledBypassUrlPatterns) return true
   if (r.forceProxyUrlPatterns && r.forceProxyUrlPatterns.length && !r.compiledForceProxyUrlPatterns) return true
@@ -436,7 +438,7 @@ function closeProxyModal () {
 
 function saveProxyFromModal () {
   const label = (document.getElementById('proxyLabel') as HTMLInputElement).value
-  const type = (document.getElementById('proxyType') as HTMLSelectElement).value as any
+  const type = (document.getElementById('proxyType') as HTMLSelectElement).value as ProxyType
   const host = (document.getElementById('proxyHost') as HTMLInputElement).value
   const port = Number((document.getElementById('proxyPort') as HTMLInputElement).value)
   const username = (document.getElementById('proxyUser') as HTMLInputElement).value
@@ -545,7 +547,6 @@ function openRuleModal (index?: number) {
   if (editingKeepAliveId && !kaExists) {
     proxy.appendChild(createOption(editingKeepAliveId, `Missing Proxy (${editingKeepAliveId})`))
   }
-
 
   if (editingRuleIndex !== null) {
     const r = config.rules[editingRuleIndex]
@@ -788,7 +789,7 @@ function renderKeepAlive () {
   }
 }
 
-function stripRule (r: any): ProxyRule {
+function stripRule (r: RuntimeProxyRule): ProxyRule {
   return {
     active: typeof r.active === 'undefined' ? true : r.active,
     name: r.name,
@@ -911,7 +912,7 @@ function handleImportOverrides (files: FileList | null) {
   })
 }
 
-function exportKeepAlive (obj: Record<string, any>) {
+function exportKeepAlive (obj: KeepAliveProxyRule) {
   download('keepalive.json', JSON.stringify(obj, null, 2))
 }
 
@@ -920,7 +921,7 @@ function exportAllKeepAlive () {
 }
 
 function exportSelectedKeepAlive () {
-  const out: Record<string, any> = {}
+  const out: KeepAliveProxyRule = {}
   selectedKeepAlive.forEach(id => {
     const rule = config.keepAliveRules?.[id]
     if (rule) out[id] = rule
@@ -941,11 +942,6 @@ function handleImportKeepAlive (files: FileList | null) {
       }
     } catch (e) { console.error(e) }
   })
-}
-
-function exportConfig () {
-  const data = JSON.stringify(getExportableConfig(), null, 2)
-  download('config.json', data)
 }
 
 function openExportConfigModal () {
@@ -1109,21 +1105,25 @@ function closeExportConfigModal () {
 }
 
 function exportConfigFromModal () {
-  const obj: any = {}
+  const obj: Partial<GeoBypassSettings> = {}
   const container = document.getElementById('exportConfigItems')!
-  const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
+  const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter((c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
   if (proxyIdxs.length) obj.proxyList = proxyIdxs.map(i => config.proxyList[i])
-  const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
+  const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter((c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
   if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => stripRule(config.rules[i]))
   const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter((c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
   if (ovDomains.length) {
-    obj.perWebsiteOverride = {}
-    ovDomains.forEach(d => { obj.perWebsiteOverride[d] = config.perWebsiteOverride[d] })
+    obj.perWebsiteOverride = {} as GeoBypassSettings["perWebsiteOverride"]
+    ovDomains.forEach(d => {
+      obj.perWebsiteOverride![d] = config.perWebsiteOverride[d]
+    })
   }
-  const kaIds = Array.from(container.querySelectorAll('input[data-group="keepalive"]')).filter((c: any) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
+  const kaIds = Array.from(container.querySelectorAll('input[data-group="keepalive"]')).filter((c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
   if (kaIds.length) {
-    obj.keepAliveRules = {}
-    kaIds.forEach(id => { if (config.keepAliveRules?.[id]) obj.keepAliveRules[id] = config.keepAliveRules[id] })
+    obj.keepAliveRules = {} as GeoBypassSettings["keepAliveRules"]
+    kaIds.forEach(id => {
+      if (config.keepAliveRules?.[id]) obj.keepAliveRules![id] = config.keepAliveRules[id]
+    })
   }
   download('config.json', JSON.stringify(obj, null, 2))
   closeExportConfigModal()
@@ -1135,7 +1135,7 @@ function handleImportConfig (files: FileList | null) {
     try {
       const obj = JSON.parse(t)
       const base = getExportableConfig()
-      const updated: any = {
+      const updated = {
         proxyList: base.proxyList,
         defaultProxy: obj.defaultProxy ?? base.defaultProxy,
         fallbackDirect: obj.fallbackDirect ?? base.fallbackDirect,
@@ -1175,7 +1175,7 @@ async function runProxyTest (proxy: ProxyListItem) {
 }
 
 function getCustomProxyInput (): ProxyListItem | null {
-  const type = (document.getElementById('diagType') as HTMLSelectElement).value as any
+  const type = (document.getElementById('diagType') as HTMLSelectElement).value as ProxyType
   const host = (document.getElementById('diagHost') as HTMLInputElement).value.trim()
   const portStr = (document.getElementById('diagPort') as HTMLInputElement).value
   const username = (document.getElementById('diagUser') as HTMLInputElement).value.trim()

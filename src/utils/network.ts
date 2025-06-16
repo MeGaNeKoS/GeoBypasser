@@ -1,12 +1,12 @@
 export type NetworkStatsNode = {
-  sent: number
-  received: number
-  children?: Record<string, NetworkStatsNode>
+  sent: number;
+  received: number;
+  children?: Record<string, NetworkStatsNode>;
 }
 
 export type NetworkStats = {
-  total: NetworkStatsNode
-  domains: Record<string, NetworkStatsNode>
+  total: NetworkStatsNode;
+  domains: Record<string, NetworkStatsNode>;
 }
 
 export const networkStats: NetworkStats = {

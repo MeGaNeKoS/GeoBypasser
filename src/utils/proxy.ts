@@ -1,6 +1,6 @@
 import type { ProxyListItem, ProxyTestResult } from '@customTypes/proxy'
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
-import { proxyId } from '@customTypes/generic'
+import { ProxyId } from '@customTypes/generic'
 import browser, { Proxy, WebRequest } from 'webextension-polyfill'
 import { fetchWithTimeout, getHostname, matchPatternList } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
@@ -19,14 +19,14 @@ function getProxyById (proxyList: ProxyListItem[], id: string | undefined) {
   return proxyList.find(proxy => proxy.id === id) || null
 }
 
-export function resolveProxy (config: GeoBypassRuntimeSettings, proxyId?: proxyId) {
+export function resolveProxy (config: GeoBypassRuntimeSettings, proxyId?: ProxyId) {
   return getProxyById(config.proxyList, proxyId) ||
     getProxyById(config.proxyList, config.defaultProxy)
 }
 
 export function makeTabProxyHandler (
   config: GeoBypassRuntimeSettings,
-  tabProxyMap: Record<number, proxyId> = {},
+  tabProxyMap: Record<number, ProxyId> = {},
 ) {
   return async function handleTabProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
     if (requestInfo.tabId === undefined) return

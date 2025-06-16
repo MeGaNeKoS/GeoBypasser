@@ -1,14 +1,14 @@
 import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from './proxy'
-import { proxyId } from '@customTypes/generic'
+import { ProxyId } from '@customTypes/generic'
 
 export type GeoBypassSettings = {
   proxyList: ProxyListItem[];
-  defaultProxy?: proxyId;
+  defaultProxy?: ProxyId;
   fallbackDirect?: boolean;
   rules: ProxyRule[];
   keepAliveRules?: KeepAliveProxyRule;
   testProxyUrl: string;
-  perWebsiteOverride: Record<string, proxyId>;
+  perWebsiteOverride: Record<string, ProxyId>;
 }
 
 export type GeoBypassRuntimeSettings = Omit<GeoBypassSettings, 'rules'> & {
