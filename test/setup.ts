@@ -20,6 +20,9 @@ const browser: any = {
     },
     webRequest: {
       onAuthRequired: createEvent(),
+      onBeforeSendHeaders: createEvent(),
+      onCompleted: createEvent(),
+      onErrorOccurred: createEvent(),
     },
     storage: {
       local: {
@@ -43,6 +46,13 @@ const browser: any = {
     },
     runtime: {
       onMessage: createEvent(),
+      sendMessage: jest.fn(async (msg: any) => {
+        for (const fn of browser.runtime.onMessage._listeners) {
+          const res = await fn(msg)
+          if (res !== undefined) return res
+        }
+      }),
+      getManifest: jest.fn(() => ({ name: 'GeoBypass', version: '0.1.0' })),
     },
     notifications: {
       create: jest.fn(),

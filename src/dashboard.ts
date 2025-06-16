@@ -20,6 +20,7 @@ let currentListValidator: (val: string) => boolean = () => true
 let typeTargetInput: HTMLInputElement | null = null
 let editingKeepAliveId: string | null = null
 const activeRows = new WeakMap<HTMLTableElement, HTMLTableRowElement | null>()
+let networkAutoInterval: ReturnType<typeof setInterval> | null = null
 
 function switchTab (id: string) {
   document.querySelectorAll('section.tab').forEach(sec => sec.classList.remove('active'))
@@ -34,6 +35,9 @@ function switchTab (id: string) {
   if (window.innerWidth <= 600) {
     document.getElementById('tabs')?.classList.remove('open')
     navToggle?.classList.remove('open')
+  }
+  if (id === 'network') {
+    renderNetwork()
   }
 }
 
@@ -1201,6 +1205,38 @@ function renderDiagnostics () {
   testUrl.value = config.testProxyUrl
 }
 
+async function renderNetwork () {
+  const container = document.getElementById('networkTree') as HTMLElement
+  if (!container) return
+  container.innerHTML = ''
+  const stats = await browser.runtime.sendMessage({ type: 'getNetworkStats' }) as import('./utils/network').NetworkStats
+  const { formatBytes } = await import('./utils/network')
+
+  function buildList (nodes: Record<string, import('./utils/network').NetworkStatsNode>): HTMLUListElement {
+    const ul = document.createElement('ul')
+    for (const [name, node] of Object.entries(nodes)) {
+      if (node.sent === 0 && node.received === 0) continue
+      const li = document.createElement('li')
+      const hasChildren = node.children && Object.keys(node.children).length > 0
+      if (hasChildren) {
+        const details = document.createElement('details')
+        details.open = true
+        const summary = document.createElement('summary')
+        summary.textContent = `${name} - sent: ${formatBytes(node.sent)}, received: ${formatBytes(node.received)}`
+        details.appendChild(summary)
+        details.appendChild(buildList(node.children!))
+        li.appendChild(details)
+      } else {
+        li.textContent = `${name} - sent: ${formatBytes(node.sent)}, received: ${formatBytes(node.received)}`
+      }
+      ul.appendChild(li)
+    }
+    return ul
+  }
+
+  container.appendChild(buildList(stats.domains))
+}
+
 function download (filename: string, text: string) {
   const a = document.createElement('a')
   a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
@@ -1229,6 +1265,7 @@ function renderAll () {
   renderKeepAlive()
   renderOverrides()
   renderDiagnostics()
+  renderNetwork()
   renderAbout()
 }
 
@@ -1342,4 +1379,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('importConfig')!.addEventListener('change', ev =>
     handleImportConfig((ev.target as HTMLInputElement).files))
   document.getElementById('clearTabProxies')!.addEventListener('click', clearTabProxies)
+  document.getElementById('refreshNetwork')!.addEventListener('click', renderNetwork)
+  document.getElementById('clearNetwork')!.addEventListener('click', async () => {
+    await browser.runtime.sendMessage({ type: 'clearNetworkStats' })
+    renderNetwork()
+  })
+  const toggleAuto = document.getElementById('toggleNetworkAuto') as HTMLButtonElement | null
+
+  function updateAutoLabel () {
+    if (!toggleAuto) return
+    toggleAuto.textContent = networkAutoInterval ? 'Auto Refresh: On' : 'Auto Refresh: Off'
+  }
+
+  toggleAuto?.addEventListener('click', () => {
+    if (networkAutoInterval) {
+      clearInterval(networkAutoInterval)
+      networkAutoInterval = null
+    } else {
+      networkAutoInterval = setInterval(renderNetwork, 5000)
+    }
+    updateAutoLabel()
+  })
+
+  updateAutoLabel()
 })

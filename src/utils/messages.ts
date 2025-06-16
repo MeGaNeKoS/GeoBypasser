@@ -1,4 +1,4 @@
-import { TabProxyMessage } from '@customTypes/messages'
+import { TabProxyMessage, NetworkMessage, MonitorNetworkMessage, UnmonitorNetworkMessage, IsMonitoredMessage } from '@customTypes/messages'
 
 export function isTabProxyMessage (msg: unknown): msg is TabProxyMessage {
   if (
@@ -20,6 +20,19 @@ export function isTabProxyMessage (msg: unknown): msg is TabProxyMessage {
         'tabId' in msg &&
         typeof (msg as { tabId?: unknown }).tabId === 'number'
       )
+    }
+  }
+  return false
+}
+
+export function isNetworkMessage (msg: unknown): msg is NetworkMessage {
+  if (typeof msg === 'object' && msg !== null && 'type' in msg) {
+    const type = (msg as { type?: unknown }).type
+    if (type === 'monitorTabNetwork' || type === 'unmonitorTabNetwork' || type === 'isTabNetworkMonitored') {
+      return 'tabId' in msg && typeof (msg as { tabId?: unknown }).tabId === 'number'
+    }
+    if (type === 'getNetworkStats' || type === 'clearNetworkStats') {
+      return true
     }
   }
   return false

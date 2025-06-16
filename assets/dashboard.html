@@ -16,6 +16,7 @@
       <button data-tab="rules">Rules</button>
       <button data-tab="override">Website Overrides</button>
       <button data-tab="keepalive">Keep-Alive</button>
+      <button data-tab="network">Network</button>
       <button data-tab="diagnostics">Diagnostics</button>
       <button data-tab="impexp">Import/Export</button>
       <button data-tab="about">About</button>
@@ -147,6 +148,13 @@
         </div>
       </div>
     </section>
+    <section id="network" class="tab">
+      <h2>Network Usage</h2>
+      <button id="refreshNetwork">Refresh</button>
+      <button id="clearNetwork">Clear</button>
+      <button id="toggleNetworkAuto">Auto Refresh: Off</button>
+      <div id="networkTree" class="tree"></div>
+    </section>
     <section id="diagnostics" class="tab">
       <h2>Diagnostics</h2>
       <label>Test URL <input type="text" id="diagTestUrl"></label>
@@ -208,6 +216,7 @@
         <li>Domain-based overrides</li>
         <li>Flexible matching rules with bypass and force patterns</li>
         <li>Optional keep-alive monitoring for proxies</li>
+        <li>Network inspection with a collapsible usage tree and auto-refresh</li>
       </ul>
       <h3>License</h3>
       <p>Mozilla Public License 2.0</p>

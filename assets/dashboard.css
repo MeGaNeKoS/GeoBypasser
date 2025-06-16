@@ -76,6 +76,21 @@ table { border-collapse: collapse; }
 th, td { border: 1px solid #555; padding: 4px; }
 tr.missing-proxy { background: #500; }
 tr.invalid-rule { background: #550; }
+
+.tree ul {
+  list-style: none;
+  margin-left: 1em;
+  padding-left: 1em;
+  border-left: 1px solid #555;
+}
+
+.tree li {
+  margin: 2px 0;
+}
+
+.tree details > summary {
+  cursor: pointer;
+}
 th.select-col,
 td.row-select,
 th.action-col,

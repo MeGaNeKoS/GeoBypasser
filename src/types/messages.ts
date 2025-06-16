@@ -12,3 +12,25 @@ export type ClearTabProxyMessage = {
 }
 
 export type TabProxyMessage = SetTabProxyMessage | ClearTabProxyMessage
+
+export type MonitorNetworkMessage = {
+  type: 'monitorTabNetwork'
+  tabId: number
+}
+
+export type UnmonitorNetworkMessage = {
+  type: 'unmonitorTabNetwork'
+  tabId: number
+}
+
+export type IsMonitoredMessage = {
+  type: 'isTabNetworkMonitored'
+  tabId: number
+}
+
+export type NetworkMessage =
+  | { type: 'getNetworkStats' }
+  | { type: 'clearNetworkStats' }
+  | MonitorNetworkMessage
+  | UnmonitorNetworkMessage
+  | IsMonitoredMessage

@@ -15,7 +15,8 @@ import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { APP_NAME } from '@constant/defaults'
 import { STORAGE_KEYS, TAB_PROXY_MAP } from '@constant/storageKeys'
 import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
-import { isTabProxyMessage } from '@utils/messages'
+import { isTabProxyMessage, isNetworkMessage } from '@utils/messages'
+import { addNetworkData, networkStats, resetNetworkStats } from '@utils/network'
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
 import BlockingResponseOrPromiseOrVoid = WebRequest.BlockingResponseOrPromiseOrVoid
 import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
@@ -36,6 +37,8 @@ type currentKeepAliveHandler = {
 
 const keepAliveStates: Record<string, KeepAliveState> = {}
 const tabProxyMap: Record<number, string> = {}
+const requestSizes = new Map<string | number, number>()
+const monitoredTabs = new Set<number>()
 
 function attachProxyHandlers (
   config: GeoBypassRuntimeSettings,
@@ -255,15 +258,56 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
   await initKeepAlive(config)
   setupKeepAliveListeners(config, keepAliveHandlers)
 
-  browser.runtime.onMessage.addListener((message: unknown) => {
-    if (!isTabProxyMessage(message)) return
+  browser.webRequest.onBeforeSendHeaders.addListener(
+    details => {
+      if (!monitoredTabs.has(details.tabId)) return
+      const h = details.requestHeaders?.find(h => h.name.toLowerCase() === 'content-length')
+      if (h) {
+        const size = Number(h.value) || 0
+        requestSizes.set(details.requestId, size)
+      }
+    },
+    { urls: ['<all_urls>'] },
+    ['requestHeaders']
+  )
+  browser.webRequest.onCompleted.addListener(
+    details => {
+      if (!monitoredTabs.has(details.tabId)) return
+      const sent = requestSizes.get(details.requestId) || 0
+      requestSizes.delete(details.requestId)
+      let received = 0
+      const h = details.responseHeaders?.find(h => h.name.toLowerCase() === 'content-length')
+      if (h) received = Number(h.value) || 0
+      addNetworkData(details.url, sent, received)
+    },
+    { urls: ['<all_urls>'] },
+    ['responseHeaders']
+  )
+  browser.webRequest.onErrorOccurred.addListener(
+    details => {
+      if (monitoredTabs.has(details.tabId)) requestSizes.delete(details.requestId)
+    },
+    { urls: ['<all_urls>'] }
+  )
 
-    if (message.type === 'setTabProxy') {
-      tabProxyMap[message.tabId] = message.proxyId
-      saveTabProxyMap(tabProxyMap)
-    } else if (message.type === 'clearTabProxy') {
-      delete tabProxyMap[message.tabId]
-      saveTabProxyMap(tabProxyMap)
+  browser.runtime.onMessage.addListener(async (message: any) => {
+    if (isTabProxyMessage(message)) {
+      if (message.type === 'setTabProxy') {
+        tabProxyMap[message.tabId] = message.proxyId
+        saveTabProxyMap(tabProxyMap)
+      } else if (message.type === 'clearTabProxy') {
+        delete tabProxyMap[message.tabId]
+        saveTabProxyMap(tabProxyMap)
+      }
+      return
+    }
+
+    if (isNetworkMessage(message)) {
+      if (message.type === 'getNetworkStats') return networkStats
+      if (message.type === 'clearNetworkStats') { resetNetworkStats(); return }
+      if (message.type === 'monitorTabNetwork') { monitoredTabs.add(message.tabId); return }
+      if (message.type === 'unmonitorTabNetwork') { monitoredTabs.delete(message.tabId); return }
+      if (message.type === 'isTabNetworkMonitored') return monitoredTabs.has(message.tabId)
     }
   })
 
@@ -273,6 +317,7 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
       console.debug(`[${APP_NAME}BG] Removed tabProxyMap entry for closed tab ${tabId}`)
       saveTabProxyMap(tabProxyMap)
     }
+    monitoredTabs.delete(tabId)
   })
 
   // Error listener

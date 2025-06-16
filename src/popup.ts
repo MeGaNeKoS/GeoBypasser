@@ -102,6 +102,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
   })
 
+  const toggleMonitor = document.getElementById('toggleMonitor') as HTMLButtonElement | null
+
+  async function updateMonitorLabel () {
+    if (!toggleMonitor || !tab || tab.id === undefined) return
+    const monitored = await browser.runtime.sendMessage({ type: 'isTabNetworkMonitored', tabId: tab.id })
+    toggleMonitor.textContent = monitored ? 'Stop Monitoring' : 'Monitor Tab'
+  }
+
+  toggleMonitor?.addEventListener('click', async () => {
+    if (!tab || tab.id === undefined || !toggleMonitor) return
+    const monitored = await browser.runtime.sendMessage({ type: 'isTabNetworkMonitored', tabId: tab.id })
+    if (monitored) {
+      await browser.runtime.sendMessage({ type: 'unmonitorTabNetwork', tabId: tab.id })
+    } else {
+      await browser.runtime.sendMessage({ type: 'monitorTabNetwork', tabId: tab.id })
+    }
+    updateMonitorLabel()
+  })
+
+  updateMonitorLabel()
+
   document.getElementById('openDashboard')?.addEventListener('click', () => {
     browser.runtime.openOptionsPage()
   })

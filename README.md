@@ -9,6 +9,14 @@ graph TD
     Browser -- Normal Requests --> Internet
 ```
 
+## Features
+
+- Proxy list with per-tab assignment
+- Domain-based overrides
+- Flexible matching rules with bypass and force patterns
+- Optional keep-alive monitoring for proxies
+- Network inspection with a collapsible usage tree and auto-refresh
+
 ## Prerequisites
 
 * Node.js (>= 18)
