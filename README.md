@@ -81,3 +81,14 @@ The extension provides a small popup for quick per‑tab control.
 ```bash
 npm test
 ```
+
+---
+
+## 🌐 Browser Support
+
+* **Firefox**: [Add-on Page](https://addons.mozilla.org/en-US/firefox/addon/geobypass/)
+
+* **Chrome**: *(Coming soon)*
+  Extension is in development and will be released on the Chrome Web Store shortly.
+
+---
