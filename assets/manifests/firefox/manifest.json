@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "GeoBypass",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Lightweight browser extension to bypass geo-restrictions by proxying only necessary connections to spoof your location. All other traffic goes direct for speed and efficiency.",
   "permissions": [
     "activeTab",
@@ -22,7 +22,7 @@
   },
   "browser_action": {
     "default_title": "GeoBypass",
-    "default_icon": "icon.png",
+    "default_icon": "icons/icon128.png",
     "default_popup": "popup.html"
   },
   "options_ui": {
@@ -35,5 +35,10 @@
     "48": "icons/icon48.png",
     "64": "icons/icon64.png",
     "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "strict_min_version": "91.1.0"
+    }
   }
 }
