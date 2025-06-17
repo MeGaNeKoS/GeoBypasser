@@ -7,6 +7,7 @@ import { matchPattern } from 'browser-extension-url-match'
 import browser from 'webextension-polyfill'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
+import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let editingProxyIndex: number | null = null
@@ -1209,10 +1210,9 @@ async function renderNetwork () {
   const container = document.getElementById('networkTree') as HTMLElement
   if (!container) return
   container.innerHTML = ''
-  const stats = await browser.runtime.sendMessage({ type: 'getNetworkStats' }) as import('./utils/network').NetworkStats
-  const { formatBytes } = await import('./utils/network')
+  const stats = await browser.runtime.sendMessage({ type: 'getNetworkStats' }) as NetworkStats
 
-  function buildList (nodes: Record<string, import('./utils/network').NetworkStatsNode>): HTMLUListElement {
+  function buildList (nodes: Record<string, NetworkStatsNode>): HTMLUListElement {
     const ul = document.createElement('ul')
     for (const [name, node] of Object.entries(nodes)) {
       if (node.sent === 0 && node.received === 0) continue
