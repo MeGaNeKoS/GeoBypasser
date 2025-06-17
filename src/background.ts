@@ -258,31 +258,19 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
   await initKeepAlive(config)
   setupKeepAliveListeners(config, keepAliveHandlers)
 
-  browser.webRequest.onBeforeSendHeaders.addListener(
-    details => {
-      if (!monitoredTabs.has(details.tabId)) return
-      const h = details.requestHeaders?.find(h => h.name.toLowerCase() === 'content-length')
-      if (h) {
-        const size = Number(h.value) || 0
-        requestSizes.set(details.requestId, size)
-      }
-    },
-    { urls: ['<all_urls>'] },
-    ['requestHeaders']
-  )
   browser.webRequest.onCompleted.addListener(
     details => {
       if (!monitoredTabs.has(details.tabId)) return
+      requestSizes.set(details.requestId, details.requestSize)
+
       const sent = requestSizes.get(details.requestId) || 0
       requestSizes.delete(details.requestId)
-      let received = 0
-      const h = details.responseHeaders?.find(h => h.name.toLowerCase() === 'content-length')
-      if (h) received = Number(h.value) || 0
-      addNetworkData(details.url, sent, received)
+      if (details.responseSize > 0)  addNetworkData(details.url, sent, details.responseSize)
     },
     { urls: ['<all_urls>'] },
     ['responseHeaders']
   )
+
   browser.webRequest.onErrorOccurred.addListener(
     details => {
       if (monitoredTabs.has(details.tabId)) requestSizes.delete(details.requestId)
