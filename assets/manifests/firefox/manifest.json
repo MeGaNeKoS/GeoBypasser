@@ -40,5 +40,6 @@
     "gecko": {
       "strict_min_version": "91.1.0"
     }
-  }
+  },
+  "devtools_page": "devtools.html"
 }

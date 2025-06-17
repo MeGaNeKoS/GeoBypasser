@@ -34,6 +34,14 @@ export function isNetworkMessage (msg: unknown): msg is NetworkMessage {
     if (type === 'getNetworkStats' || type === 'clearNetworkStats') {
       return true
     }
+    if (type === 'devtoolsNetworkData') {
+      return (
+        'tabId' in msg && typeof (msg as { tabId?: unknown }).tabId === 'number' &&
+        'url' in msg && typeof (msg as { url?: unknown }).url === 'string' &&
+        'sentSize' in msg && typeof (msg as { sentSize?: unknown }).sentSize === 'number' &&
+        'receivedSize' in msg && typeof (msg as { receivedSize?: unknown }).receivedSize === 'number'
+      )
+    }
   }
   return false
 }

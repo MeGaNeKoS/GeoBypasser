@@ -296,6 +296,12 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
       if (message.type === 'monitorTabNetwork') { monitoredTabs.add(message.tabId); return }
       if (message.type === 'unmonitorTabNetwork') { monitoredTabs.delete(message.tabId); return }
       if (message.type === 'isTabNetworkMonitored') return monitoredTabs.has(message.tabId)
+      if (message.type === 'devtoolsNetworkData') {
+        if (monitoredTabs.has(message.tabId)) {
+          addNetworkData(message.url, message.sentSize, message.receivedSize)
+        }
+        return
+      }
     }
   })
 

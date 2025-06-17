@@ -28,9 +28,19 @@ export type IsMonitoredMessage = {
   tabId: number;
 }
 
+export type DevtoolsNetworkDataMessage = {
+  type: 'devtoolsNetworkData';
+  tabId: number;
+  url: string;
+  sentSize: number;
+  receivedSize: number;
+}
+
 export type NetworkMessage =
   | { type: 'getNetworkStats' }
   | { type: 'clearNetworkStats' }
   | MonitorNetworkMessage
   | UnmonitorNetworkMessage
   | IsMonitoredMessage
+  | DevtoolsNetworkDataMessage
+;
