@@ -354,8 +354,8 @@ function renderProxyList () {
       `<button data-remove="${idx}">Delete</button></td>`
 
     tbody.appendChild(tr)
-    attachRowHandlers(tr, document.getElementById('proxyTable') as HTMLTableElement,
-      document.getElementById('exportProxiesSelected') as HTMLElement)
+    // attachRowHandlers(tr, document.getElementById('proxyTable') as HTMLTableElement,
+    //   document.getElementById('exportProxiesSelected') as HTMLElement)
 
     const passCell = tr.querySelector('td.password') as HTMLTableCellElement
     if (p.password) {
@@ -499,8 +499,8 @@ function renderRules () {
     if (!proxy) tr.classList.add('missing-proxy')
     if (isRuleInvalid(r)) tr.classList.add('invalid-rule')
     tbody.appendChild(tr)
-    attachRowHandlers(tr, document.getElementById('ruleTable') as HTMLTableElement,
-      document.getElementById('exportRulesSelected') as HTMLElement)
+    // attachRowHandlers(tr, document.getElementById('ruleTable') as HTMLTableElement,
+    //   document.getElementById('exportRulesSelected') as HTMLElement)
     const activeChk = tr.querySelector('input[data-active]') as HTMLInputElement
     activeChk.onchange = () => {
       r.active = activeChk.checked
@@ -646,8 +646,8 @@ function renderOverrides () {
       `<td class="row-select"><input type="checkbox" data-select="${domain}"></td>` +
       `<td class="row-actions"><button data-domain="${domain}">Delete</button></td>`
     tbody.appendChild(tr)
-    attachRowHandlers(tr, document.getElementById('overrideTable') as HTMLTableElement,
-      document.getElementById('exportOverridesSelected') as HTMLElement)
+    // attachRowHandlers(tr, document.getElementById('overrideTable') as HTMLTableElement,
+    //   document.getElementById('exportOverridesSelected') as HTMLElement)
     const btn = tr.querySelector('button') as HTMLButtonElement
     btn.onclick = () => {
       delete config.perWebsiteOverride[domain]
@@ -768,8 +768,8 @@ function renderKeepAlive () {
       `<button data-remove="${proxyId}">Delete</button></td>`
     if (!proxy) tr.classList.add('missing-proxy')
     tbody.appendChild(tr)
-    attachRowHandlers(tr, document.getElementById('keepAliveTable') as HTMLTableElement,
-      document.getElementById('exportKeepAliveSelected') as HTMLElement)
+    // attachRowHandlers(tr, document.getElementById('keepAliveTable') as HTMLTableElement,
+    //   document.getElementById('exportKeepAliveSelected') as HTMLElement)
     const chk = tr.querySelector('input[data-active]') as HTMLInputElement
     chk.onchange = () => {
       rule.active = chk.checked

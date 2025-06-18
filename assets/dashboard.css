@@ -91,10 +91,10 @@ tr.invalid-rule { background: #550; }
 .tree details > summary {
   cursor: pointer;
 }
-th.select-col,
-td.row-select,
-th.action-col,
-td.row-actions,
+/*th.select-col,*/
+/*td.row-select,*/
+/*th.action-col,*/
+/*td.row-actions,*/
 button.export-selected { display: none; }
 
 table[data-show-select='true'] th.select-col,
