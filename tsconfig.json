@@ -24,6 +24,9 @@
       "@customTypes/*": [
         "src/types/*"
       ],
+      "@schemas/*": [
+        "src/schemas/*"
+      ],
       "@utils/*": [
         "src/utils/*"
       ],

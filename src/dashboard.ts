@@ -1,4 +1,4 @@
-import { getConfig, saveConfig, updateConfig, compileRules, saveTabProxyMap } from '@utils/storage'
+import { compileRules, getConfig, saveConfig, saveTabProxyMap, updateConfig } from '@utils/storage'
 import { WEB_REQUEST_RESOURCE_TYPES, WebRequestResourceType } from '@constant/requestTypes'
 import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
@@ -8,6 +8,9 @@ import browser from 'webextension-polyfill'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
+import { KeepAliveProxyRuleSchema, ProxyListItemSchema, ProxyRuleSchema } from '@schemas/proxy'
+import { z } from 'zod'
+import { ProxyIdSchema } from '@schemas/generic'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let editingProxyIndex: number | null = null
@@ -59,7 +62,7 @@ function updatePassHeaderButton () {
 function attachRowHandlers (
   tr: HTMLTableRowElement,
   table: HTMLTableElement,
-  exportBtn: HTMLElement
+  exportBtn: HTMLElement,
 ) {
   const isTouch = window.matchMedia('(pointer: coarse)').matches
   let timer: number | null = null
@@ -169,7 +172,8 @@ function validatePattern (val: string) {
 }
 
 function validateResourceTypes (val: string) {
-  return val.split(/\s*,\s*/).filter(Boolean).every(v => WEB_REQUEST_RESOURCE_TYPES.includes(v as WebRequestResourceType))
+  return val.split(/\s*,\s*/).filter(Boolean).every(
+    v => WEB_REQUEST_RESOURCE_TYPES.includes(v as WebRequestResourceType))
 }
 
 function validateRegExp (val: string) {
@@ -375,15 +379,15 @@ function renderProxyList () {
       p.notifyIfDown = notifyChk.checked
       saveConfig(config)
     }
-      const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
-      selChk.onchange = () => {
-        if (selChk.checked) selectedProxies.add(idx)
-        else selectedProxies.delete(idx)
-        updateSelectVisibility(
-          document.getElementById('proxyTable') as HTMLTableElement,
-          document.getElementById('exportProxiesSelected') as HTMLElement
-        )
-      }
+    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+    selChk.onchange = () => {
+      if (selChk.checked) selectedProxies.add(idx)
+      else selectedProxies.delete(idx)
+      updateSelectVisibility(
+        document.getElementById('proxyTable') as HTMLTableElement,
+        document.getElementById('exportProxiesSelected') as HTMLElement,
+      )
+    }
     const editBtn = tr.querySelector('button[data-edit]') as HTMLButtonElement
     editBtn.onclick = () => openProxyModal(idx)
     const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
@@ -502,15 +506,15 @@ function renderRules () {
       r.active = activeChk.checked
       saveConfig(config)
     }
-      const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
-      selChk.onchange = () => {
-        if (selChk.checked) selectedRules.add(idx)
-        else selectedRules.delete(idx)
-        updateSelectVisibility(
-          document.getElementById('ruleTable') as HTMLTableElement,
-          document.getElementById('exportRulesSelected') as HTMLElement
-        )
-      }
+    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+    selChk.onchange = () => {
+      if (selChk.checked) selectedRules.add(idx)
+      else selectedRules.delete(idx)
+      updateSelectVisibility(
+        document.getElementById('ruleTable') as HTMLTableElement,
+        document.getElementById('exportRulesSelected') as HTMLElement,
+      )
+    }
     const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
     edit.onclick = () => openRuleModal(idx)
     const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
@@ -649,17 +653,17 @@ function renderOverrides () {
       delete config.perWebsiteOverride[domain]
       saveConfig(config).then(renderAll)
     }
-      const sel = tr.querySelector('input[data-select]') as HTMLInputElement
-      sel.onchange = () => {
-        if (sel.checked) selectedOverrides.add(domain)
-        else selectedOverrides.delete(domain)
-        updateSelectVisibility(
-          document.getElementById('overrideTable') as HTMLTableElement,
-          document.getElementById('exportOverridesSelected') as HTMLElement
-        )
-      }
+    const sel = tr.querySelector('input[data-select]') as HTMLInputElement
+    sel.onchange = () => {
+      if (sel.checked) selectedOverrides.add(domain)
+      else selectedOverrides.delete(domain)
+      updateSelectVisibility(
+        document.getElementById('overrideTable') as HTMLTableElement,
+        document.getElementById('exportOverridesSelected') as HTMLElement,
+      )
     }
   }
+}
 
 function openOverrideModal () {
   const modal = document.getElementById('overrideModal')!
@@ -729,8 +733,8 @@ function closeKeepAliveModal () {
 
 function saveKeepAliveFromModal () {
   const proxyId = (document.getElementById('keepAliveProxy') as HTMLSelectElement).value
-  const patterns = (document.getElementById('keepAlivePatterns') as HTMLInputElement).value
-    .split(/\s*,\s*/).filter(Boolean)
+  const patterns = (document.getElementById('keepAlivePatterns') as HTMLInputElement).value.split(/\s*,\s*/).filter(
+    Boolean)
   const testUrl = (document.getElementById('keepAliveTestUrl') as HTMLInputElement).value.trim()
   const active = (document.getElementById('keepAliveActive') as HTMLInputElement).checked
   if (!proxyId || patterns.length === 0) return
@@ -771,15 +775,15 @@ function renderKeepAlive () {
       rule.active = chk.checked
       saveConfig(config)
     }
-      const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
-      selChk.onchange = () => {
-        if (selChk.checked) selectedKeepAlive.add(proxyId)
-        else selectedKeepAlive.delete(proxyId)
-        updateSelectVisibility(
-          document.getElementById('keepAliveTable') as HTMLTableElement,
-          document.getElementById('exportKeepAliveSelected') as HTMLElement
-        )
-      }
+    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
+    selChk.onchange = () => {
+      if (selChk.checked) selectedKeepAlive.add(proxyId)
+      else selectedKeepAlive.delete(proxyId)
+      updateSelectVisibility(
+        document.getElementById('keepAliveTable') as HTMLTableElement,
+        document.getElementById('exportKeepAliveSelected') as HTMLElement,
+      )
+    }
     const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
     edit.onclick = () => openKeepAliveModal(proxyId)
     const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
@@ -836,15 +840,27 @@ function exportSelectedRules () {
 
 function handleImportRules (files: FileList | null) {
   if (!files || !files[0]) return
+
   files[0].text().then(t => {
     try {
-      const parsed = JSON.parse(t)
-      const arr = Array.isArray(parsed) ? parsed as ProxyRule[] : [parsed as ProxyRule]
-      const compiled = compileRules(arr)
+      const raw = JSON.parse(t)
+      const normalized = Array.isArray(raw) ? raw : [raw]
+
+      const result = z.array(ProxyRuleSchema).safeParse(normalized)
+
+      if (!result.success) {
+        console.error('Invalid proxy rules:', result.error)
+        alert('Invalid rule file: schema validation failed.')
+        return
+      }
+
+      const compiled = compileRules(result.data)
       config.rules.push(...compiled)
       saveConfig(config).then(renderAll)
+
     } catch (e) {
-      console.error(e)
+      console.error('Error importing proxy rules:', e)
+      alert('Failed to import rules: invalid JSON')
     }
   })
 }
@@ -865,11 +881,23 @@ function exportSelectedProxies () {
 
 function handleImportProxies (files: FileList | null) {
   if (!files || !files[0]) return
+
   files[0].text().then(t => {
     try {
-      const parsed = JSON.parse(t)
-      const arr = Array.isArray(parsed) ? parsed as ProxyListItem[] : [parsed as ProxyListItem]
+      const raw = JSON.parse(t)
+      const normalized = Array.isArray(raw) ? raw : [raw]
+
+      const result = z.array(ProxyListItemSchema).safeParse(normalized)
+
+      if (!result.success) {
+        console.error('Invalid proxy list items:', result.error)
+        alert('Invalid proxy file: schema validation failed.')
+        return
+      }
+
+      const arr = result.data
       const existing = new Set(config.proxyList.map(p => `${p.type}-${p.host}:${p.port}-${p.username || ''}`))
+
       for (const p of arr) {
         const sig = `${p.type}-${p.host}:${p.port}-${p.username || ''}`
         if (!existing.has(sig)) {
@@ -877,8 +905,12 @@ function handleImportProxies (files: FileList | null) {
           config.proxyList.push(p)
         }
       }
+
       saveConfig(config).then(renderAll)
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error('Error importing proxies:', e)
+      alert('Failed to import proxies: invalid JSON')
+    }
   })
 }
 
@@ -902,14 +934,26 @@ function exportSelectedOverrides () {
 
 function handleImportOverrides (files: FileList | null) {
   if (!files || !files[0]) return
+
   files[0].text().then(t => {
     try {
-      const obj = JSON.parse(t)
-      if (obj && typeof obj === 'object') {
-        Object.assign(config.perWebsiteOverride, obj)
-        saveConfig(config).then(renderAll)
+      const parsed = JSON.parse(t)
+
+      const result = z.record(ProxyIdSchema).safeParse(parsed)
+
+      if (!result.success) {
+        console.error('Invalid override map:', result.error)
+        alert('Invalid override file: expected a record of string → ProxyId.')
+        return
       }
-    } catch (e) { console.error(e) }
+
+      Object.assign(config.perWebsiteOverride, result.data)
+      saveConfig(config).then(renderAll)
+
+    } catch (e) {
+      console.error('Error importing overrides:', e)
+      alert('Failed to import overrides: invalid JSON')
+    }
   })
 }
 
@@ -933,15 +977,28 @@ function exportSelectedKeepAlive () {
 
 function handleImportKeepAlive (files: FileList | null) {
   if (!files || !files[0]) return
+
   files[0].text().then(t => {
     try {
-      const obj = JSON.parse(t)
-      if (obj && typeof obj === 'object') {
-        if (!config.keepAliveRules) config.keepAliveRules = {}
-        Object.assign(config.keepAliveRules, obj)
-        saveConfig(config).then(renderAll)
+      const parsed = JSON.parse(t)
+
+      const result = KeepAliveProxyRuleSchema.safeParse(parsed)
+
+      if (!result.success) {
+        console.error('Invalid keep-alive rules:', result.error)
+        alert('Invalid keep-alive file: schema validation failed.')
+        return
       }
-    } catch (e) { console.error(e) }
+
+      if (!config.keepAliveRules) config.keepAliveRules = {}
+
+      Object.assign(config.keepAliveRules, result.data)
+      saveConfig(config).then(renderAll)
+
+    } catch (e) {
+      console.error('Error importing keep-alive rules:', e)
+      alert('Failed to import keep-alive rules: invalid JSON')
+    }
   })
 }
 
@@ -1077,7 +1134,8 @@ function exportConfigSelectAll () {
 }
 
 function toggleExportSection (group: string) {
-  const boxes = document.querySelectorAll(`#exportConfigItems input[data-group="${group}"]`) as NodeListOf<HTMLInputElement>
+  const boxes = document.querySelectorAll(
+    `#exportConfigItems input[data-group="${group}"]`) as NodeListOf<HTMLInputElement>
   const allSelected = Array.from(boxes).every(b => b.checked)
   boxes.forEach(b => { b.checked = !allSelected })
   updateExportToggleLabel(group)
@@ -1087,7 +1145,8 @@ function toggleExportSection (group: string) {
 function updateExportToggleLabel (group: string) {
   const btn = document.querySelector(`#exportConfigItems .sectionToggle[data-group="${group}"]`) as HTMLButtonElement
   if (!btn) return
-  const boxes = document.querySelectorAll(`#exportConfigItems input[data-group="${group}"]`) as NodeListOf<HTMLInputElement>
+  const boxes = document.querySelectorAll(
+    `#exportConfigItems input[data-group="${group}"]`) as NodeListOf<HTMLInputElement>
   const allSelected = Array.from(boxes).every(b => b.checked)
   btn.textContent = allSelected ? 'Deselect All' : 'Select All'
   updateExportSelectAllLabel()
@@ -1108,20 +1167,24 @@ function closeExportConfigModal () {
 function exportConfigFromModal () {
   const obj: Partial<GeoBypassSettings> = {}
   const container = document.getElementById('exportConfigItems')!
-  const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter((c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
+  const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter(
+    (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
   if (proxyIdxs.length) obj.proxyList = proxyIdxs.map(i => config.proxyList[i])
-  const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter((c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
+  const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter(
+    (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
   if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => stripRule(config.rules[i]))
-  const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter((c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
+  const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter(
+    (c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
   if (ovDomains.length) {
-    obj.perWebsiteOverride = {} as GeoBypassSettings["perWebsiteOverride"]
+    obj.perWebsiteOverride = {} as GeoBypassSettings['perWebsiteOverride']
     ovDomains.forEach(d => {
       obj.perWebsiteOverride![d] = config.perWebsiteOverride[d]
     })
   }
-  const kaIds = Array.from(container.querySelectorAll('input[data-group="keepalive"]')).filter((c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
+  const kaIds = Array.from(container.querySelectorAll('input[data-group="keepalive"]')).filter(
+    (c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
   if (kaIds.length) {
-    obj.keepAliveRules = {} as GeoBypassSettings["keepAliveRules"]
+    obj.keepAliveRules = {} as GeoBypassSettings['keepAliveRules']
     kaIds.forEach(id => {
       if (config.keepAliveRules?.[id]) obj.keepAliveRules![id] = config.keepAliveRules[id]
     })
@@ -1146,7 +1209,8 @@ function handleImportConfig (files: FileList | null) {
         perWebsiteOverride: obj.perWebsiteOverride ?? base.perWebsiteOverride,
       }
       if (obj.proxyList) {
-        const existing = new Set(updated.proxyList.map((p: ProxyListItem) => `${p.type}-${p.host}:${p.port}-${p.username || ''}`))
+        const existing = new Set(
+          updated.proxyList.map((p: ProxyListItem) => `${p.type}-${p.host}:${p.port}-${p.username || ''}`))
         for (const p of obj.proxyList as ProxyListItem[]) {
           const sig = `${p.type}-${p.host}:${p.port}-${p.username || ''}`
           if (!existing.has(sig)) {

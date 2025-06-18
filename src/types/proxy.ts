@@ -1,54 +1,18 @@
-import { ProxyId, ProxyType } from '@customTypes/generic'
-import { Matcher } from 'browser-extension-url-match/dist/types'
-import { DIRECT_PROXY_ID } from '@constant/proxy'
+import { z } from 'zod'
+import {
+  ProxyConfigSchema,
+  ProxyListItemSchema,
+  ProxyListRuntimeItemSchema,
+  ProxyRuleSchema,
+  RuntimeProxyRuleSchema,
+  KeepAliveProxyRuleSchema,
+  ProxyTestResultSchema,
+} from '@schemas/proxy'
 
-export type ProxyConfig = {
-  type: ProxyType;
-  proxyDNS: boolean;
-  host: string;
-  port: number;
-  username?: string;
-  password?: string;
-  failoverTimeout?: number;
-}
-
-export type ProxyListItem = ProxyConfig & {
-  id: ProxyId;
-  label?: string;
-  notifyIfDown?: boolean;
-}
-
-export type ProxyListRuntimeItem = ProxyListItem & {
-  downNotification?: number;
-}
-
-export type RuleProxyId = ProxyId | typeof DIRECT_PROXY_ID;
-
-export type ProxyRule = {
-  active: boolean;
-  name: string;
-  match: string[];
-  bypassUrlPatterns?: string[];
-  bypassResourceTypes?: string[];
-  staticExtensions?: string;
-  forceProxyUrlPatterns?: string[];
-  fallbackDirect?: boolean;
-  proxyId: RuleProxyId;
-}
-
-export type RuntimeProxyRule = ProxyRule & {
-  compiledMatch?: Matcher;
-  compiledBypassUrlPatterns?: Matcher;
-  compiledForceProxyUrlPatterns?: Matcher;
-  compiledStaticExtensions?: RegExp;
-}
-
-export type KeepAliveProxyRule = Record<string, {
-  active: boolean;
-  tabUrls: string[];
-  testProxyUrl?: string;
-}>
-
-export type ProxyTestResult =
-  | { success: true; proxy: string }
-  | { success: false; error: string; proxy: string }
+export type ProxyConfig = z.infer<typeof ProxyConfigSchema>
+export type ProxyListItem = z.infer<typeof ProxyListItemSchema>
+export type ProxyListRuntimeItem = z.infer<typeof ProxyListRuntimeItemSchema>
+export type ProxyRule = z.infer<typeof ProxyRuleSchema>
+export type RuntimeProxyRule = z.infer<typeof RuntimeProxyRuleSchema>
+export type KeepAliveProxyRule = z.infer<typeof KeepAliveProxyRuleSchema>
+export type ProxyTestResult = z.infer<typeof ProxyTestResultSchema>

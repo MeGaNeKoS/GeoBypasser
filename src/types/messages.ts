@@ -1,46 +1,20 @@
-import { ProxyId } from './generic'
+import { z } from 'zod'
+import {
+  SetTabProxyMessageSchema,
+  ClearTabProxyMessageSchema,
+  TabProxyMessageSchema,
+  MonitorNetworkMessageSchema,
+  UnmonitorNetworkMessageSchema,
+  IsMonitoredMessageSchema,
+  DevtoolsNetworkDataMessageSchema,
+  NetworkMessageSchema,
+} from '@schemas/messages'
 
-export type SetTabProxyMessage = {
-  type: 'setTabProxy';
-  tabId: number;
-  proxyId: ProxyId;
-}
-
-export type ClearTabProxyMessage = {
-  type: 'clearTabProxy';
-  tabId: number;
-}
-
-export type TabProxyMessage = SetTabProxyMessage | ClearTabProxyMessage
-
-export type MonitorNetworkMessage = {
-  type: 'monitorTabNetwork';
-  tabId: number;
-}
-
-export type UnmonitorNetworkMessage = {
-  type: 'unmonitorTabNetwork';
-  tabId: number;
-}
-
-export type IsMonitoredMessage = {
-  type: 'isTabNetworkMonitored';
-  tabId: number;
-}
-
-export type DevtoolsNetworkDataMessage = {
-  type: 'devtoolsNetworkData';
-  tabId: number;
-  url: string;
-  sentSize: number;
-  receivedSize: number;
-}
-
-export type NetworkMessage =
-  | { type: 'getNetworkStats' }
-  | { type: 'clearNetworkStats' }
-  | MonitorNetworkMessage
-  | UnmonitorNetworkMessage
-  | IsMonitoredMessage
-  | DevtoolsNetworkDataMessage
-;
+export type SetTabProxyMessage = z.infer<typeof SetTabProxyMessageSchema>
+export type ClearTabProxyMessage = z.infer<typeof ClearTabProxyMessageSchema>
+export type TabProxyMessage = z.infer<typeof TabProxyMessageSchema>
+export type MonitorNetworkMessage = z.infer<typeof MonitorNetworkMessageSchema>
+export type UnmonitorNetworkMessage = z.infer<typeof UnmonitorNetworkMessageSchema>
+export type IsMonitoredMessage = z.infer<typeof IsMonitoredMessageSchema>
+export type DevtoolsNetworkDataMessage = z.infer<typeof DevtoolsNetworkDataMessageSchema>
+export type NetworkMessage = z.infer<typeof NetworkMessageSchema>
