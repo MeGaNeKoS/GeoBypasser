@@ -201,7 +201,7 @@ async function initKeepAlive (config: GeoBypassRuntimeSettings) {
     const rule = keepAliveStates[proxyId]
     const proxy = resolveProxy(config, proxyId)
     if (proxy) {
-      console.debug(`[${APP_NAME}BG] Starting keep-alive for proxyId ${proxyId}`)
+      console.debug(`[${APP_NAME}BG] Starting keep-alive for proxyId [${proxy.label}]`)
       maybeUpdateProxyKeepAlive(proxy, rule)
     } else {
       console.warn(
