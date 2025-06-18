@@ -23,7 +23,7 @@ jest.mock('@utils/tab', () => {
 
 describe('background init', () => {
   it('attaches handlers and keep-alive', async () => {
-    await import('../src/background')
+    await import('../src/background.firefox')
     await Promise.resolve()
     await Promise.resolve()
     expect(browser.proxy.onRequest._listeners.length).toBeGreaterThan(0)

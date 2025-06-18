@@ -106,7 +106,7 @@ function attachProxyHandlers (
 }
 
 function createAuthRequiredHandler (proxyList: ProxyListItem[]) {
-  return async function (details: OnAuthRequiredDetailsType) {
+  return function (details: OnAuthRequiredDetailsType) {
     console.debug(`[${APP_NAME}BG] Auth required detected:`, details)
 
     const proxy = getProxyTypeByChallenger(

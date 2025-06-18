@@ -2,7 +2,7 @@ import { addNetworkData, resetNetworkStats, networkStats } from '@utils/network'
 import { browser } from './setup'
 
 // Import background to register message handlers
-import '../src/background'
+import '../src/background.firefox'
 
 describe('network stats', () => {
   beforeEach(() => resetNetworkStats())

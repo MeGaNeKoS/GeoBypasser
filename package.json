@@ -42,6 +42,7 @@
     "webextension-polyfill": "^0.12.0"
   },
   "dependencies": {
+    "@types/chrome": "^0.0.326",
     "browser-extension-url-match": "^1.2.0"
   }
 }

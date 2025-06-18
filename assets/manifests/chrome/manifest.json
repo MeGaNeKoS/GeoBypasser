@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "GeoBypass",
+  "version": "1.0.1",
+  "description": "Lightweight browser extension to bypass geo-restrictions by proxying only necessary connections.",
+  "permissions": [
+    "proxy",
+    "storage",
+    "notifications",
+    "tabs",
+    "webRequest",
+    "webRequestAuthProvider"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "GeoBypass",
+    "default_icon": "icons/icon128.png",
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "dashboard.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "64": "icons/icon64.png",
+    "128": "icons/icon128.png"
+  },
+  "devtools_page": "devtools.html"
+}

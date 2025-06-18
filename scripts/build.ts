@@ -58,16 +58,20 @@ async function typeCheck () {
   }
 }
 
-async function bundleScripts () {
+async function bundleScripts (browser: string) {
   await typeCheck()
   console.log('Bundling scripts with esbuild...')
   await esbuild.build({
-    entryPoints: [
-      'src/*.ts',
-    ],
+    entryPoints: {
+      background: `src/background.${browser}.ts`,
+      devtools: 'src/devtools.ts',
+      dashboard: 'src/dashboard.ts',
+      popup: 'src/popup.ts',
+    },
     outdir: DIST_DIR,
     bundle: true,
     allowOverwrite: true,
+    entryNames: '[name]',
     format: 'iife',
     target: 'esnext',
     platform: 'browser',
@@ -110,7 +114,7 @@ async function packageForChrome () {
 
 async function buildAll (targetBrowser: string) {
   await cleanDist()
-  await bundleScripts()
+  await bundleScripts(targetBrowser)
   if (!Object.keys(BROWSER_MANIFESTS).includes(targetBrowser)) {
     throw new Error(`Unsupported browser: ${targetBrowser}`)
   }
@@ -130,7 +134,16 @@ async function main () {
         break
 
       case 'bundle':
-        await bundleScripts()
+        if (!targetBrowser) {
+          console.error('No target browser specified for \'bundle\' task.')
+          process.exit(1)
+        }
+        if (supportedBrowsers.includes(targetBrowser)) {
+          await bundleScripts(targetBrowser)
+        } else {
+          console.error(`Unsupported browser for 'bundle': ${targetBrowser}`)
+          process.exit(1)
+        }
         break
 
       case 'copy':

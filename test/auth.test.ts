@@ -19,7 +19,7 @@ jest.mock('@utils/storage', () => {
 
 describe('auth credentials', () => {
   it('supplies credentials on auth required', async () => {
-    await import('../src/background')
+    await import('../src/background.firefox')
     await Promise.resolve()
     const handler = browser.webRequest.onAuthRequired._listeners[0]
     const res = await handler({ challenger: { host: 'h', port: 80 } } as any)
