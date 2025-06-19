@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const setBtn = document.getElementById('setProxy') as HTMLButtonElement
   const clearBtn = document.getElementById('clearProxy') as HTMLButtonElement
 
-  if (supportsProxyOnRequest) {
+  if (!supportsProxyOnRequest) {
     scopeSelect.querySelector('option[value="tab"]')?.remove()
     if (scopeSelect.options.length <= 1) {
       scopeSelect.style.display = 'none'

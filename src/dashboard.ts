@@ -1338,7 +1338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   config = await getConfig()
   renderAll()
 
-  if (supportsProxyOnRequest) {
+  if (!supportsProxyOnRequest) {
     document.getElementById('clearTabProxies')?.remove()
   }
 

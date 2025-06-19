@@ -196,7 +196,7 @@ async function testProxyConfig (
   let restore: (() => Promise<void>) | null = null
   let testProxyHandler: ((requestInfo: Proxy.OnRequestDetailsType) => any) | null = null
 
-  if (supportsProxyOnRequest) {
+  if (!supportsProxyOnRequest) {
     const scheme = proxy.type === 'socks' ? 'SOCKS' : 'PROXY'
     const pacProxy = `${scheme} ${proxy.host}:${proxy.port}`
     restore = await addTestURLToPac(testUrl, pacProxy)
