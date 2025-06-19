@@ -17,6 +17,10 @@ const browser: any = {
     proxy: {
       onRequest: createEvent(),
       onError: createEvent(),
+      settings: {
+        get: jest.fn(async () => ({ value: {}, levelOfControl: 'controlled_by_this_extension' })),
+        set: jest.fn(async () => {}),
+      },
     },
     webRequest: {
       onAuthRequired: createEvent(),

@@ -6,6 +6,8 @@ import { fetchWithTimeout, getHostname, matchPatternList } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
+import { supportsProxyOnRequest } from '@utils/env'
+import { addTestURLToPac } from '@utils/pac'
 
 type ProxyTestJob = {
   proxy: ProxyListItem;
@@ -191,23 +193,29 @@ export function getProxyTypeByChallenger (
 
 async function testProxyConfig (
   proxy: ProxyListItem, testUrl: string, sendResult: (result: ProxyTestResult) => void) {
-  function testProxyHandler (requestInfo: Proxy.OnRequestDetailsType) {
-    console.debug(`[${APP_NAME}Proxy] Testing proxy ${proxy.host}:${proxy.port} for URL: ${requestInfo.url}`)
-    return {
-      type: proxy.type,
-      host: proxy.host,
-      port: proxy.port,
-      username: proxy.username,
-      password: proxy.password,
-      proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS,
-      failoverTimeout: proxy.failoverTimeout || 3, // Default to 3 seconds if not set
-    }
-  }
+  let restore: (() => Promise<void>) | null = null
+  let testProxyHandler: ((requestInfo: Proxy.OnRequestDetailsType) => any) | null = null
 
-  browser.proxy.onRequest.addListener(
-    testProxyHandler,
-    { urls: [testUrl] },
-  )
+  if (supportsProxyOnRequest) {
+    const scheme = proxy.type === 'socks' ? 'SOCKS' : 'PROXY'
+    const pacProxy = `${scheme} ${proxy.host}:${proxy.port}`
+    restore = await addTestURLToPac(testUrl, pacProxy)
+  } else {
+    testProxyHandler = function (requestInfo: Proxy.OnRequestDetailsType) {
+      console.debug(`[${APP_NAME}Proxy] Testing proxy ${proxy.host}:${proxy.port} for URL: ${requestInfo.url}`)
+      return {
+        type: proxy.type,
+        host: proxy.host,
+        port: proxy.port,
+        username: proxy.username,
+        password: proxy.password,
+        proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS,
+        failoverTimeout: proxy.failoverTimeout || 3,
+      }
+    }
+    browser.proxy.onRequest.addListener(testProxyHandler, { urls: [testUrl] })
+    restore = async () => { browser.proxy.onRequest.removeListener(testProxyHandler!) }
+  }
   try {
     const res = await fetchWithTimeout(new URL(testUrl), { method: 'HEAD', cache: 'no-store' }, 5000)
     let result
@@ -225,7 +233,7 @@ async function testProxyConfig (
       sendResult({ success: false, error: userError, proxy: `${proxy.host}:${proxy.port}` })
     }
   } finally {
-    browser.proxy.onRequest.removeListener(testProxyHandler)
+    if (restore) await restore()
   }
 }
 

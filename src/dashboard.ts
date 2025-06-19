@@ -5,6 +5,7 @@ import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { matchPattern } from 'browser-extension-url-match'
 import browser from 'webextension-polyfill'
+import { supportsProxyOnRequest } from '@utils/env'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
@@ -1337,6 +1338,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   config = await getConfig()
   renderAll()
 
+  if (supportsProxyOnRequest) {
+    document.getElementById('clearTabProxies')?.remove()
+  }
+
   document.querySelectorAll('#tabs button').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')!))
   })
@@ -1442,7 +1447,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('importConfig')!.click())
   document.getElementById('importConfig')!.addEventListener('change', ev =>
     handleImportConfig((ev.target as HTMLInputElement).files))
-  document.getElementById('clearTabProxies')!.addEventListener('click', clearTabProxies)
+  const clearTabEl = document.getElementById('clearTabProxies')
+  clearTabEl?.addEventListener('click', clearTabProxies)
   document.getElementById('refreshNetwork')!.addEventListener('click', renderNetwork)
   document.getElementById('clearNetwork')!.addEventListener('click', async () => {
     await browser.runtime.sendMessage({ type: 'clearNetworkStats' })

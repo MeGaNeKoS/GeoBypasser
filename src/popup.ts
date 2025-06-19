@@ -4,6 +4,7 @@ import { resolveProxy } from '@utils/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import type { SetTabProxyMessage, ClearTabProxyMessage } from '@customTypes/messages'
 import { testProxyConfigQueued } from '@utils/proxy'
+import { supportsProxyOnRequest } from '@utils/env'
 
 function getHostname (url?: string) {
   if (!url) return null
@@ -32,6 +33,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const scopeSelect = document.getElementById('scopeSelect') as HTMLSelectElement
   const setBtn = document.getElementById('setProxy') as HTMLButtonElement
   const clearBtn = document.getElementById('clearProxy') as HTMLButtonElement
+
+  if (supportsProxyOnRequest) {
+    scopeSelect.querySelector('option[value="tab"]')?.remove()
+    if (scopeSelect.options.length <= 1) {
+      scopeSelect.style.display = 'none'
+      document.getElementById('connector')?.style.setProperty('display', 'none')
+    }
+  }
 
   function getLabel (id?: string | null) {
     if (!id) return 'None'
