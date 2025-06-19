@@ -130,6 +130,7 @@ export async function keepAliveProxyStatus (proxy: ProxyListRuntimeItem, testUrl
         if ((proxy.downNotification || 0) < 4) {
           browser.notifications.create('proxy-error', {
             type: 'basic',
+            iconUrl: 'icons/icon128.png',
             title: `${APP_NAME} keep alive encountered an error!`,
             message: `Proxy ${proxy.host}:${proxy.port} failed: ${result.error || 'Unknown error'}`,
           })
