@@ -17,6 +17,27 @@ graph TD
 - Optional keep-alive monitoring for proxies
 - Network inspection with a collapsible usage tree and auto-refresh
 
+## Rule & Proxy Integration
+
+GeoBypasser supports importing external rule files and proxy configurations for quick setup.
+
+A companion project is available at:
+[**GeoBypass-Rules**](https://github.com/MeGaNeKoS/GeoBypass-Rules)
+
+This repository includes:
+
+- Rules and keep-alive monitors for various streaming and region-locked services
+- Files organized by service using a consistent naming structure
+- An optional public proxy configuration for community use
+
+To use these:
+
+1. Open the Dashboard
+2. Go to the Rules, Keep-Alive, or Proxy section
+3. Click "Import Rules" and select the corresponding `.json` file
+
+This makes it easy to get started without manually creating configurations.
+
 ## Prerequisites
 
 * Node.js (>= 18)
