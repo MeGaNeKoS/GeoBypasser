@@ -104,6 +104,14 @@ tr.show-actions td.row-actions { display: table-cell; }
 input.valid { border-color: #4c4; }
 input.invalid { border-color: #c44; }
 
+.note {
+  font-size: 0.9em;
+  opacity: 0.8;
+  margin: 4px 0;
+}
+
+.hidden { display: none; }
+
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
 .modal.hidden { display: none; }
 .modal-content {

@@ -1275,7 +1275,8 @@ async function renderNetwork () {
   const container = document.getElementById('networkTree') as HTMLElement
   if (!container) return
   container.innerHTML = ''
-  const stats = await browser.runtime.sendMessage({ type: 'getNetworkStats' }) as NetworkStats
+  const stats = await browser.runtime.sendMessage({ type: 'getNetworkStats' }).catch(() => null) as NetworkStats | null
+  if (!stats) return
 
   function buildList (nodes: Record<string, NetworkStatsNode>): HTMLUListElement {
     const ul = document.createElement('ul')
@@ -1340,6 +1341,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!supportsProxyOnRequest) {
     document.getElementById('clearTabProxies')?.remove()
+    document.querySelector('button[data-tab="override"]')?.remove()
+    document.getElementById('override')?.remove()
+    document.getElementById('networkHint')?.classList.remove('hidden')
   }
 
   document.querySelectorAll('#tabs button').forEach(btn => {
@@ -1370,12 +1374,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     updatePassHeaderButton()
   })
   document.getElementById('addRule')!.addEventListener('click', addRule)
-  document.getElementById('addOverride')!.addEventListener('click', openOverrideModal)
-  document.getElementById('exportOverridesSelected')!.addEventListener('click', exportSelectedOverrides)
-  document.getElementById('exportOverridesAll')!.addEventListener('click', exportAllOverrides)
-  document.getElementById('importOverridesBtn')!.addEventListener('click', () =>
-    document.getElementById('importOverrides')!.click())
-  document.getElementById('importOverrides')!.addEventListener('change', ev =>
+  document.getElementById('addOverride')?.addEventListener('click', openOverrideModal)
+  document.getElementById('exportOverridesSelected')?.addEventListener('click', exportSelectedOverrides)
+  document.getElementById('exportOverridesAll')?.addEventListener('click', exportAllOverrides)
+  document.getElementById('importOverridesBtn')?.addEventListener('click', () =>
+    document.getElementById('importOverrides')?.click())
+  document.getElementById('importOverrides')?.addEventListener('change', ev =>
     handleImportOverrides((ev.target as HTMLInputElement).files))
   document.getElementById('addKeepAliveRule')!.addEventListener('click', () => openKeepAliveModal())
   document.getElementById('exportKeepAliveSelected')!.addEventListener('click', exportSelectedKeepAlive)
@@ -1407,8 +1411,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('cancelList')!.addEventListener('click', closeListModal)
   document.getElementById('saveTypes')!.addEventListener('click', saveTypeModal)
   document.getElementById('cancelTypes')!.addEventListener('click', closeTypeModal)
-  document.getElementById('saveOverride')!.addEventListener('click', saveOverrideFromModal)
-  document.getElementById('cancelOverride')!.addEventListener('click', closeOverrideModal)
+  document.getElementById('saveOverride')?.addEventListener('click', saveOverrideFromModal)
+  document.getElementById('cancelOverride')?.addEventListener('click', closeOverrideModal)
   document.getElementById('saveKeepAlive')!.addEventListener('click', saveKeepAliveFromModal)
   document.getElementById('cancelKeepAlive')!.addEventListener('click', closeKeepAliveModal)
   document.getElementById('editKeepAlivePatterns')!.addEventListener('click', () =>
@@ -1451,7 +1455,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   clearTabEl?.addEventListener('click', clearTabProxies)
   document.getElementById('refreshNetwork')!.addEventListener('click', renderNetwork)
   document.getElementById('clearNetwork')!.addEventListener('click', async () => {
-    await browser.runtime.sendMessage({ type: 'clearNetworkStats' })
+    await browser.runtime.sendMessage({ type: 'clearNetworkStats' }).catch(() => {})
     renderNetwork()
   })
   const toggleAuto = document.getElementById('toggleNetworkAuto') as HTMLButtonElement | null

@@ -19,6 +19,7 @@ const PUBLIC: string[] = [
   'assets/dashboard.css',
   'assets/popup.css',
   'assets/devtools.html',
+  'assets/devtools_panel.html',
   'assets/icons/',
 ]
 

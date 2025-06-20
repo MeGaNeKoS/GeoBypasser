@@ -28,19 +28,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   const host = getHostname(tab?.url)
   domainEl.textContent = host || 'N/A'
 
-  const currentProxyEl = document.getElementById('currentProxy')!
-
-  const scopeSelect = document.getElementById('scopeSelect') as HTMLSelectElement
-  const setBtn = document.getElementById('setProxy') as HTMLButtonElement
-  const clearBtn = document.getElementById('clearProxy') as HTMLButtonElement
+  const currentProxyEl = document.getElementById('currentProxy') as HTMLElement | null
 
   if (!supportsProxyOnRequest) {
-    scopeSelect.querySelector('option[value="tab"]')?.remove()
-    if (scopeSelect.options.length <= 1) {
-      scopeSelect.style.display = 'none'
-      document.getElementById('connector')?.style.setProperty('display', 'none')
-    }
-  }
+    document.getElementById('controls')?.remove()
+    document.getElementById('testProxy')?.remove()
+    currentProxyEl?.parentElement?.remove()
+    // Show hint about devtools requirement for Chrome network monitoring
+    document.getElementById('monitorHint')?.classList.remove('hidden')
+  } else {
+    if (!currentProxyEl) return
+    const currentProxy = currentProxyEl
+    const scopeSelect = document.getElementById('scopeSelect') as HTMLSelectElement
+    const setBtn = document.getElementById('setProxy') as HTMLButtonElement
+    const clearBtn = document.getElementById('clearProxy') as HTMLButtonElement
+
 
   function getLabel (id?: string | null) {
     if (!id) return 'None'
@@ -53,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tabIdProxy = tab?.id !== undefined ? tabMap[tab.id] : undefined
     const domainProxy = host ? config.perWebsiteOverride[host] : undefined
     const applied = tabIdProxy ?? domainProxy
-    currentProxyEl.textContent = getLabel(applied)
+    currentProxy.textContent = getLabel(applied)
     select.value = applied || config.defaultProxy || DIRECT_PROXY_ID
   }
 
@@ -76,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (scopeSelect.value === 'tab') {
       if (!tab) return
       const msg: SetTabProxyMessage = { type: 'setTabProxy', tabId: tab.id!, proxyId }
-      await browser.runtime.sendMessage(msg)
+      await browser.runtime.sendMessage(msg).catch(() => {})
       if (tab.id !== undefined) tabMap[tab.id] = proxyId
     } else if (scopeSelect.value === 'site') {
       if (!host) return
@@ -90,7 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (scopeSelect.value === 'tab') {
       if (!tab) return
       const msg: ClearTabProxyMessage = { type: 'clearTabProxy', tabId: tab.id! }
-      await browser.runtime.sendMessage(msg)
+      await browser.runtime.sendMessage(msg).catch(() => {})
       if (tab.id !== undefined) delete tabMap[tab.id]
     } else if (scopeSelect.value === 'site') {
       if (!host) return
@@ -111,21 +113,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
   })
 
+}
+
   const toggleMonitor = document.getElementById('toggleMonitor') as HTMLButtonElement | null
+  let monitorSupported = true
 
   async function updateMonitorLabel () {
     if (!toggleMonitor || !tab || tab.id === undefined) return
-    const monitored = await browser.runtime.sendMessage({ type: 'isTabNetworkMonitored', tabId: tab.id })
+    let monitored = false
+    try {
+      monitored = await browser.runtime.sendMessage({ type: 'isTabNetworkMonitored', tabId: tab.id })
+    } catch {
+      monitorSupported = false
+      toggleMonitor.remove()
+      return
+    }
     toggleMonitor.textContent = monitored ? 'Stop Monitoring' : 'Monitor Tab'
   }
 
   toggleMonitor?.addEventListener('click', async () => {
-    if (!tab || tab.id === undefined || !toggleMonitor) return
-    const monitored = await browser.runtime.sendMessage({ type: 'isTabNetworkMonitored', tabId: tab.id })
+    if (!monitorSupported || !tab || tab.id === undefined || !toggleMonitor) return
+    let monitored = false
+    try {
+      monitored = await browser.runtime.sendMessage({ type: 'isTabNetworkMonitored', tabId: tab.id })
+    } catch {
+      monitorSupported = false
+      toggleMonitor.remove()
+      return
+    }
     if (monitored) {
-      await browser.runtime.sendMessage({ type: 'unmonitorTabNetwork', tabId: tab.id })
+      await browser.runtime.sendMessage({ type: 'unmonitorTabNetwork', tabId: tab.id }).catch(() => {})
     } else {
-      await browser.runtime.sendMessage({ type: 'monitorTabNetwork', tabId: tab.id })
+      await browser.runtime.sendMessage({ type: 'monitorTabNetwork', tabId: tab.id }).catch(() => {})
     }
     updateMonitorLabel()
   })

@@ -21,6 +21,17 @@ body.mobile-popup {
   font-size: 1rem;
 }
 
+.note {
+  font-size: 0.8em;
+  opacity: 0.8;
+  margin-left: 4px;
+  cursor: help;
+}
+
+.hidden {
+  display: none;
+}
+
 header {
   display: flex;
   justify-content: space-between;
@@ -98,6 +109,12 @@ button:hover {
 
 #connector {
   margin: 0 2px;
+}
+
+#monitorGroup {
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
 #actions {

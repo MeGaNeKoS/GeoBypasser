@@ -11,8 +11,8 @@ graph TD
 
 ## Features
 
-- Proxy list with per-tab assignment
-- Domain-based overrides
+- Proxy list with per-tab assignment *(not available on Chrome/Chromium)*
+- Domain-based overrides *(not available on Chrome/Chromium)*
 - Flexible matching rules with bypass and force patterns
 - Optional keep-alive monitoring for proxies
 - Network inspection with a collapsible usage tree and auto-refresh
@@ -44,7 +44,9 @@ See `package.json` for production build and packaging commands.
 Proxy selection follows these rules:
 
 1. **Tab specific rule** – If a tab is assigned a proxy, it takes priority. **All network requests** from that tab will be proxied.
+   > Not available on Chrome/Chromium due to limited proxy control
 2. **Main site rule** – If the tab URL's domain matches a configured rule, the proxy from that rule is used. **All network requests** from that tab will be proxied.
+   > Not available on Chrome/Chromium due to limited proxy control
 3. **Request domain rule** – If the request URL matches an existing rule, **only those specific requests** will be proxied.
 4. **Default proxy** – Used when no other rule matches.
 5. **Direct connection** – Used when no proxy rules apply.
