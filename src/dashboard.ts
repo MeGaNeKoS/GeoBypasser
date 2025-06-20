@@ -342,23 +342,63 @@ function renderProxyList () {
 
     const visible = revealAllPasswords || revealedPasswords.has(idx)
 
-    tr.innerHTML =
-      `<td>${p.label || p.host}</td>` +
-      `<td>${p.type === 'socks' ? 'socks5' : p.type}</td>` +
-      `<td>${p.host}</td>` +
-      `<td>${p.port}</td>` +
-      `<td>${p.username || ''}</td>` +
-      `<td class="password">${p.password ? (visible ? p.password : '******') : ''}</td>` +
-      `<td><input type="checkbox" data-notify ${p.notifyIfDown ? 'checked' : ''}></td>` +
-      `<td class="row-select"><input type="checkbox" data-select="${idx}"></td>` +
-      `<td class="row-actions"><button data-edit="${idx}">Edit</button> ` +
-      `<button data-remove="${idx}">Delete</button></td>`
+    const labelCell = document.createElement('td')
+    labelCell.textContent = p.label || p.host
+    tr.appendChild(labelCell)
+
+    const typeCell = document.createElement('td')
+    typeCell.textContent = p.type === 'socks' ? 'socks5' : p.type
+    tr.appendChild(typeCell)
+
+    const hostCell = document.createElement('td')
+    hostCell.textContent = p.host
+    tr.appendChild(hostCell)
+
+    const portCell = document.createElement('td')
+    portCell.textContent = String(p.port)
+    tr.appendChild(portCell)
+
+    const userCell = document.createElement('td')
+    userCell.textContent = p.username || ''
+    tr.appendChild(userCell)
+
+    const passCell = document.createElement('td')
+    passCell.className = 'password'
+    passCell.textContent = p.password ? (visible ? p.password : '******') : ''
+    tr.appendChild(passCell)
+
+    const notifyCell = document.createElement('td')
+    const notifyChk = document.createElement('input')
+    notifyChk.type = 'checkbox'
+    notifyChk.dataset.notify = ''
+    notifyChk.checked = !!p.notifyIfDown
+    notifyCell.appendChild(notifyChk)
+    tr.appendChild(notifyCell)
+
+    const selectCell = document.createElement('td')
+    selectCell.className = 'row-select'
+    const selChk = document.createElement('input')
+    selChk.type = 'checkbox'
+    selChk.dataset.select = String(idx)
+    selectCell.appendChild(selChk)
+    tr.appendChild(selectCell)
+
+    const actionsCell = document.createElement('td')
+    actionsCell.className = 'row-actions'
+    const editBtn = document.createElement('button')
+    editBtn.dataset.edit = String(idx)
+    editBtn.textContent = 'Edit'
+    const delBtn = document.createElement('button')
+    delBtn.dataset.remove = String(idx)
+    delBtn.textContent = 'Delete'
+    actionsCell.appendChild(editBtn)
+    actionsCell.appendChild(delBtn)
+    tr.appendChild(actionsCell)
 
     tbody.appendChild(tr)
     // attachRowHandlers(tr, document.getElementById('proxyTable') as HTMLTableElement,
     //   document.getElementById('exportProxiesSelected') as HTMLElement)
 
-    const passCell = tr.querySelector('td.password') as HTMLTableCellElement
     if (p.password) {
       const toggle = document.createElement('button')
       toggle.textContent = visible ? 'Hide' : 'Show'
@@ -375,12 +415,10 @@ function renderProxyList () {
       passCell.append(' ', toggle)
     }
 
-    const notifyChk = tr.querySelector('input[data-notify]') as HTMLInputElement
     notifyChk.onchange = () => {
       p.notifyIfDown = notifyChk.checked
       saveConfig(config)
     }
-    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
     selChk.onchange = () => {
       if (selChk.checked) selectedProxies.add(idx)
       else selectedProxies.delete(idx)
@@ -389,10 +427,8 @@ function renderProxyList () {
         document.getElementById('exportProxiesSelected') as HTMLElement,
       )
     }
-    const editBtn = tr.querySelector('button[data-edit]') as HTMLButtonElement
     editBtn.onclick = () => openProxyModal(idx)
-    const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
-    del.onclick = () => {
+    delBtn.onclick = () => {
       config.proxyList.splice(idx, 1)
       saveConfig(config).then(renderAll)
     }
@@ -488,26 +524,59 @@ function renderRules () {
       : proxy
         ? (proxy.label || proxy.host)
         : r.proxyId
-    tr.innerHTML =
-      `<td><input type="checkbox" data-active ${r.active ? 'checked' : ''}></td>` +
-      `<td>${r.name}</td>` +
-      `<td>${r.match.join(', ')}</td>` +
-      `<td>${proxyLabel}</td>` +
-      `<td class="row-select"><input type="checkbox" data-select="${idx}"></td>` +
-      `<td class="row-actions"><button data-edit="${idx}">Edit</button> ` +
-      `<button data-remove="${idx}">Delete</button> ` +
-      `<button data-export="${idx}">Export</button></td>`
+
+    const activeCell = document.createElement('td')
+    const activeChk = document.createElement('input')
+    activeChk.type = 'checkbox'
+    activeChk.dataset.active = ''
+    activeChk.checked = !!r.active
+    activeCell.appendChild(activeChk)
+    tr.appendChild(activeCell)
+
+    const nameCell = document.createElement('td')
+    nameCell.textContent = r.name
+    tr.appendChild(nameCell)
+
+    const matchCell = document.createElement('td')
+    matchCell.textContent = r.match.join(', ')
+    tr.appendChild(matchCell)
+
+    const proxyCell = document.createElement('td')
+    proxyCell.textContent = proxyLabel
+    tr.appendChild(proxyCell)
+
+    const selectCell = document.createElement('td')
+    selectCell.className = 'row-select'
+    const selChk = document.createElement('input')
+    selChk.type = 'checkbox'
+    selChk.dataset.select = String(idx)
+    selectCell.appendChild(selChk)
+    tr.appendChild(selectCell)
+
+    const actionsCell = document.createElement('td')
+    actionsCell.className = 'row-actions'
+    const editBtn = document.createElement('button')
+    editBtn.dataset.edit = String(idx)
+    editBtn.textContent = 'Edit'
+    const delBtn = document.createElement('button')
+    delBtn.dataset.remove = String(idx)
+    delBtn.textContent = 'Delete'
+    const expBtn = document.createElement('button')
+    expBtn.dataset.export = String(idx)
+    expBtn.textContent = 'Export'
+    actionsCell.appendChild(editBtn)
+    actionsCell.appendChild(delBtn)
+    actionsCell.appendChild(expBtn)
+    tr.appendChild(actionsCell)
     if (!proxy) tr.classList.add('missing-proxy')
     if (isRuleInvalid(r)) tr.classList.add('invalid-rule')
     tbody.appendChild(tr)
     // attachRowHandlers(tr, document.getElementById('ruleTable') as HTMLTableElement,
     //   document.getElementById('exportRulesSelected') as HTMLElement)
-    const activeChk = tr.querySelector('input[data-active]') as HTMLInputElement
     activeChk.onchange = () => {
       r.active = activeChk.checked
       saveConfig(config)
     }
-    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
     selChk.onchange = () => {
       if (selChk.checked) selectedRules.add(idx)
       else selectedRules.delete(idx)
@@ -516,15 +585,12 @@ function renderRules () {
         document.getElementById('exportRulesSelected') as HTMLElement,
       )
     }
-    const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
-    edit.onclick = () => openRuleModal(idx)
-    const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
-    del.onclick = () => {
+    editBtn.onclick = () => openRuleModal(idx)
+    delBtn.onclick = () => {
       config.rules.splice(idx, 1)
       saveConfig(config).then(renderAll)
     }
-    const exp = tr.querySelector('button[data-export]') as HTMLButtonElement
-    exp.onclick = () => exportRules([r])
+    expBtn.onclick = () => exportRules([r])
   })
 }
 
@@ -641,22 +707,39 @@ function renderOverrides () {
     const proxy = config.proxyList.find(p => p.id === proxyId)
     const proxyLabel = proxy ? (proxy.label || proxy.host) : proxyId
     const tr = document.createElement('tr')
-    tr.innerHTML =
-      `<td>${domain}</td>` +
-      `<td>${proxyLabel}</td>` +
-      `<td class="row-select"><input type="checkbox" data-select="${domain}"></td>` +
-      `<td class="row-actions"><button data-domain="${domain}">Delete</button></td>`
+    const domainCell = document.createElement('td')
+    domainCell.textContent = domain
+    tr.appendChild(domainCell)
+
+    const proxyCell = document.createElement('td')
+    proxyCell.textContent = proxyLabel
+    tr.appendChild(proxyCell)
+
+    const selectCell = document.createElement('td')
+    selectCell.className = 'row-select'
+    const selChk = document.createElement('input')
+    selChk.type = 'checkbox'
+    selChk.dataset.select = domain
+    selectCell.appendChild(selChk)
+    tr.appendChild(selectCell)
+
+    const actionsCell = document.createElement('td')
+    actionsCell.className = 'row-actions'
+    const delBtn = document.createElement('button')
+    delBtn.dataset.domain = domain
+    delBtn.textContent = 'Delete'
+    actionsCell.appendChild(delBtn)
+    tr.appendChild(actionsCell)
+
     tbody.appendChild(tr)
     // attachRowHandlers(tr, document.getElementById('overrideTable') as HTMLTableElement,
     //   document.getElementById('exportOverridesSelected') as HTMLElement)
-    const btn = tr.querySelector('button') as HTMLButtonElement
-    btn.onclick = () => {
+    delBtn.onclick = () => {
       delete config.perWebsiteOverride[domain]
       saveConfig(config).then(renderAll)
     }
-    const sel = tr.querySelector('input[data-select]') as HTMLInputElement
-    sel.onchange = () => {
-      if (sel.checked) selectedOverrides.add(domain)
+    selChk.onchange = () => {
+      if (selChk.checked) selectedOverrides.add(domain)
       else selectedOverrides.delete(domain)
       updateSelectVisibility(
         document.getElementById('overrideTable') as HTMLTableElement,
@@ -759,24 +842,55 @@ function renderKeepAlive () {
     const tr = document.createElement('tr')
     const proxy = config.proxyList.find(p => p.id === proxyId)
     const proxyLabel = proxy ? (proxy.label || proxy.host) : proxyId
-    tr.innerHTML =
-      `<td><input type="checkbox" data-active ${rule.active ? 'checked' : ''}></td>` +
-      `<td>${proxyLabel}</td>` +
-      `<td>${rule.tabUrls.join(', ')}</td>` +
-      `<td>${rule.testProxyUrl || ''}</td>` +
-      `<td class="row-select"><input type="checkbox" data-select="${proxyId}"></td>` +
-      `<td class="row-actions"><button data-edit="${proxyId}">Edit</button> ` +
-      `<button data-remove="${proxyId}">Delete</button></td>`
+
+    const activeCell = document.createElement('td')
+    const chk = document.createElement('input')
+    chk.type = 'checkbox'
+    chk.dataset.active = ''
+    chk.checked = rule.active
+    activeCell.appendChild(chk)
+    tr.appendChild(activeCell)
+
+    const proxyCell = document.createElement('td')
+    proxyCell.textContent = proxyLabel
+    tr.appendChild(proxyCell)
+
+    const urlsCell = document.createElement('td')
+    urlsCell.textContent = rule.tabUrls.join(', ')
+    tr.appendChild(urlsCell)
+
+    const testCell = document.createElement('td')
+    testCell.textContent = rule.testProxyUrl || ''
+    tr.appendChild(testCell)
+
+    const selectCell = document.createElement('td')
+    selectCell.className = 'row-select'
+    const selChk = document.createElement('input')
+    selChk.type = 'checkbox'
+    selChk.dataset.select = proxyId
+    selectCell.appendChild(selChk)
+    tr.appendChild(selectCell)
+
+    const actionsCell = document.createElement('td')
+    actionsCell.className = 'row-actions'
+    const editBtn = document.createElement('button')
+    editBtn.dataset.edit = proxyId
+    editBtn.textContent = 'Edit'
+    const delBtn = document.createElement('button')
+    delBtn.dataset.remove = proxyId
+    delBtn.textContent = 'Delete'
+    actionsCell.appendChild(editBtn)
+    actionsCell.appendChild(delBtn)
+    tr.appendChild(actionsCell)
+
     if (!proxy) tr.classList.add('missing-proxy')
     tbody.appendChild(tr)
     // attachRowHandlers(tr, document.getElementById('keepAliveTable') as HTMLTableElement,
     //   document.getElementById('exportKeepAliveSelected') as HTMLElement)
-    const chk = tr.querySelector('input[data-active]') as HTMLInputElement
     chk.onchange = () => {
       rule.active = chk.checked
       saveConfig(config)
     }
-    const selChk = tr.querySelector('input[data-select]') as HTMLInputElement
     selChk.onchange = () => {
       if (selChk.checked) selectedKeepAlive.add(proxyId)
       else selectedKeepAlive.delete(proxyId)
@@ -785,10 +899,8 @@ function renderKeepAlive () {
         document.getElementById('exportKeepAliveSelected') as HTMLElement,
       )
     }
-    const edit = tr.querySelector('button[data-edit]') as HTMLButtonElement
-    edit.onclick = () => openKeepAliveModal(proxyId)
-    const del = tr.querySelector('button[data-remove]') as HTMLButtonElement
-    del.onclick = () => {
+    editBtn.onclick = () => openKeepAliveModal(proxyId)
+    delBtn.onclick = () => {
       delete config.keepAliveRules?.[proxyId]
       saveConfig(config).then(renderAll)
     }
