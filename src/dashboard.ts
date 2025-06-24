@@ -1,6 +1,11 @@
 import { compileRules, getConfig, saveConfig, saveTabProxyMap, updateConfig } from '@utils/storage'
 import { WEB_REQUEST_RESOURCE_TYPES, WebRequestResourceType } from '@constant/requestTypes'
-import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from '@customTypes/proxy'
+import {
+  KeepAliveProxyRule,
+  ProxyListItem,
+  ProxyRule,
+  RuntimeProxyRule,
+} from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { matchPattern } from 'browser-extension-url-match'
@@ -907,8 +912,8 @@ function renderKeepAlive () {
   }
 }
 
-function stripRule (r: RuntimeProxyRule): ProxyRule {
-  return {
+function stripRule (r: RuntimeProxyRule, keepProxyId = true): ProxyRule {
+  const rule: ProxyRule = {
     active: typeof r.active === 'undefined' ? true : r.active,
     name: r.name,
     match: r.match,
@@ -917,8 +922,9 @@ function stripRule (r: RuntimeProxyRule): ProxyRule {
     staticExtensions: r.staticExtensions,
     forceProxyUrlPatterns: r.forceProxyUrlPatterns,
     fallbackDirect: r.fallbackDirect,
-    proxyId: r.proxyId,
   }
+  rule.proxyId = keepProxyId ? r.proxyId : DIRECT_PROXY_ID
+  return rule
 }
 
 function getExportableConfig () {
@@ -933,17 +939,18 @@ function getExportableConfig () {
   }
 }
 
-function exportRules (rules: ProxyRule[]) {
-  const data = JSON.stringify(rules, null, 2)
+function exportRules (rules: RuntimeProxyRule[]) {
+  const sanitized = rules.map(r => stripRule(r, false))
+  const data = JSON.stringify({ rules: sanitized }, null, 2)
   download('rules.json', data)
 }
 
 function exportAllRules () {
-  exportRules(config.rules.map(stripRule))
+  exportRules(config.rules)
 }
 
 function exportSelectedRules () {
-  const arr = Array.from(selectedRules).map(i => stripRule(config.rules[i]))
+  const arr = Array.from(selectedRules).map(i => config.rules[i])
   if (arr.length === 0) {
     exportAllRules()
   } else {
@@ -954,12 +961,12 @@ function exportSelectedRules () {
 function handleImportRules (files: FileList | null) {
   if (!files || !files[0]) return
 
-  files[0].text().then(t => {
-    try {
-      const raw = JSON.parse(t)
-      const normalized = Array.isArray(raw) ? raw : [raw]
+    files[0].text().then(t => {
+      try {
+        const raw = JSON.parse(t)
+        const arr = raw?.rules
 
-      const result = z.array(ProxyRuleSchema).safeParse(normalized)
+        const result = z.array(ProxyRuleSchema).safeParse(arr)
 
       if (!result.success) {
         console.error('Invalid proxy rules:', result.error)
@@ -979,7 +986,7 @@ function handleImportRules (files: FileList | null) {
 }
 
 function exportProxies (list: ProxyListItem[]) {
-  download('proxies.json', JSON.stringify(list, null, 2))
+  download('proxies.json', JSON.stringify({ proxyList: list }, null, 2))
 }
 
 function exportAllProxies () {
@@ -995,12 +1002,12 @@ function exportSelectedProxies () {
 function handleImportProxies (files: FileList | null) {
   if (!files || !files[0]) return
 
-  files[0].text().then(t => {
-    try {
-      const raw = JSON.parse(t)
-      const normalized = Array.isArray(raw) ? raw : [raw]
+    files[0].text().then(t => {
+      try {
+        const raw = JSON.parse(t)
+        const list = raw?.proxyList
 
-      const result = z.array(ProxyListItemSchema).safeParse(normalized)
+        const result = z.array(ProxyListItemSchema).safeParse(list)
 
       if (!result.success) {
         console.error('Invalid proxy list items:', result.error)
@@ -1028,7 +1035,7 @@ function handleImportProxies (files: FileList | null) {
 }
 
 function exportOverrides (obj: Record<string, string>) {
-  download('overrides.json', JSON.stringify(obj, null, 2))
+  download('overrides.json', JSON.stringify({ perWebsiteOverride: obj }, null, 2))
 }
 
 function exportAllOverrides () {
@@ -1048,11 +1055,12 @@ function exportSelectedOverrides () {
 function handleImportOverrides (files: FileList | null) {
   if (!files || !files[0]) return
 
-  files[0].text().then(t => {
-    try {
-      const parsed = JSON.parse(t)
+    files[0].text().then(t => {
+      try {
+        const parsed = JSON.parse(t)
+        const obj = parsed?.perWebsiteOverride
 
-      const result = z.record(ProxyIdSchema).safeParse(parsed)
+        const result = z.record(ProxyIdSchema).safeParse(obj)
 
       if (!result.success) {
         console.error('Invalid override map:', result.error)
@@ -1071,7 +1079,7 @@ function handleImportOverrides (files: FileList | null) {
 }
 
 function exportKeepAlive (obj: KeepAliveProxyRule) {
-  download('keepalive.json', JSON.stringify(obj, null, 2))
+  download('keepalive.json', JSON.stringify({ keepAliveRules: obj }, null, 2))
 }
 
 function exportAllKeepAlive () {
@@ -1091,11 +1099,12 @@ function exportSelectedKeepAlive () {
 function handleImportKeepAlive (files: FileList | null) {
   if (!files || !files[0]) return
 
-  files[0].text().then(t => {
-    try {
-      const parsed = JSON.parse(t)
+    files[0].text().then(t => {
+      try {
+        const parsed = JSON.parse(t)
+        const obj = parsed?.keepAliveRules
 
-      const result = KeepAliveProxyRuleSchema.safeParse(parsed)
+        const result = KeepAliveProxyRuleSchema.safeParse(obj)
 
       if (!result.success) {
         console.error('Invalid keep-alive rules:', result.error)
@@ -1283,9 +1292,13 @@ function exportConfigFromModal () {
   const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
   if (proxyIdxs.length) obj.proxyList = proxyIdxs.map(i => config.proxyList[i])
+  const exportedProxyIds = new Set(obj.proxyList?.map(p => p.id) || [])
   const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
-  if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => stripRule(config.rules[i]))
+  if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => {
+    const r = config.rules[i]
+    return stripRule(r, exportedProxyIds.has(r.proxyId))
+  })
   const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
   if (ovDomains.length) {

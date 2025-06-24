@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ProxyIdSchema, ProxyTypeSchema } from '@schemas/generic'
+import { DIRECT_PROXY_ID } from '@constant/proxy'
 
 export const ProxyConfigSchema = z.object({
   type: ProxyTypeSchema,
@@ -23,7 +24,7 @@ export const ProxyListRuntimeItemSchema = ProxyListItemSchema.extend({
 
 export const RuleProxyIdSchema = z.union([
   ProxyIdSchema,
-  z.literal('DIRECT_PROXY'), // adjust if DIRECT_PROXY_ID is a constant string
+  z.literal(DIRECT_PROXY_ID),
 ])
 
 export const ProxyRuleSchema = z.object({
