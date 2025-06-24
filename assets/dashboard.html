@@ -192,6 +192,11 @@
       <button id="openExportConfig">Export Config</button>
       <input type="file" id="importConfig" style="display:none">
       <button id="importConfigBtn">Import Config</button>
+      <div class="import-url">
+        <label>URL <input type="url" id="importUrlInput" placeholder="GitHub repo or raw .json"></label>
+        <button id="importUrlBtn">Import URL</button>
+        <button id="openCommunityImport">Community Rules</button>
+      </div>
       <div id="exportConfigModal" class="modal hidden">
         <div class="modal-content">
           <h3>Select Items to Export</h3>
@@ -201,6 +206,15 @@
           </div>
           <button id="exportConfigConfirm">Export</button>
           <button id="exportConfigCancel">Cancel</button>
+        </div>
+      </div>
+      <div id="remoteImportModal" class="modal hidden">
+        <div class="modal-content">
+          <h3>Select Community Files</h3>
+          <div id="remoteFileTree"></div>
+          <button id="remoteImportSelectAll">Select All</button>
+          <button id="remoteImportConfirm">Import</button>
+          <button id="remoteImportCancel">Cancel</button>
         </div>
       </div>
     </section>

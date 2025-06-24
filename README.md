@@ -35,6 +35,8 @@ To use these:
 1. Open the Dashboard
 2. Go to the Rules, Keep-Alive, or Proxy section
 3. Click "Import Rules" and select the corresponding `.json` file
+4. Alternatively use "Import URL" in the Import/Export tab to load a raw `.json`
+   file or provide a GitHub repository link and choose which configs to import.
 
 This makes it easy to get started without manually creating configurations.
 

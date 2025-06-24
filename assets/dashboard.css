@@ -146,6 +146,10 @@ input.invalid { border-color: #c44; }
   overflow-y: auto;
 }
 
+.import-url {
+  margin-top: 8px;
+}
+
 /* remove number input arrows */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {

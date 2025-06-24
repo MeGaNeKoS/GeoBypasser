@@ -996,6 +996,163 @@ function getExportableConfig () {
   }
 }
 
+async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
+  const base = getExportableConfig()
+  const updated: GeoBypassSettings = {
+    proxyList: [...base.proxyList],
+    defaultProxy: cfg.defaultProxy ?? base.defaultProxy,
+    fallbackDirect: cfg.fallbackDirect ?? base.fallbackDirect,
+    testProxyUrl: cfg.testProxyUrl ?? base.testProxyUrl,
+    rules: Array.isArray(cfg.rules) ? [...base.rules] : base.rules,
+    keepAliveRules: cfg.keepAliveRules ?? base.keepAliveRules,
+    perWebsiteOverride: { ...base.perWebsiteOverride, ...cfg.perWebsiteOverride },
+  }
+
+  const idMap = new Map<string, string>()
+
+  if (cfg.proxyList) {
+    const existing = new Map(updated.proxyList.map((p, idx) => [proxySignature(p), idx]))
+    for (const p of cfg.proxyList as ProxyListItem[]) {
+      const sig = proxySignature(p)
+      if (existing.has(sig)) {
+        const idx = existing.get(sig)!
+        const choice = await showDuplicateModal(`${p.host}:${p.port}`)
+        const target = updated.proxyList[idx]
+        if (choice === 'new') {
+          updated.proxyList[idx] = { ...p, id: target.id }
+          idMap.set(p.id, target.id)
+        } else if (choice === 'both') {
+          const np = { ...p, id: crypto.randomUUID() }
+          if (np.label) np.label += ' (copy)'
+          updated.proxyList.push(np)
+          idMap.set(p.id, np.id)
+        } else {
+          idMap.set(p.id, target.id)
+        }
+      } else {
+        existing.set(sig, updated.proxyList.length)
+        updated.proxyList.push(p)
+        idMap.set(p.id, p.id)
+      }
+    }
+  }
+
+  if (cfg.defaultProxy) {
+    updated.defaultProxy = idMap.get(cfg.defaultProxy) ?? cfg.defaultProxy
+  }
+
+  if (cfg.rules && Array.isArray(cfg.rules)) {
+    const mappedRules = cfg.rules.map((r: ProxyRule) => ({
+      ...r,
+      proxyId: idMap.get(r.proxyId) ?? r.proxyId,
+    }))
+    updated.rules = [...updated.rules, ...mappedRules]
+  }
+
+  if (cfg.perWebsiteOverride) {
+    for (const [domain, pid] of Object.entries(cfg.perWebsiteOverride as Record<string, string>)) {
+      updated.perWebsiteOverride[domain] = idMap.get(pid) ?? pid
+    }
+  }
+
+  if (cfg.keepAliveRules) {
+    updated.keepAliveRules = { ...(base.keepAliveRules || {}) }
+    for (const [pid, rule] of Object.entries(cfg.keepAliveRules as Record<string, { active: boolean; tabUrls: string[]; testProxyUrl?: string }>)) {
+      const mappedId = idMap.get(pid) ?? pid
+      updated.keepAliveRules[mappedId] = rule
+    }
+  }
+
+  await saveConfig(updated)
+  config = await getConfig()
+  renderAll()
+}
+
+async function importConfigObject (obj: unknown) {
+  const parsed = GeoBypassSettingsSchema.partial().safeParse(obj)
+  if (!parsed.success) {
+    console.error('Invalid config data:', parsed.error)
+    alert('Invalid config file: schema validation failed.')
+    return
+  }
+
+  await mergeConfigData(parsed.data)
+}
+
+async function importConfigFromUrl (url: string) {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const obj = await res.json()
+    await importConfigObject(obj)
+  } catch (err) {
+    console.error('Failed to import from URL:', err)
+    alert('Failed to import configuration from URL.')
+  }
+}
+
+async function fetchGitHubFileList (owner: string, repo: string, prefix = ''): Promise<{ path: string; url: string }[]> {
+  try {
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`
+    const res = await fetch(apiUrl)
+    if (!res.ok) throw new Error('Failed to fetch file list')
+    const data = await res.json() as { tree?: Array<{ path: string; type: string }> }
+    const files: { path: string; url: string }[] = []
+    const pref = prefix ? `${prefix.replace(/\/+$/, '')}/` : ''
+    for (const entry of data.tree || []) {
+      if (entry.type === 'blob' && entry.path.endsWith('.json') && entry.path.startsWith(pref)) {
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${entry.path}`
+        files.push({ path: entry.path.slice(pref.length), url: rawUrl })
+      }
+    }
+    return files
+  } catch (err) {
+    console.error('Failed to fetch GitHub file list:', err)
+    return []
+  }
+}
+
+function openRemoteImportModal (owner: string, repo: string, prefix = '') {
+  const modal = document.getElementById('remoteImportModal')!
+  const container = document.getElementById('remoteFileTree')!
+  container.innerHTML = 'Loading...'
+  fetchGitHubFileList(owner, repo, prefix).then(files => {
+    container.innerHTML = ''
+    files.forEach(f => {
+      const label = document.createElement('label')
+      const chk = document.createElement('input')
+      chk.type = 'checkbox'
+      chk.value = f.url
+      chk.checked = true
+      label.appendChild(chk)
+      label.append(' ', f.path)
+      container.appendChild(label)
+      container.appendChild(document.createElement('br'))
+    })
+  })
+  modal.classList.remove('hidden')
+}
+
+function closeRemoteImportModal () {
+  document.getElementById('remoteImportModal')?.classList.add('hidden')
+}
+
+function remoteSelectAll () {
+  document.querySelectorAll('#remoteFileTree input[type="checkbox"]').forEach(el => {
+    (el as HTMLInputElement).checked = true
+  })
+}
+
+async function confirmRemoteImport () {
+  const urls = Array.from(document.querySelectorAll('#remoteFileTree input[type="checkbox"]'))
+    .filter(el => (el as HTMLInputElement).checked)
+    .map(el => (el as HTMLInputElement).value)
+  for (const url of urls) {
+    await importConfigFromUrl(url)
+  }
+  closeRemoteImportModal()
+}
+
 function exportRules (rules: RuntimeProxyRule[]) {
   const sanitized = rules.map(r => stripRule(r, false))
   const data = JSON.stringify({ rules: sanitized }, null, 2)
@@ -1423,84 +1580,7 @@ function handleImportConfig (files: FileList | null) {
   files[0].text().then(async t => {
     try {
       const obj = JSON.parse(t)
-
-      const parsed = GeoBypassSettingsSchema.partial().safeParse(obj)
-      if (!parsed.success) {
-        console.error('Invalid config data:', parsed.error)
-        alert('Invalid config file: schema validation failed.')
-        return
-      }
-
-      const cfg = parsed.data
-      const base = getExportableConfig()
-      const updated: GeoBypassSettings = {
-        proxyList: [...base.proxyList],
-        defaultProxy: cfg.defaultProxy ?? base.defaultProxy,
-        fallbackDirect: cfg.fallbackDirect ?? base.fallbackDirect,
-        testProxyUrl: cfg.testProxyUrl ?? base.testProxyUrl,
-        rules: Array.isArray(cfg.rules) ? [...base.rules] : base.rules,
-        keepAliveRules: cfg.keepAliveRules ?? base.keepAliveRules,
-        perWebsiteOverride: { ...base.perWebsiteOverride, ...cfg.perWebsiteOverride },
-      }
-
-      const idMap = new Map<string, string>()
-
-      if (cfg.proxyList) {
-        const existing = new Map(updated.proxyList.map((p, idx) => [proxySignature(p), idx]))
-        for (const p of cfg.proxyList as ProxyListItem[]) {
-          const sig = proxySignature(p)
-          if (existing.has(sig)) {
-            const idx = existing.get(sig)!
-            const choice = await showDuplicateModal(`${p.host}:${p.port}`)
-            const target = updated.proxyList[idx]
-            if (choice === 'new') {
-              updated.proxyList[idx] = { ...p, id: target.id }
-              idMap.set(p.id, target.id)
-            } else if (choice === 'both') {
-              const np = { ...p, id: crypto.randomUUID() }
-              if (np.label) np.label += ' (copy)'
-              updated.proxyList.push(np)
-              idMap.set(p.id, np.id)
-            } else {
-              idMap.set(p.id, target.id)
-            }
-          } else {
-            existing.set(sig, updated.proxyList.length)
-            updated.proxyList.push(p)
-            idMap.set(p.id, p.id)
-          }
-        }
-      }
-
-      if (cfg.defaultProxy) {
-        updated.defaultProxy = idMap.get(cfg.defaultProxy) ?? cfg.defaultProxy
-      }
-
-      if (cfg.rules && Array.isArray(cfg.rules)) {
-        const mappedRules = cfg.rules.map((r: ProxyRule) => ({
-          ...r,
-          proxyId: idMap.get(r.proxyId) ?? r.proxyId,
-        }))
-        updated.rules = [...updated.rules, ...mappedRules]
-      }
-
-      if (cfg.perWebsiteOverride) {
-        for (const [domain, pid] of Object.entries(cfg.perWebsiteOverride as Record<string, string>)) {
-          updated.perWebsiteOverride[domain] = idMap.get(pid) ?? pid
-        }
-      }
-
-      if (cfg.keepAliveRules) {
-        updated.keepAliveRules = { ...(base.keepAliveRules || {}) }
-        for (const [pid, rule] of Object.entries(cfg.keepAliveRules as Record<string, { active: boolean; tabUrls: string[]; testProxyUrl?: string }>)) {
-          const mappedId = idMap.get(pid) ?? pid
-          updated.keepAliveRules[mappedId] = rule
-        }
-      }
-
-      await saveConfig(updated)
-      config = await getConfig()
-      renderAll()
+      await importConfigObject(obj)
     } catch (e) { console.error(e) }
   })
 }
@@ -1753,6 +1833,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('importConfig')!.click())
   document.getElementById('importConfig')!.addEventListener('change', ev =>
     handleImportConfig((ev.target as HTMLInputElement).files))
+  document.getElementById('importUrlBtn')!.addEventListener('click', () => {
+    const url = (document.getElementById('importUrlInput') as HTMLInputElement).value.trim()
+    if (!url) return
+    if (/\.json$/.test(url)) {
+      importConfigFromUrl(url)
+      return
+    }
+    const repoMatch = url.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)(?:\/tree\/[^\/]+\/(.*))?\/?$/)
+    if (repoMatch) {
+      const [, owner, repo, prefix] = repoMatch
+      openRemoteImportModal(owner, repo, prefix)
+    } else {
+      alert('Please enter a GitHub repository URL or direct JSON link.')
+    }
+  })
+  document.getElementById('openCommunityImport')!.addEventListener('click', () => openRemoteImportModal('MeGaNeKoS', 'GeoBypass-Rules'))
+  document.getElementById('remoteImportConfirm')!.addEventListener('click', confirmRemoteImport)
+  document.getElementById('remoteImportCancel')!.addEventListener('click', closeRemoteImportModal)
+  document.getElementById('remoteImportSelectAll')!.addEventListener('click', remoteSelectAll)
   const clearTabEl = document.getElementById('clearTabProxies')
   clearTabEl?.addEventListener('click', clearTabProxies)
   document.getElementById('refreshNetwork')!.addEventListener('click', renderNetwork)
