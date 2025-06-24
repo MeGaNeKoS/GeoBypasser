@@ -256,14 +256,31 @@ function addListItem (container: HTMLElement, value = '') {
   container.appendChild(div)
 }
 
-function openListModal (inputId: string, title: string, validator: (v: string) => boolean) {
+interface ListHelp { href?: string, title?: string }
+
+function openListModal (inputId: string, title: string, validator: (v: string) => boolean, help?: ListHelp) {
   listTargetInput = document.getElementById(inputId) as HTMLInputElement
   currentListValidator = validator
   const modal = document.getElementById('listModal')!
   const heading = document.getElementById('listModalTitle')!
   const container = document.getElementById('listModalItems')!
+  const helpEl = document.getElementById('listModalHelp') as HTMLAnchorElement
   heading.textContent = title
   container.innerHTML = ''
+  if (help) {
+    if (help.href) {
+      helpEl.href = help.href
+      helpEl.target = '_blank'
+    } else {
+      helpEl.removeAttribute('href')
+      helpEl.removeAttribute('target')
+    }
+    if (help.title) helpEl.title = help.title
+    else helpEl.removeAttribute('title')
+    helpEl.classList.remove('hidden')
+  } else {
+    helpEl.classList.add('hidden')
+  }
   const arr = listTargetInput.value.split(/\s*,\s*/).filter(Boolean)
   if (arr.length === 0) addListItem(container)
   else arr.forEach(v => addListItem(container, v))
@@ -1662,11 +1679,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('saveRule')!.addEventListener('click', saveRuleFromModal)
   document.getElementById('cancelRule')!.addEventListener('click', closeRuleModal)
   document.getElementById('editRuleMatch')!.addEventListener('click',
-    () => openListModal('ruleMatch', 'Match Patterns', validatePattern))
+    () => openListModal(
+      'ruleMatch',
+      'Match Patterns',
+      validatePattern,
+      { href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns', title: 'Uses WebExtension match patterns' }
+    ))
   document.getElementById('editRuleBypassUrls')!.addEventListener('click',
-    () => openListModal('ruleBypassUrls', 'Bypass URL Patterns', validatePattern))
+    () => openListModal(
+      'ruleBypassUrls',
+      'Bypass URL Patterns',
+      validatePattern,
+      { href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns', title: 'Uses WebExtension match patterns' }
+    ))
   document.getElementById('editRuleForceUrls')!.addEventListener('click',
-    () => openListModal('ruleForceUrls', 'Force Proxy URL Patterns', validatePattern))
+    () => openListModal(
+      'ruleForceUrls',
+      'Force Proxy URL Patterns',
+      validatePattern,
+      { href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns', title: 'Uses WebExtension match patterns' }
+    ))
   document.getElementById('editRuleBypassTypes')!.addEventListener('click', () => openTypeModal('ruleBypassTypes'))
   document.getElementById('addListItem')!.addEventListener('click', () => {
     const container = document.getElementById('listModalItems')!
@@ -1681,7 +1713,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('saveKeepAlive')!.addEventListener('click', saveKeepAliveFromModal)
   document.getElementById('cancelKeepAlive')!.addEventListener('click', closeKeepAliveModal)
   document.getElementById('editKeepAlivePatterns')!.addEventListener('click', () =>
-    openListModal('keepAlivePatterns', 'List of URLs', validateHostnamePattern))
+    openListModal(
+      'keepAlivePatterns',
+      'List of URLs',
+      validateHostnamePattern,
+      { title: 'Hostname pattern, e.g. example.com or *.example.com' }
+    ))
 
   document.getElementById('diagTestSelected')!.addEventListener('click', () => {
     const sel = document.getElementById('diagSelectProxy') as HTMLSelectElement

@@ -86,7 +86,7 @@
           <label>Proxy <select id="ruleProxy"></select></label><br>
           <label>Bypass URLs <span id="ruleBypassUrlsDisplay"></span> <button id="editRuleBypassUrls">Edit</button><input type="hidden" id="ruleBypassUrls"></label><br>
           <label>Bypass Resource Types <span id="ruleBypassTypesDisplay"></span> <button id="editRuleBypassTypes">Edit</button><input type="hidden" id="ruleBypassTypes"></label><br>
-          <label>Static Extensions <input type="text" id="ruleStaticExt" title="RegExp, e.g. /\\.jpg$/"></label><br>
+          <label>Static Extensions <input type="text" id="ruleStaticExt" title="JavaScript RegExp, e.g. /\\.jpg$/"><a class="help" target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions" title="JavaScript RegExp examples">?</a></label><br>
           <label>Force Proxy URLs <span id="ruleForceUrlsDisplay"></span> <button id="editRuleForceUrls">Edit</button><input type="hidden" id="ruleForceUrls"></label><br>
           <label>Fallback Direct <input type="checkbox" id="ruleFallbackDirect" checked></label><br>
           <label>Active <input type="checkbox" id="ruleActive" checked></label><br>
@@ -120,7 +120,7 @@
       <div id="overrideModal" class="modal hidden">
         <div class="modal-content">
           <h3>Add Override</h3>
-          <label>Domain <input type="text" id="overrideDomain"></label><br>
+          <label>Domain <input type="text" id="overrideDomain" title="All sites ending with this domain will use the selected proxy"></label><br>
           <label>Proxy <select id="overrideProxy"></select></label><br>
           <button id="saveOverride">Save</button>
           <button id="cancelOverride">Cancel</button>
@@ -237,7 +237,10 @@
   </div>
   <div id="listModal" class="modal hidden">
     <div class="modal-content">
-      <h3 id="listModalTitle">Edit List</h3>
+      <div class="modal-header">
+        <h3 id="listModalTitle">Edit List</h3>
+        <a id="listModalHelp" class="help hidden" target="_blank" title="">?</a>
+      </div>
       <div id="listModalItems"></div>
       <button id="addListItem">Add</button>
       <button id="saveList">Save</button>

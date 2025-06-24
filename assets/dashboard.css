@@ -111,6 +111,28 @@ input.invalid { border-color: #c44; }
   margin: 4px 0;
 }
 
+.help {
+  font-size: 0.9em;
+  margin-left: 4px;
+  cursor: help;
+  color: #0af;
+  text-decoration: none;
+}
+
+.help:hover {
+  text-decoration: underline;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-header h3 {
+  margin: 0;
+}
+
 .hidden { display: none; }
 
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
