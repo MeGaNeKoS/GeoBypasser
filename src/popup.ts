@@ -151,6 +151,73 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   updateMonitorLabel()
 
+  const ruleList = document.getElementById('ruleList') as HTMLUListElement | null
+  const ruleHeader = document.querySelectorAll<HTMLButtonElement>(
+    '#ruleHeader button[data-list]'
+  )
+
+  function toPlainRules () {
+    return config.rules.map(r => ({
+      active: r.active,
+      name: r.name,
+      match: r.match,
+      bypassUrlPatterns: r.bypassUrlPatterns,
+      bypassResourceTypes: r.bypassResourceTypes,
+      staticExtensions: r.staticExtensions,
+      forceProxyUrlPatterns: r.forceProxyUrlPatterns,
+      fallbackDirect: r.fallbackDirect,
+      proxyId: r.proxyId,
+    }))
+  }
+
+  async function saveRules () {
+    await updateConfig({ rules: toPlainRules() })
+  }
+
+  function renderRuleList (showActive: boolean) {
+    if (!ruleList) return
+    ruleList.innerHTML = ''
+    const rules = config.rules
+      .filter(r => (showActive ? r.active : !r.active))
+      .slice(0, 5)
+    if (rules.length === 0) {
+      const li = document.createElement('li')
+      li.textContent = 'No rules'
+      ruleList.appendChild(li)
+      return
+    }
+    rules.forEach(r => {
+      const li = document.createElement('li')
+
+      const toggle = document.createElement('input')
+      toggle.type = 'checkbox'
+      toggle.checked = r.active
+      toggle.addEventListener('change', async () => {
+        r.active = toggle.checked
+        await saveRules()
+        renderRuleList(currentList === 'active')
+      })
+
+      const name = document.createElement('span')
+      name.textContent = r.name
+
+      li.appendChild(toggle)
+      li.appendChild(name)
+      ruleList.appendChild(li)
+    })
+  }
+
+  let currentList: 'active' | 'inactive' = 'active'
+  ruleHeader.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentList = btn.dataset.list === 'inactive' ? 'inactive' : 'active'
+      ruleHeader.forEach(b => b.classList.toggle('active', b === btn))
+      renderRuleList(currentList === 'active')
+    })
+  })
+
+  renderRuleList(true)
+
   document.getElementById('openDashboard')?.addEventListener('click', () => {
     browser.runtime.openOptionsPage()
   })

@@ -124,6 +124,45 @@ button:hover {
   margin-top: 8px;
 }
 
+#ruleSection {
+  margin-top: 8px;
+  border-top: 1px solid #555;
+  padding-top: 6px;
+}
+
+#ruleHeader {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+#ruleHeader button.active {
+  background: #eee;
+  color: #222;
+}
+
+#ruleList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: calc(1.6em * 5);
+  overflow-y: auto;
+  text-align: left;
+}
+
+#ruleList li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#ruleList li input[type="checkbox"] {
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+}
+
 footer {
   border-top: 1px solid #555;
   margin-top: 8px;
