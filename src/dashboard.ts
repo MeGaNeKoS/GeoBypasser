@@ -1,11 +1,6 @@
 import { compileRules, getConfig, saveConfig, saveTabProxyMap, updateConfig } from '@utils/storage'
 import { WEB_REQUEST_RESOURCE_TYPES, WebRequestResourceType } from '@constant/requestTypes'
-import {
-  KeepAliveProxyRule,
-  ProxyListItem,
-  ProxyRule,
-  RuntimeProxyRule,
-} from '@customTypes/proxy'
+import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { matchPattern } from 'browser-extension-url-match'
@@ -69,6 +64,7 @@ function attachRowHandlers (
   tr: HTMLTableRowElement,
   table: HTMLTableElement,
   exportBtn: HTMLElement,
+  deleteBtn?: HTMLElement,
 ) {
   const isTouch = window.matchMedia('(pointer: coarse)').matches
   let timer: number | null = null
@@ -81,17 +77,19 @@ function attachRowHandlers (
     table.dataset.showActions = 'true'
     table.dataset.showSelect = 'true'
     exportBtn.style.display = 'inline-block'
+    if (deleteBtn) deleteBtn.style.display = 'inline-block'
   }
 
   function closeActions () {
     tr.classList.remove('show-actions')
     if (activeRows.get(table) === tr) activeRows.set(table, null)
-    updateSelectVisibility(table, exportBtn)
+    updateSelectVisibility(table, exportBtn, deleteBtn)
   }
 
   function showSelectOnly () {
     table.dataset.showSelect = 'true'
     exportBtn.style.display = 'inline-block'
+    if (deleteBtn) deleteBtn.style.display = 'inline-block'
   }
 
   if (isTouch) {
@@ -107,7 +105,7 @@ function attachRowHandlers (
         if (tr.classList.contains('show-actions')) {
           closeActions()
         } else if (table.dataset.showSelect) {
-          updateSelectVisibility(table, exportBtn)
+          updateSelectVisibility(table, exportBtn, deleteBtn)
         } else {
           showSelectOnly()
         }
@@ -125,15 +123,21 @@ function attachRowHandlers (
   }
 }
 
-function updateSelectVisibility (table: HTMLTableElement, exportBtn: HTMLElement) {
+function updateSelectVisibility (
+  table: HTMLTableElement,
+  exportBtn: HTMLElement,
+  deleteBtn?: HTMLElement,
+) {
   const anyChecked = table.querySelectorAll('td.row-select input:checked').length > 0
   const anyActions = table.querySelector('tr.show-actions')
   if (anyChecked || anyActions) {
     table.dataset.showSelect = 'true'
     exportBtn.style.display = 'inline-block'
+    if (deleteBtn) deleteBtn.style.display = 'inline-block'
   } else {
     delete table.dataset.showSelect
     exportBtn.style.display = 'none'
+    if (deleteBtn) deleteBtn.style.display = 'none'
   }
   if (!anyActions) delete table.dataset.showActions
 }
@@ -430,6 +434,7 @@ function renderProxyList () {
       updateSelectVisibility(
         document.getElementById('proxyTable') as HTMLTableElement,
         document.getElementById('exportProxiesSelected') as HTMLElement,
+        document.getElementById('deleteProxiesSelected') as HTMLElement,
       )
     }
     editBtn.onclick = () => openProxyModal(idx)
@@ -588,6 +593,7 @@ function renderRules () {
       updateSelectVisibility(
         document.getElementById('ruleTable') as HTMLTableElement,
         document.getElementById('exportRulesSelected') as HTMLElement,
+        document.getElementById('deleteRulesSelected') as HTMLElement,
       )
     }
     editBtn.onclick = () => openRuleModal(idx)
@@ -749,6 +755,7 @@ function renderOverrides () {
       updateSelectVisibility(
         document.getElementById('overrideTable') as HTMLTableElement,
         document.getElementById('exportOverridesSelected') as HTMLElement,
+        document.getElementById('deleteOverridesSelected') as HTMLElement,
       )
     }
   }
@@ -902,6 +909,7 @@ function renderKeepAlive () {
       updateSelectVisibility(
         document.getElementById('keepAliveTable') as HTMLTableElement,
         document.getElementById('exportKeepAliveSelected') as HTMLElement,
+        document.getElementById('deleteKeepAliveSelected') as HTMLElement,
       )
     }
     editBtn.onclick = () => openKeepAliveModal(proxyId)
@@ -913,8 +921,9 @@ function renderKeepAlive () {
 }
 
 function stripRule (r: RuntimeProxyRule, keepProxyId = true): ProxyRule {
-  const rule: ProxyRule = {
+  return {
     active: typeof r.active === 'undefined' ? true : r.active,
+    proxyId: keepProxyId ? r.proxyId : DIRECT_PROXY_ID,
     name: r.name,
     match: r.match,
     bypassUrlPatterns: r.bypassUrlPatterns,
@@ -923,8 +932,6 @@ function stripRule (r: RuntimeProxyRule, keepProxyId = true): ProxyRule {
     forceProxyUrlPatterns: r.forceProxyUrlPatterns,
     fallbackDirect: r.fallbackDirect,
   }
-  rule.proxyId = keepProxyId ? r.proxyId : DIRECT_PROXY_ID
-  return rule
 }
 
 function getExportableConfig () {
@@ -932,7 +939,7 @@ function getExportableConfig () {
     proxyList: config.proxyList,
     defaultProxy: config.defaultProxy,
     fallbackDirect: config.fallbackDirect,
-    rules: config.rules.map(stripRule),
+    rules: config.rules.map(rule => stripRule(rule, true)),
     keepAliveRules: config.keepAliveRules,
     testProxyUrl: config.testProxyUrl,
     perWebsiteOverride: config.perWebsiteOverride,
@@ -956,6 +963,13 @@ function exportSelectedRules () {
   } else {
     exportRules(arr)
   }
+}
+
+function deleteSelectedRules () {
+  const idxs = Array.from(selectedRules).sort((a, b) => b - a)
+  idxs.forEach(i => { config.rules.splice(i, 1) })
+  selectedRules.clear()
+  saveConfig(config).then(renderAll)
 }
 
 function handleImportRules (files: FileList | null) {
@@ -997,6 +1011,13 @@ function exportSelectedProxies () {
   const arr = Array.from(selectedProxies).map(i => config.proxyList[i])
   if (arr.length === 0) exportAllProxies()
   else exportProxies(arr)
+}
+
+function deleteSelectedProxies () {
+  const idxs = Array.from(selectedProxies).sort((a, b) => b - a)
+  idxs.forEach(i => { config.proxyList.splice(i, 1) })
+  selectedProxies.clear()
+  saveConfig(config).then(renderAll)
 }
 
 function handleImportProxies (files: FileList | null) {
@@ -1052,6 +1073,14 @@ function exportSelectedOverrides () {
   else exportOverrides(out)
 }
 
+function deleteSelectedOverrides () {
+  selectedOverrides.forEach(domain => {
+    delete config.perWebsiteOverride[domain]
+  })
+  selectedOverrides.clear()
+  saveConfig(config).then(renderAll)
+}
+
 function handleImportOverrides (files: FileList | null) {
   if (!files || !files[0]) return
 
@@ -1094,6 +1123,14 @@ function exportSelectedKeepAlive () {
   })
   if (Object.keys(out).length === 0) exportAllKeepAlive()
   else exportKeepAlive(out)
+}
+
+function deleteSelectedKeepAlive () {
+  selectedKeepAlive.forEach(id => {
+    delete config.keepAliveRules?.[id]
+  })
+  selectedKeepAlive.clear()
+  saveConfig(config).then(renderAll)
 }
 
 function handleImportKeepAlive (files: FileList | null) {
@@ -1487,6 +1524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('saveProxy')!.addEventListener('click', saveProxyFromModal)
   document.getElementById('cancelProxy')!.addEventListener('click', closeProxyModal)
   document.getElementById('exportProxiesSelected')!.addEventListener('click', exportSelectedProxies)
+  document.getElementById('deleteProxiesSelected')!.addEventListener('click', deleteSelectedProxies)
   document.getElementById('exportProxiesAll')!.addEventListener('click', exportAllProxies)
   document.getElementById('importProxiesBtn')!.addEventListener('click', () =>
     document.getElementById('importProxies')!.click())
@@ -1501,6 +1539,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('addRule')!.addEventListener('click', addRule)
   document.getElementById('addOverride')?.addEventListener('click', openOverrideModal)
   document.getElementById('exportOverridesSelected')?.addEventListener('click', exportSelectedOverrides)
+  document.getElementById('deleteOverridesSelected')?.addEventListener('click', deleteSelectedOverrides)
   document.getElementById('exportOverridesAll')?.addEventListener('click', exportAllOverrides)
   document.getElementById('importOverridesBtn')?.addEventListener('click', () =>
     document.getElementById('importOverrides')?.click())
@@ -1508,12 +1547,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     handleImportOverrides((ev.target as HTMLInputElement).files))
   document.getElementById('addKeepAliveRule')!.addEventListener('click', () => openKeepAliveModal())
   document.getElementById('exportKeepAliveSelected')!.addEventListener('click', exportSelectedKeepAlive)
+  document.getElementById('deleteKeepAliveSelected')!.addEventListener('click', deleteSelectedKeepAlive)
   document.getElementById('exportKeepAliveAll')!.addEventListener('click', exportAllKeepAlive)
   document.getElementById('importKeepAliveBtn')!.addEventListener('click', () =>
     document.getElementById('importKeepAlive')!.click())
   document.getElementById('importKeepAlive')!.addEventListener('change', ev =>
     handleImportKeepAlive((ev.target as HTMLInputElement).files))
   document.getElementById('exportRulesSelected')!.addEventListener('click', exportSelectedRules)
+  document.getElementById('deleteRulesSelected')!.addEventListener('click', deleteSelectedRules)
   document.getElementById('exportRulesAll')!.addEventListener('click', exportAllRules)
   document.getElementById('importRulesBtn')!.addEventListener('click', () =>
     document.getElementById('importRules')!.click())
