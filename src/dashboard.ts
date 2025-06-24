@@ -10,6 +10,7 @@ import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
 import { KeepAliveProxyRuleSchema, ProxyListItemSchema, ProxyRuleSchema } from '@schemas/proxy'
+import { GeoBypassSettingsSchema } from '@schemas/settings'
 import { z } from 'zod'
 import { ProxyIdSchema } from '@schemas/generic'
 
@@ -28,6 +29,11 @@ let typeTargetInput: HTMLInputElement | null = null
 let editingKeepAliveId: string | null = null
 const activeRows = new WeakMap<HTMLTableElement, HTMLTableRowElement | null>()
 let networkAutoInterval: ReturnType<typeof setInterval> | null = null
+// Helper to generate a signature for comparing proxy entries
+
+function proxySignature (p: ProxyListItem) {
+  return `${p.type}-${p.host}:${p.port}-${p.username || ''}`
+}
 
 function switchTab (id: string) {
   document.querySelectorAll('section.tab').forEach(sec => sec.classList.remove('active'))
@@ -318,6 +324,33 @@ function saveTypeModal () {
   typeTargetInput.value = vals.join(', ')
   updateListDisplay(typeTargetInput)
   closeTypeModal()
+}
+
+function showDuplicateModal (name: string): Promise<'old' | 'new' | 'both'> {
+  const modal = document.getElementById('duplicateModal')!
+  const msg = document.getElementById('duplicateMessage')!
+  const keepOld = document.getElementById('duplicateKeepOld')!
+  const keepNew = document.getElementById('duplicateKeepNew')!
+  const keepBoth = document.getElementById('duplicateKeepBoth')!
+
+  msg.textContent = `Duplicate item "${name}" found.`
+  modal.classList.remove('hidden')
+
+  return new Promise(resolve => {
+    function cleanup (value: 'old' | 'new' | 'both') {
+      keepOld.removeEventListener('click', onOld)
+      keepNew.removeEventListener('click', onNew)
+      keepBoth.removeEventListener('click', onBoth)
+      modal.classList.add('hidden')
+      resolve(value)
+    }
+    function onOld () { cleanup('old') }
+    function onNew () { cleanup('new') }
+    function onBoth () { cleanup('both') }
+    keepOld.addEventListener('click', onOld)
+    keepNew.addEventListener('click', onNew)
+    keepBoth.addEventListener('click', onBoth)
+  })
 }
 
 function renderGeneral () {
@@ -1023,12 +1056,12 @@ function deleteSelectedProxies () {
 function handleImportProxies (files: FileList | null) {
   if (!files || !files[0]) return
 
-    files[0].text().then(t => {
-      try {
-        const raw = JSON.parse(t)
-        const list = raw?.proxyList
+  files[0].text().then(async t => {
+    try {
+      const raw = JSON.parse(t)
+      const list = raw?.proxyList
 
-        const result = z.array(ProxyListItemSchema).safeParse(list)
+      const result = z.array(ProxyListItemSchema).safeParse(list)
 
       if (!result.success) {
         console.error('Invalid proxy list items:', result.error)
@@ -1037,12 +1070,24 @@ function handleImportProxies (files: FileList | null) {
       }
 
       const arr = result.data
-      const existing = new Set(config.proxyList.map(p => `${p.type}-${p.host}:${p.port}-${p.username || ''}`))
+      const existing = new Map(config.proxyList.map((p, idx) => [proxySignature(p), idx]))
 
       for (const p of arr) {
-        const sig = `${p.type}-${p.host}:${p.port}-${p.username || ''}`
-        if (!existing.has(sig)) {
-          existing.add(sig)
+        const sig = proxySignature(p)
+        if (existing.has(sig)) {
+          const idx = existing.get(sig)!
+          const choice = await showDuplicateModal(`${p.host}:${p.port}`)
+          const target = config.proxyList[idx]
+          if (choice === 'new') {
+            config.proxyList[idx] = { ...p, id: target.id }
+          } else if (choice === 'both') {
+            const np = { ...p, id: crypto.randomUUID() }
+            if (np.label) np.label += ' (copy)'
+            existing.set(proxySignature(np), config.proxyList.length)
+            config.proxyList.push(np)
+          }
+        } else {
+          existing.set(sig, config.proxyList.length)
           config.proxyList.push(p)
         }
       }
@@ -1361,27 +1406,81 @@ function handleImportConfig (files: FileList | null) {
   files[0].text().then(async t => {
     try {
       const obj = JSON.parse(t)
-      const base = getExportableConfig()
-      const updated = {
-        proxyList: base.proxyList,
-        defaultProxy: obj.defaultProxy ?? base.defaultProxy,
-        fallbackDirect: obj.fallbackDirect ?? base.fallbackDirect,
-        testProxyUrl: obj.testProxyUrl ?? base.testProxyUrl,
-        rules: obj.rules ?? base.rules,
-        keepAliveRules: obj.keepAliveRules ?? base.keepAliveRules,
-        perWebsiteOverride: obj.perWebsiteOverride ?? base.perWebsiteOverride,
+
+      const parsed = GeoBypassSettingsSchema.partial().safeParse(obj)
+      if (!parsed.success) {
+        console.error('Invalid config data:', parsed.error)
+        alert('Invalid config file: schema validation failed.')
+        return
       }
-      if (obj.proxyList) {
-        const existing = new Set(
-          updated.proxyList.map((p: ProxyListItem) => `${p.type}-${p.host}:${p.port}-${p.username || ''}`))
-        for (const p of obj.proxyList as ProxyListItem[]) {
-          const sig = `${p.type}-${p.host}:${p.port}-${p.username || ''}`
-          if (!existing.has(sig)) {
-            existing.add(sig)
+
+      const cfg = parsed.data
+      const base = getExportableConfig()
+      const updated: GeoBypassSettings = {
+        proxyList: [...base.proxyList],
+        defaultProxy: cfg.defaultProxy ?? base.defaultProxy,
+        fallbackDirect: cfg.fallbackDirect ?? base.fallbackDirect,
+        testProxyUrl: cfg.testProxyUrl ?? base.testProxyUrl,
+        rules: Array.isArray(cfg.rules) ? [...base.rules] : base.rules,
+        keepAliveRules: cfg.keepAliveRules ?? base.keepAliveRules,
+        perWebsiteOverride: { ...base.perWebsiteOverride, ...cfg.perWebsiteOverride },
+      }
+
+      const idMap = new Map<string, string>()
+
+      if (cfg.proxyList) {
+        const existing = new Map(updated.proxyList.map((p, idx) => [proxySignature(p), idx]))
+        for (const p of cfg.proxyList as ProxyListItem[]) {
+          const sig = proxySignature(p)
+          if (existing.has(sig)) {
+            const idx = existing.get(sig)!
+            const choice = await showDuplicateModal(`${p.host}:${p.port}`)
+            const target = updated.proxyList[idx]
+            if (choice === 'new') {
+              updated.proxyList[idx] = { ...p, id: target.id }
+              idMap.set(p.id, target.id)
+            } else if (choice === 'both') {
+              const np = { ...p, id: crypto.randomUUID() }
+              if (np.label) np.label += ' (copy)'
+              updated.proxyList.push(np)
+              idMap.set(p.id, np.id)
+            } else {
+              idMap.set(p.id, target.id)
+            }
+          } else {
+            existing.set(sig, updated.proxyList.length)
             updated.proxyList.push(p)
+            idMap.set(p.id, p.id)
           }
         }
       }
+
+      if (cfg.defaultProxy) {
+        updated.defaultProxy = idMap.get(cfg.defaultProxy) ?? cfg.defaultProxy
+      }
+
+      if (cfg.rules && Array.isArray(cfg.rules)) {
+        const mappedRules = cfg.rules.map((r: ProxyRule) => ({
+          ...r,
+          proxyId: idMap.get(r.proxyId) ?? r.proxyId,
+        }))
+        updated.rules = [...updated.rules, ...mappedRules]
+      }
+
+      if (cfg.perWebsiteOverride) {
+        for (const [domain, pid] of Object.entries(cfg.perWebsiteOverride as Record<string, string>)) {
+          updated.perWebsiteOverride[domain] = idMap.get(pid) ?? pid
+        }
+      }
+
+      if (cfg.keepAliveRules) {
+        updated.keepAliveRules = { ...(base.keepAliveRules || {}) }
+        for (const [pid, rule] of Object.entries(cfg.keepAliveRules as Record<string, { active: boolean; tabUrls: string[]; testProxyUrl?: string }>)) {
+          const mappedId = idMap.get(pid) ?? pid
+          updated.keepAliveRules[mappedId] = rule
+        }
+      }
+
       await saveConfig(updated)
       config = await getConfig()
       renderAll()
