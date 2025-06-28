@@ -238,6 +238,7 @@
         <li>Optional keep-alive monitoring for proxies</li>
         <li>Network inspection with a collapsible usage tree and auto-refresh</li>
       </ul>
+      <button id="startTourBtn">Start Tour</button>
       <h3>License</h3>
       <p>Mozilla Public License 2.0</p>
       <h3>Links</h3>
@@ -289,6 +290,13 @@
       <button id="saveProxy">Save</button>
       <button id="cancelProxy">Cancel</button>
     </div>
+  </div>
+  <div id="tourOverlay" class="modal hidden"></div>
+  <div id="tourBubble" class="modal-content hidden">
+    <p id="tourText"></p>
+    <button id="tourPrev">Back</button>
+    <button id="tourNext" disabled>Next</button>
+    <button id="tourClose">Close</button>
   </div>
   <script src="dashboard.js"></script>
 </body>

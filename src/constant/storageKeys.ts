@@ -9,5 +9,6 @@ export const STORAGE_KEYS = {
   keepAliveRules: 'keepAliveRules',
   testProxyUrl: 'testProxyUrl',
   perWebsiteOverride: 'perWebsiteOverride',
+  tourShown: 'tourShown',
 } as const
 

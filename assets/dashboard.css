@@ -135,7 +135,7 @@ input.invalid { border-color: #c44; }
 
 .hidden { display: none; }
 
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 150; }
 .modal.hidden { display: none; }
 .modal-content {
   background: #222;
@@ -144,6 +144,45 @@ input.invalid { border-color: #c44; }
   max-width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+#tourOverlay {
+  pointer-events: none;
+  z-index: 100;
+}
+
+#tourOverlay.hidden {
+  display: none;
+}
+
+#tourOverlay.no-dim {
+  background: none;
+}
+
+#tourBubble {
+  position: absolute;
+  text-align: center;
+  pointer-events: auto;
+  z-index: 200;
+}
+
+#tourPrev {
+  margin-right: 8px;
+}
+
+#startTourBtn {
+  margin: 8px 0;
+}
+
+#tourNext:disabled {
+  opacity: 0.5;
+}
+
+.tour-highlight {
+  outline: 2px solid #fa0;
+  box-shadow: 0 0 6px #fa0;
+  position: relative;
+  z-index: 200;
 }
 
 .import-url {

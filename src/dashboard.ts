@@ -1,4 +1,12 @@
-import { compileRules, getConfig, saveConfig, saveTabProxyMap, updateConfig } from '@utils/storage'
+import {
+  compileRules,
+  getConfig,
+  getTourShown,
+  saveConfig,
+  saveTabProxyMap,
+  setTourShown,
+  updateConfig,
+} from '@utils/storage'
 import { WEB_REQUEST_RESOURCE_TYPES, WebRequestResourceType } from '@constant/requestTypes'
 import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
@@ -29,6 +37,7 @@ let typeTargetInput: HTMLInputElement | null = null
 let editingKeepAliveId: string | null = null
 const activeRows = new WeakMap<HTMLTableElement, HTMLTableRowElement | null>()
 let networkAutoInterval: ReturnType<typeof setInterval> | null = null
+
 // Helper to generate a signature for comparing proxy entries
 
 function proxySignature (p: ProxyListItem) {
@@ -256,7 +265,10 @@ function addListItem (container: HTMLElement, value = '') {
   container.appendChild(div)
 }
 
-interface ListHelp { href?: string, title?: string }
+interface ListHelp {
+  href?: string;
+  title?: string;
+}
 
 function openListModal (inputId: string, title: string, validator: (v: string) => boolean, help?: ListHelp) {
   listTargetInput = document.getElementById(inputId) as HTMLInputElement
@@ -361,9 +373,13 @@ function showDuplicateModal (name: string): Promise<'old' | 'new' | 'both'> {
       modal.classList.add('hidden')
       resolve(value)
     }
+
     function onOld () { cleanup('old') }
+
     function onNew () { cleanup('new') }
+
     function onBoth () { cleanup('both') }
+
     keepOld.addEventListener('click', onOld)
     keepNew.addEventListener('click', onNew)
     keepBoth.addEventListener('click', onBoth)
@@ -1057,7 +1073,8 @@ async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
 
   if (cfg.keepAliveRules) {
     updated.keepAliveRules = { ...(base.keepAliveRules || {}) }
-    for (const [pid, rule] of Object.entries(cfg.keepAliveRules as Record<string, { active: boolean; tabUrls: string[]; testProxyUrl?: string }>)) {
+    for (const [pid, rule] of Object.entries(
+      cfg.keepAliveRules as Record<string, { active: boolean; tabUrls: string[]; testProxyUrl?: string }>)) {
       const mappedId = idMap.get(pid) ?? pid
       updated.keepAliveRules[mappedId] = rule
     }
@@ -1091,7 +1108,10 @@ async function importConfigFromUrl (url: string) {
   }
 }
 
-async function fetchGitHubFileList (owner: string, repo: string, prefix = ''): Promise<{ path: string; url: string }[]> {
+async function fetchGitHubFileList (owner: string, repo: string, prefix = ''): Promise<{
+  path: string;
+  url: string;
+}[]> {
   try {
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`
     const res = await fetch(apiUrl)
@@ -1144,9 +1164,8 @@ function remoteSelectAll () {
 }
 
 async function confirmRemoteImport () {
-  const urls = Array.from(document.querySelectorAll('#remoteFileTree input[type="checkbox"]'))
-    .filter(el => (el as HTMLInputElement).checked)
-    .map(el => (el as HTMLInputElement).value)
+  const urls = Array.from(document.querySelectorAll('#remoteFileTree input[type="checkbox"]')).filter(
+    el => (el as HTMLInputElement).checked).map(el => (el as HTMLInputElement).value)
   for (const url of urls) {
     await importConfigFromUrl(url)
   }
@@ -1182,12 +1201,12 @@ function deleteSelectedRules () {
 function handleImportRules (files: FileList | null) {
   if (!files || !files[0]) return
 
-    files[0].text().then(t => {
-      try {
-        const raw = JSON.parse(t)
-        const arr = raw?.rules
+  files[0].text().then(t => {
+    try {
+      const raw = JSON.parse(t)
+      const arr = raw?.rules
 
-        const result = z.array(ProxyRuleSchema).safeParse(arr)
+      const result = z.array(ProxyRuleSchema).safeParse(arr)
 
       if (!result.success) {
         console.error('Invalid proxy rules:', result.error)
@@ -1303,12 +1322,12 @@ function deleteSelectedOverrides () {
 function handleImportOverrides (files: FileList | null) {
   if (!files || !files[0]) return
 
-    files[0].text().then(t => {
-      try {
-        const parsed = JSON.parse(t)
-        const obj = parsed?.perWebsiteOverride
+  files[0].text().then(t => {
+    try {
+      const parsed = JSON.parse(t)
+      const obj = parsed?.perWebsiteOverride
 
-        const result = z.record(ProxyIdSchema).safeParse(obj)
+      const result = z.record(ProxyIdSchema).safeParse(obj)
 
       if (!result.success) {
         console.error('Invalid override map:', result.error)
@@ -1355,12 +1374,12 @@ function deleteSelectedKeepAlive () {
 function handleImportKeepAlive (files: FileList | null) {
   if (!files || !files[0]) return
 
-    files[0].text().then(t => {
-      try {
-        const parsed = JSON.parse(t)
-        const obj = parsed?.keepAliveRules
+  files[0].text().then(t => {
+    try {
+      const parsed = JSON.parse(t)
+      const obj = parsed?.keepAliveRules
 
-        const result = KeepAliveProxyRuleSchema.safeParse(obj)
+      const result = KeepAliveProxyRuleSchema.safeParse(obj)
 
       if (!result.success) {
         console.error('Invalid keep-alive rules:', result.error)
@@ -1693,9 +1712,212 @@ function renderAll () {
   renderAbout()
 }
 
+type TourStep = {
+  text: string;
+  selector: string | string[];
+  tab?: string;
+  allowNext?: boolean;
+}
+
+function startTour () {
+  const steps: TourStep[] = [
+    {
+      text: 'Use the tabs at the top to navigate the dashboard. Click "Proxy List" to continue.',
+      selector: '#tabs button[data-tab="proxy"]',
+      tab: 'proxy',
+    },
+    { text: 'Add your proxies using this button.', selector: '#addProxy', tab: 'proxy' },
+    { text: 'Enter a label for your proxy here.', selector: '#proxyLabel', allowNext: true },
+    { text: 'Choose the proxy type.', selector: '#proxyType', allowNext: true },
+    { text: 'Specify the proxy host name.', selector: '#proxyHost', allowNext: true },
+    { text: 'Provide the port number.', selector: '#proxyPort', allowNext: true },
+    { text: 'If needed, set a username.', selector: '#proxyUser', allowNext: true },
+    { text: 'And its password.', selector: '#proxyPass', allowNext: true },
+    { text: 'Enable this option to get notified when the proxy is down.', selector: '#proxyNotify', allowNext: true },
+    { text: 'Save the proxy or cancel using these buttons.', selector: ['#saveProxy', '#cancelProxy'] },
+    {
+      text: 'Create rules to proxy only geo-blocked requests. Click the "Rules" tab.',
+      selector: '#tabs button[data-tab="rules"]',
+      tab: 'rules',
+    },
+    {
+      text: 'Backup or load configurations via Import/Export.',
+      selector: '#tabs button[data-tab="impexp"]',
+      tab: 'impexp',
+    },
+  ]
+
+  const ADD_PROXY_IDX = 1
+  const SAVE_STEP_IDX = 9
+
+  const overlay = document.getElementById('tourOverlay') as HTMLElement | null
+  const bubble = document.getElementById('tourBubble') as HTMLElement | null
+  const text = document.getElementById('tourText') as HTMLElement | null
+  const nextBtn = document.getElementById('tourNext') as HTMLButtonElement | null
+  const prevBtn = document.getElementById('tourPrev') as HTMLButtonElement | null
+  const closeBtn = document.getElementById('tourClose') as HTMLButtonElement | null
+  const saveBtn = document.getElementById('saveProxy') as HTMLButtonElement | null
+  const cancelBtn = document.getElementById('cancelProxy') as HTMLButtonElement | null
+  if (!overlay || !bubble || !text || !nextBtn || !prevBtn || !closeBtn) return
+
+  const saveOrig = saveBtn?.disabled ?? false
+  const cancelOrig = cancelBtn?.disabled ?? false
+
+  if (saveBtn != null) {
+    saveBtn.disabled = true
+  }
+  if (cancelBtn != null) {
+    cancelBtn.disabled = true
+  }
+
+  const completed = steps.map(() => false)
+  let idx = 0
+  let targets: HTMLElement[] = []
+  let modalObserver: MutationObserver | null = null
+  let modalClosed = false
+
+  function cleanup () {
+    for (const t of targets) {
+      t.classList.remove('tour-highlight')
+      t.removeEventListener('click', onTargetClick, true)
+    }
+    targets = []
+    if (modalObserver) {
+      modalObserver.disconnect()
+      modalObserver = null
+    }
+  }
+
+  function advance () {
+    completed[idx] = true
+    if (idx < steps.length - 1) {
+      idx++
+      show()
+    } else {
+      end()
+    }
+  }
+
+  function onTargetClick () {
+    const step = steps[idx]
+    if (step.tab) switchTab(step.tab)
+    const selectors = Array.isArray(step.selector) ? step.selector : [step.selector]
+    if (selectors.includes('#saveProxy') || selectors.includes('#cancelProxy')) {
+      const modal = document.getElementById('proxyModal') as HTMLElement | null
+      if (!modal) return
+      if (modalObserver) modalObserver.disconnect()
+      modalObserver = new MutationObserver(() => {
+        if (modal.classList.contains('hidden')) {
+          modalObserver?.disconnect()
+          modalObserver = null
+          modalClosed = true
+          advance()
+        }
+      })
+      modalObserver.observe(modal, { attributes: true, attributeFilter: ['class'] })
+    } else {
+      advance()
+    }
+  }
+
+  function show () {
+    cleanup()
+    const step = steps[idx]
+    text!.textContent = step.text
+    prevBtn!.style.display = idx > 0 ? '' : 'none'
+    nextBtn!.textContent = idx === steps.length - 1 ? 'Done' : 'Next'
+    nextBtn!.disabled = !(completed[idx] || step.allowNext)
+    const selectors = Array.isArray(step.selector) ? step.selector : [step.selector]
+    targets = selectors.flatMap(sel => Array.from(document.querySelectorAll(sel))) as HTMLElement[]
+    const enableSave = selectors.includes('#saveProxy') || selectors.includes('#cancelProxy')
+    const modalOpen = !document.getElementById('proxyModal')!.classList.contains('hidden')
+    if (modalOpen) {
+      if (saveBtn) saveBtn.disabled = !enableSave
+      if (cancelBtn) cancelBtn.disabled = !enableSave
+    }
+    const inModal = targets.some(t => t.closest('#proxyModal'))
+    overlay!.classList.toggle('no-dim', inModal)
+    if (targets.length) {
+      targets.forEach(t => {
+        t.classList.add('tour-highlight')
+        t.addEventListener('click', onTargetClick, true)
+      })
+      targets[0].scrollIntoView({ block: 'center' })
+      requestAnimationFrame(() => {
+        const rect = targets[0].getBoundingClientRect()
+        const bubbleRect = bubble!.getBoundingClientRect()
+        let top = rect.bottom + 8
+        if (top + bubbleRect.height > window.innerHeight) {
+          top = rect.top - bubbleRect.height - 8
+        }
+        if (top < 8) top = 8
+        let left = rect.left
+        if (left + bubbleRect.width > window.innerWidth) {
+          left = window.innerWidth - bubbleRect.width - 8
+        }
+        if (left < 8) left = 8
+        bubble!.style.top = `${top}px`
+        bubble!.style.left = `${left}px`
+      })
+    }
+  }
+
+  function end () {
+    cleanup()
+    overlay!.classList.add('hidden')
+    overlay!.classList.remove('no-dim')
+    overlay!.style.pointerEvents = 'none'
+    bubble!.classList.add('hidden')
+    nextBtn!.onclick = null
+    prevBtn!.onclick = null
+    closeBtn!.onclick = null
+    if (saveBtn) saveBtn.disabled = saveOrig
+    if (cancelBtn) cancelBtn.disabled = cancelOrig
+  }
+
+  nextBtn.onclick = () => {
+    if (idx === ADD_PROXY_IDX && completed[idx]) {
+      const modal = document.getElementById('proxyModal') as HTMLElement | null
+      if (modal && modal.classList.contains('hidden')) openProxyModal()
+    }
+    advance()
+  }
+
+  prevBtn.onclick = () => {
+    if (idx > 0) {
+      if (idx > ADD_PROXY_IDX && idx - 1 === ADD_PROXY_IDX) {
+        const modal = document.getElementById('proxyModal') as HTMLElement | null
+        if (modal && !modal.classList.contains('hidden')) closeProxyModal()
+      }
+      if (modalClosed && idx === SAVE_STEP_IDX + 1) {
+        idx = ADD_PROXY_IDX
+      } else {
+        idx--
+      }
+      show()
+    }
+  }
+
+  closeBtn.onclick = end
+
+  overlay!.classList.remove('hidden')
+  overlay!.style.pointerEvents = 'auto'
+  bubble!.classList.remove('hidden')
+  idx = 0
+  modalClosed = false
+  show()
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   config = await getConfig()
   renderAll()
+
+  const tourSeen = await getTourShown()
+  document.getElementById('startTourBtn')?.addEventListener('click', startTour)
+  if (!tourSeen) {
+    startTour()
+    setTourShown(true)
+  }
 
   if (!supportsProxyOnRequest) {
     document.getElementById('clearTabProxies')?.remove()
@@ -1763,21 +1985,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       'ruleMatch',
       'Match Patterns',
       validatePattern,
-      { href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns', title: 'Uses WebExtension match patterns' }
+      {
+        href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
+        title: 'Uses WebExtension match patterns',
+      },
     ))
   document.getElementById('editRuleBypassUrls')!.addEventListener('click',
     () => openListModal(
       'ruleBypassUrls',
       'Bypass URL Patterns',
       validatePattern,
-      { href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns', title: 'Uses WebExtension match patterns' }
+      {
+        href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
+        title: 'Uses WebExtension match patterns',
+      },
     ))
   document.getElementById('editRuleForceUrls')!.addEventListener('click',
     () => openListModal(
       'ruleForceUrls',
       'Force Proxy URL Patterns',
       validatePattern,
-      { href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns', title: 'Uses WebExtension match patterns' }
+      {
+        href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
+        title: 'Uses WebExtension match patterns',
+      },
     ))
   document.getElementById('editRuleBypassTypes')!.addEventListener('click', () => openTypeModal('ruleBypassTypes'))
   document.getElementById('addListItem')!.addEventListener('click', () => {
@@ -1797,7 +2028,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'keepAlivePatterns',
       'List of URLs',
       validateHostnamePattern,
-      { title: 'Hostname pattern, e.g. example.com or *.example.com' }
+      { title: 'Hostname pattern, e.g. example.com or *.example.com' },
     ))
 
   document.getElementById('diagTestSelected')!.addEventListener('click', () => {
@@ -1840,7 +2071,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       importConfigFromUrl(url)
       return
     }
-    const repoMatch = url.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)(?:\/tree\/[^\/]+\/(.*))?\/?$/)
+    const repoMatch = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)(?:\/tree\/[^/]+\/(.*))?\/?$/)
     if (repoMatch) {
       const [, owner, repo, prefix] = repoMatch
       openRemoteImportModal(owner, repo, prefix)
@@ -1848,7 +2079,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       alert('Please enter a GitHub repository URL or direct JSON link.')
     }
   })
-  document.getElementById('openCommunityImport')!.addEventListener('click', () => openRemoteImportModal('MeGaNeKoS', 'GeoBypass-Rules'))
+  document.getElementById('openCommunityImport')!.addEventListener('click',
+    () => openRemoteImportModal('MeGaNeKoS', 'GeoBypass-Rules'))
   document.getElementById('remoteImportConfirm')!.addEventListener('click', confirmRemoteImport)
   document.getElementById('remoteImportCancel')!.addEventListener('click', closeRemoteImportModal)
   document.getElementById('remoteImportSelectAll')!.addEventListener('click', remoteSelectAll)
