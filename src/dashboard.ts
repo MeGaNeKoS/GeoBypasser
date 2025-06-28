@@ -1771,10 +1771,20 @@ function startTour () {
   }
 
   const completed = steps.map(() => false)
+  const stepSection: string[] = []
+  let sec = steps[0].tab!
+  for (let i = 0; i < steps.length; i++) {
+    if (steps[i].tab) sec = steps[i].tab!
+    stepSection[i] = sec
+  }
   let idx = 0
   let targets: HTMLElement[] = []
   let modalObserver: MutationObserver | null = null
   let modalClosed = false
+  const sectionHistory: number[] = [0]
+  const innerHistory: Record<number, number[]> = { 0: [] }
+  let currentSection = 0
+  let currentTab = steps[0].tab!
 
   function cleanup () {
     for (const t of targets) {
@@ -1789,6 +1799,19 @@ function startTour () {
   }
 
   function advance () {
+    const step = steps[idx]
+    if (step.tab && step.tab !== currentTab) {
+      sectionHistory.push(idx)
+      currentSection = idx
+      innerHistory[currentSection] = []
+      currentTab = step.tab
+    } else {
+      if (!innerHistory[currentSection]) innerHistory[currentSection] = []
+      innerHistory[currentSection].push(idx)
+      if (idx === SAVE_STEP_IDX && modalClosed) {
+        innerHistory[currentSection] = innerHistory[currentSection].slice(0, ADD_PROXY_IDX)
+      }
+    }
     completed[idx] = true
     if (idx < steps.length - 1) {
       idx++
@@ -1802,6 +1825,10 @@ function startTour () {
     const step = steps[idx]
     if (step.tab) switchTab(step.tab)
     const selectors = Array.isArray(step.selector) ? step.selector : [step.selector]
+    if (selectors.includes('#addProxy')) {
+      modalClosed = false
+      completed[SAVE_STEP_IDX] = false
+    }
     if (selectors.includes('#saveProxy') || selectors.includes('#cancelProxy')) {
       const modal = document.getElementById('proxyModal') as HTMLElement | null
       if (!modal) return
@@ -1876,6 +1903,30 @@ function startTour () {
   }
 
   nextBtn.onclick = () => {
+    const activeBtn = document.querySelector('#tabs button.active') as HTMLElement | null
+    const activeTab = activeBtn?.getAttribute('data-tab')
+    if (activeTab && activeTab !== stepSection[idx]) {
+      const target = steps.findIndex((s, i) => i > idx && s.tab === activeTab)
+      if (target > idx) {
+        // mark current step complete since we're jumping away
+        completed[idx] = true
+        const modal = document.getElementById('proxyModal') as HTMLElement | null
+        if (modal && !modal.classList.contains('hidden')) {
+          closeProxyModal()
+          modalClosed = true
+          innerHistory[currentSection] = innerHistory[currentSection].slice(0, ADD_PROXY_IDX)
+        } else {
+          innerHistory[currentSection] = []
+        }
+        sectionHistory.push(target)
+        currentSection = target
+        currentTab = activeTab
+        completed[target] = true
+        idx = Math.min(target + 1, steps.length - 1)
+        show()
+        return
+      }
+    }
     if (idx === ADD_PROXY_IDX && completed[idx]) {
       const modal = document.getElementById('proxyModal') as HTMLElement | null
       if (modal && modal.classList.contains('hidden')) openProxyModal()
@@ -1884,16 +1935,27 @@ function startTour () {
   }
 
   prevBtn.onclick = () => {
-    if (idx > 0) {
-      if (idx > ADD_PROXY_IDX && idx - 1 === ADD_PROXY_IDX) {
+    const inner = innerHistory[currentSection]
+    if (inner && inner.length > 0) {
+      const prevIdx = inner.pop()!
+      if (prevIdx === ADD_PROXY_IDX && idx > ADD_PROXY_IDX) {
         const modal = document.getElementById('proxyModal') as HTMLElement | null
         if (modal && !modal.classList.contains('hidden')) closeProxyModal()
       }
-      if (modalClosed && idx === SAVE_STEP_IDX + 1) {
-        idx = ADD_PROXY_IDX
-      } else {
-        idx--
+      idx = prevIdx
+      show()
+    } else if (sectionHistory.length > 1) {
+      sectionHistory.pop()
+      currentSection = sectionHistory[sectionHistory.length - 1]
+      const prevInner = innerHistory[currentSection]
+      let prevIdx = prevInner?.pop()
+      if (prevIdx == null) prevIdx = currentSection
+      if (prevIdx === ADD_PROXY_IDX && idx > ADD_PROXY_IDX) {
+        const modal = document.getElementById('proxyModal') as HTMLElement | null
+        if (modal && !modal.classList.contains('hidden')) closeProxyModal()
       }
+      currentTab = steps[currentSection].tab!
+      idx = prevIdx
       show()
     }
   }
