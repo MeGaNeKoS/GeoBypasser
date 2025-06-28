@@ -148,11 +148,3 @@ export async function saveTabProxyMap (map: Record<number, ProxyId>) {
   console.info(`[${APP_NAME}] Saved tabProxyMap to local storage.`)
 }
 
-export async function getTourShown (): Promise<boolean> {
-  const result = await browser.storage.local.get(STORAGE_KEYS.tourShown)
-  return Boolean(result[STORAGE_KEYS.tourShown])
-}
-
-export async function setTourShown (shown: boolean) {
-  await browser.storage.local.set({ [STORAGE_KEYS.tourShown]: shown })
-}

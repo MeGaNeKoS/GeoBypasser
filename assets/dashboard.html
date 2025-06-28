@@ -26,6 +26,7 @@
   <div id="content">
     <section id="general" class="tab">
       <h2>General</h2>
+      <p class="section-help">Configure default behavior and test URLs.</p>
       <label>Default Proxy: <select id="defaultProxy"></select></label><br>
       <label>Fallback Direct <input type="checkbox" id="fallbackDirect"></label><br>
       <label>Test Proxy URL <input type="text" id="testProxyUrl"></label><br>
@@ -39,6 +40,7 @@
     </section>
     <section id="proxy" class="tab">
       <h2>Proxy List</h2>
+      <p class="section-help">Manage proxies that can be used for rules or overrides.</p>
       <table id="proxyTable">
         <thead>
           <tr>
@@ -65,6 +67,7 @@
     </section>
     <section id="rules" class="tab">
       <h2>Rules</h2>
+      <p class="section-help">Create match rules to automatically route requests through a proxy.</p>
       <table id="ruleTable">
         <thead>
           <tr><th>Active</th><th>Name</th><th>Match</th><th>Proxy</th><th class="select-col">Select</th><th class="action-col"></th></tr>
@@ -81,6 +84,7 @@
       <div id="ruleModal" class="modal hidden">
         <div class="modal-content">
           <h3 id="ruleModalTitle">Add Rule</h3>
+          <p class="modal-help">Create or edit rules that assign proxies to patterns.</p>
           <label>Name <input type="text" id="ruleName"></label><br>
           <label>Match <span id="ruleMatchDisplay"></span> <button id="editRuleMatch">Edit</button><input type="hidden" id="ruleMatch"></label><br>
           <label>Proxy <select id="ruleProxy"></select></label><br>
@@ -99,6 +103,7 @@
       <div id="typeModal" class="modal hidden">
         <div class="modal-content">
           <h3>Select Resource Types</h3>
+          <p class="modal-help">Choose which resource types this rule bypasses.</p>
           <div id="typeModalItems"></div>
           <button id="saveTypes">Save</button>
           <button id="cancelTypes">Cancel</button>
@@ -107,6 +112,7 @@
     </section>
     <section id="override" class="tab">
       <h2>Website Overrides</h2>
+      <p class="section-help">Force a proxy or direct connection for specific domains.</p>
       <table id="overrideTable">
         <thead><tr><th>Domain</th><th>Proxy</th><th class="select-col">Select</th><th class="action-col"></th></tr></thead>
         <tbody></tbody>
@@ -120,6 +126,7 @@
       <div id="overrideModal" class="modal hidden">
         <div class="modal-content">
           <h3>Add Override</h3>
+          <p class="modal-help">Assign a proxy or direct connection for a domain.</p>
           <label>Domain <input type="text" id="overrideDomain" title="All sites ending with this domain will use the selected proxy"></label><br>
           <label>Proxy <select id="overrideProxy"></select></label><br>
           <button id="saveOverride">Save</button>
@@ -129,6 +136,7 @@
     </section>
     <section id="keepalive" class="tab">
       <h2>Keep-Alive Rules</h2>
+      <p class="section-help">Ping URLs periodically to keep proxies active.</p>
       <table id="keepAliveTable">
         <thead>
           <tr><th>Active</th><th>Proxy</th><th>List of URLs</th><th>Test URL</th><th class="select-col">Select</th><th class="action-col"></th></tr>
@@ -144,6 +152,7 @@
       <div id="keepAliveModal" class="modal hidden">
         <div class="modal-content">
           <h3 id="keepAliveModalTitle">Add Keep-Alive Rule</h3>
+          <p class="modal-help">Regularly fetch URLs through this proxy to keep it alive.</p>
           <label>Proxy <select id="keepAliveProxy"></select></label><br>
           <label>List of URLs <span id="keepAlivePatternsDisplay"></span> <button id="editKeepAlivePatterns">Edit</button><input type="hidden" id="keepAlivePatterns"></label><br>
           <label>Test URL <input type="text" id="keepAliveTestUrl"></label><br>
@@ -155,6 +164,7 @@
     </section>
     <section id="network" class="tab">
       <h2>Network Usage</h2>
+      <p class="section-help">View recent requests and which proxy handled them.</p>
       <p id="networkHint" class="note hidden">Chrome users: keep DevTools open to record network usage.</p>
       <button id="refreshNetwork">Refresh</button>
       <button id="clearNetwork">Clear</button>
@@ -163,6 +173,7 @@
     </section>
     <section id="diagnostics" class="tab">
       <h2>Diagnostics</h2>
+      <p class="section-help">Test proxy connectivity or add a new proxy from results.</p>
       <label>Test URL <input type="text" id="diagTestUrl"></label>
       <div>
         <h3>Test Saved Proxy</h3>
@@ -189,6 +200,7 @@
     </section>
     <section id="impexp" class="tab">
       <h2>Import/Export</h2>
+      <p class="section-help">Backup or restore configuration and import community rules.</p>
       <button id="openExportConfig">Export Config</button>
       <input type="file" id="importConfig" style="display:none">
       <button id="importConfigBtn">Import Config</button>
@@ -200,6 +212,7 @@
       <div id="exportConfigModal" class="modal hidden">
         <div class="modal-content">
           <h3>Select Items to Export</h3>
+          <p class="modal-help">Choose which settings to save to a JSON file.</p>
           <div id="exportConfigItems"></div>
           <div id="exportConfigControls">
             <button id="exportConfigSelectAll">Select Entire Config</button>
@@ -211,6 +224,7 @@
       <div id="remoteImportModal" class="modal hidden">
         <div class="modal-content">
           <h3>Select Community Files</h3>
+          <p class="modal-help">Import rules and proxies directly from GitHub.</p>
           <div id="remoteFileTree"></div>
           <button id="remoteImportSelectAll">Select All</button>
           <button id="remoteImportConfirm">Import</button>
@@ -238,7 +252,6 @@
         <li>Optional keep-alive monitoring for proxies</li>
         <li>Network inspection with a collapsible usage tree and auto-refresh</li>
       </ul>
-      <button id="startTourBtn">Start Tour</button>
       <h3>License</h3>
       <p>Mozilla Public License 2.0</p>
       <h3>Links</h3>
@@ -256,6 +269,7 @@
         <h3 id="listModalTitle">Edit List</h3>
         <a id="listModalHelp" class="help hidden" target="_blank" title="">?</a>
       </div>
+      <p class="modal-help">Edit items in the list below.</p>
       <div id="listModalItems"></div>
       <button id="addListItem">Add</button>
       <button id="saveList">Save</button>
@@ -265,6 +279,7 @@
 
   <div id="duplicateModal" class="modal hidden">
     <div class="modal-content">
+      <p class="modal-help">Choose how to handle duplicates when importing.</p>
       <p id="duplicateMessage"></p>
       <button id="duplicateKeepOld">Keep Existing</button>
       <button id="duplicateKeepNew">Use New</button>
@@ -275,6 +290,7 @@
   <div id="proxyModal" class="modal hidden">
     <div class="modal-content">
       <h3 id="proxyModalTitle">Add Proxy</h3>
+      <p class="modal-help">Specify proxy connection details.</p>
       <label>Label <input type="text" id="proxyLabel"></label><br>
       <label>Type
         <select id="proxyType">
@@ -290,13 +306,6 @@
       <button id="saveProxy">Save</button>
       <button id="cancelProxy">Cancel</button>
     </div>
-  </div>
-  <div id="tourOverlay" class="modal hidden"></div>
-  <div id="tourBubble" class="modal-content hidden">
-    <p id="tourText"></p>
-    <button id="tourPrev">Back</button>
-    <button id="tourNext" disabled>Next</button>
-    <button id="tourClose">Close</button>
   </div>
   <script src="dashboard.js"></script>
 </body>

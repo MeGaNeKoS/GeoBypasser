@@ -111,6 +111,18 @@ input.invalid { border-color: #c44; }
   margin: 4px 0;
 }
 
+.section-help {
+  font-size: 0.9em;
+  opacity: 0.8;
+  margin: 4px 0 12px;
+}
+
+.modal-help {
+  font-size: 0.9em;
+  opacity: 0.8;
+  margin-bottom: 8px;
+}
+
 .help {
   font-size: 0.9em;
   margin-left: 4px;
@@ -146,44 +158,6 @@ input.invalid { border-color: #c44; }
   overflow-y: auto;
 }
 
-#tourOverlay {
-  pointer-events: none;
-  z-index: 100;
-}
-
-#tourOverlay.hidden {
-  display: none;
-}
-
-#tourOverlay.no-dim {
-  background: none;
-}
-
-#tourBubble {
-  position: absolute;
-  text-align: center;
-  pointer-events: auto;
-  z-index: 200;
-}
-
-#tourPrev {
-  margin-right: 8px;
-}
-
-#startTourBtn {
-  margin: 8px 0;
-}
-
-#tourNext:disabled {
-  opacity: 0.5;
-}
-
-.tour-highlight {
-  outline: 2px solid #fa0;
-  box-shadow: 0 0 6px #fa0;
-  position: relative;
-  z-index: 200;
-}
 
 .import-url {
   margin-top: 8px;
