@@ -91,6 +91,11 @@ tr.invalid-rule { background: #550; }
 .tree details > summary {
   cursor: pointer;
 }
+
+#remoteFileTree {
+  max-height: 60vh;
+  overflow-y: auto;
+}
 /*th.select-col,*/
 /*td.row-select,*/
 /*th.action-col,*/

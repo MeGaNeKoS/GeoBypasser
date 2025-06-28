@@ -1130,23 +1130,86 @@ async function fetchGitHubFileList (owner: string, repo: string, prefix = ''): P
   }
 }
 
+interface FileTreeNode {
+  children?: Record<string, FileTreeNode>
+  url?: string
+}
+
+function buildFileTree (files: { path: string; url: string }[]): FileTreeNode {
+  const root: FileTreeNode = { children: {} }
+  for (const file of files) {
+    const parts = file.path.split('/')
+    let node = root
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
+      node.children = node.children || {}
+      node.children[part] = node.children[part] || {}
+      if (i === parts.length - 1) {
+        node.children[part].url = file.url
+      } else {
+        node = node.children[part]
+      }
+    }
+  }
+  return root
+}
+
+function createFileTreeElement (node: FileTreeNode): HTMLUListElement {
+  const ul = document.createElement('ul')
+  for (const [name, child] of Object.entries(node.children || {})) {
+    const li = document.createElement('li')
+    if (child.children) {
+      const details = document.createElement('details')
+      details.open = true
+      const summary = document.createElement('summary')
+
+      const label = document.createElement('label')
+      const chk = document.createElement('input')
+      chk.type = 'checkbox'
+      chk.dataset.folder = 'true'
+      chk.checked = true
+      label.appendChild(chk)
+      label.append(' ', name)
+      summary.appendChild(label)
+
+      details.appendChild(summary)
+      const childUl = createFileTreeElement(child)
+      details.appendChild(childUl)
+      li.appendChild(details)
+
+      chk.addEventListener('change', () => {
+        childUl.querySelectorAll('input[type="checkbox"]').forEach(c => {
+          (c as HTMLInputElement).checked = chk.checked
+        })
+        updateRemoteSelectButtons()
+      })
+    } else if (child.url) {
+      const label = document.createElement('label')
+      const chk = document.createElement('input')
+      chk.type = 'checkbox'
+      chk.value = child.url
+      chk.checked = true
+      chk.addEventListener('change', updateRemoteSelectButtons)
+      label.appendChild(chk)
+      label.append(' ', name)
+      li.appendChild(label)
+    }
+    ul.appendChild(li)
+  }
+  return ul
+}
+
 function openRemoteImportModal (owner: string, repo: string, prefix = '') {
   const modal = document.getElementById('remoteImportModal')!
   const container = document.getElementById('remoteFileTree')!
   container.innerHTML = 'Loading...'
+  container.classList.add('tree')
+  updateRemoteSelectButtons()
   fetchGitHubFileList(owner, repo, prefix).then(files => {
     container.innerHTML = ''
-    files.forEach(f => {
-      const label = document.createElement('label')
-      const chk = document.createElement('input')
-      chk.type = 'checkbox'
-      chk.value = f.url
-      chk.checked = true
-      label.appendChild(chk)
-      label.append(' ', f.path)
-      container.appendChild(label)
-      container.appendChild(document.createElement('br'))
-    })
+    const tree = buildFileTree(files)
+    container.appendChild(createFileTreeElement(tree))
+    updateRemoteSelectButtons()
   })
   modal.classList.remove('hidden')
 }
@@ -1156,14 +1219,40 @@ function closeRemoteImportModal () {
 }
 
 function remoteSelectAll () {
-  document.querySelectorAll('#remoteFileTree input[type="checkbox"]').forEach(el => {
-    (el as HTMLInputElement).checked = true
-  })
+  const boxes = document.querySelectorAll('#remoteFileTree input[type="checkbox"]') as NodeListOf<HTMLInputElement>
+  boxes.forEach(b => { b.checked = true })
+  updateRemoteSelectButtons()
+}
+
+function remoteUnselectAll () {
+  const boxes = document.querySelectorAll('#remoteFileTree input[type="checkbox"]') as NodeListOf<HTMLInputElement>
+  boxes.forEach(b => { b.checked = false })
+  updateRemoteSelectButtons()
+}
+
+function updateRemoteSelectButtons () {
+  const btnAll = document.getElementById('remoteImportSelectAll') as HTMLButtonElement | null
+  const btnNone = document.getElementById('remoteImportUnselectAll') as HTMLButtonElement | null
+  if (!btnAll || !btnNone) return
+  const boxes = document.querySelectorAll('#remoteFileTree input[type="checkbox"]') as NodeListOf<HTMLInputElement>
+  const total = boxes.length
+  const checked = Array.from(boxes).filter(b => b.checked).length
+  if (checked === 0) {
+    btnAll.classList.remove('hidden')
+    btnNone.classList.add('hidden')
+  } else if (checked === total) {
+    btnAll.classList.add('hidden')
+    btnNone.classList.remove('hidden')
+  } else {
+    btnAll.classList.remove('hidden')
+    btnNone.classList.remove('hidden')
+  }
 }
 
 async function confirmRemoteImport () {
-  const urls = Array.from(document.querySelectorAll('#remoteFileTree input[type="checkbox"]')).filter(
-    el => (el as HTMLInputElement).checked).map(el => (el as HTMLInputElement).value)
+  const urls = Array.from(document.querySelectorAll('#remoteFileTree input[type="checkbox"]:not([data-folder])'))
+    .filter(el => (el as HTMLInputElement).checked)
+    .map(el => (el as HTMLInputElement).value)
   for (const url of urls) {
     await importConfigFromUrl(url)
   }
@@ -1880,6 +1969,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('remoteImportConfirm')!.addEventListener('click', confirmRemoteImport)
   document.getElementById('remoteImportCancel')!.addEventListener('click', closeRemoteImportModal)
   document.getElementById('remoteImportSelectAll')!.addEventListener('click', remoteSelectAll)
+  document.getElementById('remoteImportUnselectAll')!.addEventListener('click', remoteUnselectAll)
   const clearTabEl = document.getElementById('clearTabProxies')
   clearTabEl?.addEventListener('click', clearTabProxies)
   document.getElementById('refreshNetwork')!.addEventListener('click', renderNetwork)
