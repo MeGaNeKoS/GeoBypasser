@@ -1853,7 +1853,8 @@ function startTour () {
     text!.textContent = step.text
     prevBtn!.style.display = idx > 0 ? '' : 'none'
     nextBtn!.textContent = idx === steps.length - 1 ? 'Done' : 'Next'
-    nextBtn!.disabled = !(completed[idx] || step.allowNext)
+    const forceDisableNext = idx === SAVE_STEP_IDX
+    nextBtn!.disabled = forceDisableNext || !(completed[idx] || step.allowNext)
     const selectors = Array.isArray(step.selector) ? step.selector : [step.selector]
     targets = selectors.flatMap(sel => Array.from(document.querySelectorAll(sel))) as HTMLElement[]
     const enableSave = selectors.includes('#saveProxy') || selectors.includes('#cancelProxy')
