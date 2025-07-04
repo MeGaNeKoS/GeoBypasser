@@ -113,7 +113,6 @@ npm test
 
 * **Firefox**: [Add-on Page](https://addons.mozilla.org/en-US/firefox/addon/geobypass/)
 
-* **Chrome**: *(Coming soon)*
-  Extension is in development and will be released on the Chrome Web Store shortly.
+* **Chrome**: [Add-on Page](https://chromewebstore.google.com/detail/geobypass/ihocglepfddiancfooeablkngmckkjdm/)
 
 ---
