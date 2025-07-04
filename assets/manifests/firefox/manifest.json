@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "GeoBypass",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Lightweight browser extension to bypass geo-restrictions by proxying only necessary connections to spoof your location. All other traffic goes direct for speed and efficiency.",
   "permissions": [
     "activeTab",

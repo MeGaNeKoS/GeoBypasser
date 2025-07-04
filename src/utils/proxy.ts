@@ -5,9 +5,9 @@ import browser, { Proxy, WebRequest } from 'webextension-polyfill'
 import { fetchWithTimeout, getHostname, matchPatternList } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
-import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 import { supportsProxyOnRequest } from '@utils/env'
 import { addTestURLToPac } from '@utils/pac'
+import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 
 type ProxyTestJob = {
   proxy: ProxyListItem;
@@ -101,14 +101,15 @@ export function makeProxyHandler (
       if (compiledForceProxyUrlPatterns && matchPatternList(url, compiledForceProxyUrlPatterns)) {
         if (proxyId === DIRECT_PROXY_ID) {
           console.info(`[${APP_NAME}Proxy] Force direct connection for ${url} (rule "${ruleName}")`)
-          return [{ type: "direct" }]
+          return [{ type: 'direct' }]
         }
         const proxy = resolveProxy(config, proxyId)
         if (proxy) {
-          console.info(`[${APP_NAME}Proxy] Force proxy: Using ${proxy.type} proxy for ${url} -> ${proxy.host}:${proxy.port}`)
+          console.info(
+            `[${APP_NAME}Proxy] Force proxy: Using ${proxy.type} proxy for ${url} -> ${proxy.host}:${proxy.port}`)
           return [
-            { ...proxy, proxyDNS: proxy.type === "http" ? false : proxy.proxyDNS },
-            ...(fallbackDirect ? [{ type: "direct" }] : [])
+            { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+            ...(fallbackDirect ? [{ type: 'direct' }] : []),
           ]
         } else {
           console.warn(`[${APP_NAME}Proxy] Force proxy: No proxy found for rule "${ruleName}"`)
@@ -143,7 +144,7 @@ export function makeProxyHandler (
       // --- Direct connection ---
       if (proxyId === DIRECT_PROXY_ID) {
         console.info(`[${APP_NAME}Proxy] Using direct connection for ${url} (rule "${ruleName}")`)
-        return [{ type: "direct" }]
+        return [{ type: 'direct' }]
       }
 
       // --- Use proxy as per rule ---
@@ -202,7 +203,8 @@ async function testProxyConfig (
     restore = await addTestURLToPac(testUrl, pacProxy)
   } else {
     testProxyHandler = function (requestInfo: Proxy.OnRequestDetailsType) {
-      console.debug(`[${APP_NAME}Proxy] Testing proxy ${proxy.host}:${proxy.port} for URL: ${requestInfo.url}`)
+      console.debug(
+        `[${APP_NAME}Proxy] Testing proxy [${proxy.type}] ${proxy.host}:${proxy.port} for URL: ${requestInfo.url}`)
       return {
         type: proxy.type,
         host: proxy.host,
@@ -210,14 +212,15 @@ async function testProxyConfig (
         username: proxy.username,
         password: proxy.password,
         proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS,
-        failoverTimeout: proxy.failoverTimeout || 3,
+        failoverTimeout: proxy.failoverTimeout || (proxy.type === 'http' && !!proxy.username) ? 30 : 3,
       }
     }
     browser.proxy.onRequest.addListener(testProxyHandler, { urls: [testUrl] })
     restore = async () => { browser.proxy.onRequest.removeListener(testProxyHandler!) }
   }
   try {
-    const res = await fetchWithTimeout(new URL(testUrl), { method: 'HEAD', cache: 'no-store' }, 5000)
+    const res = await fetchWithTimeout(new URL(testUrl), { method: 'HEAD', cache: 'no-store' },
+      (proxy.type === 'http' && !!proxy.username) ? 30_000 : 5_000)
     let result
     if (res.ok) {
       result = { success: true }

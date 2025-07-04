@@ -10,12 +10,12 @@ import {
   resolveProxy,
 } from '@utils/proxy'
 import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@utils/generic'
-import { compileRules, getConfig, getUserStorageMode, getTabProxyMap, saveTabProxyMap } from '@utils/storage'
+import { compileRules, getConfig, getTabProxyMap, getUserStorageMode, saveTabProxyMap } from '@utils/storage'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { APP_NAME } from '@constant/defaults'
 import { STORAGE_KEYS, TAB_PROXY_MAP } from '@constant/storageKeys'
 import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
-import { isTabProxyMessage, isNetworkMessage } from '@utils/messages'
+import { isNetworkMessage, isTabProxyMessage } from '@utils/messages'
 import { addNetworkData, networkStats, resetNetworkStats } from '@utils/network'
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
 import BlockingResponseOrPromiseOrVoid = WebRequest.BlockingResponseOrPromiseOrVoid
@@ -45,6 +45,17 @@ function attachProxyHandlers (
   currentHandlers: currentProxyHandler,
   changedKeys: string[] = [],
 ) {
+  (['tab', 'domain', 'main', 'default'] as const).forEach(type => {
+    const handler = currentHandlers[type]
+    if (handler && browser.proxy.onRequest.hasListener(handler)) {
+      browser.proxy.onRequest.removeListener(handler)
+    }
+  })
+
+  if (currentHandlers.oauthRequired && browser.webRequest.onAuthRequired.hasListener(currentHandlers.oauthRequired)) {
+    browser.webRequest.onAuthRequired.removeListener(currentHandlers.oauthRequired)
+  }
+
   const urls = getAllMatchUrls(config)
 
   if (!currentHandlers.tab) {
@@ -58,30 +69,21 @@ function attachProxyHandlers (
   if (!currentHandlers.main || changedKeys.includes('rules')) {
     if (urls.length > 0) {
       currentHandlers.main = makeProxyHandler(config)
-      currentHandlers.oauthRequired = createAuthRequiredHandler(config.proxyList)
     } else {
       currentHandlers.main = undefined
       currentHandlers.oauthRequired = undefined
     }
   }
-
+  if (!currentHandlers.oauthRequired && config.proxyList.length > 0) {
+    console.log(`[${APP_NAME}BG] Creating OAuth required handler for proxy list with ${config.proxyList.length} items.`)
+    currentHandlers.oauthRequired = createAuthRequiredHandler(config.proxyList)
+  }
   if (changedKeys.includes('defaultProxy')) {
     currentHandlers.default = config.defaultProxy
       ? makeDefaultProxyHandler(config)
       : undefined
   } else if (!currentHandlers.default && config.defaultProxy) {
     currentHandlers.default = makeDefaultProxyHandler(config)
-  }
-
-  (['tab', 'domain', 'main', 'default'] as const).forEach(type => {
-    const handler = currentHandlers[type]
-    if (handler && browser.proxy.onRequest.hasListener(handler)) {
-      browser.proxy.onRequest.removeListener(handler)
-    }
-  })
-
-  if (currentHandlers.oauthRequired && browser.webRequest.onAuthRequired.hasListener(currentHandlers.oauthRequired)) {
-    browser.webRequest.onAuthRequired.removeListener(currentHandlers.oauthRequired)
   }
 
   if (currentHandlers.tab) {
@@ -92,13 +94,13 @@ function attachProxyHandlers (
   }
   if (currentHandlers.main) {
     browser.proxy.onRequest.addListener(currentHandlers.main, { urls })
-    if (currentHandlers.oauthRequired) {
-      browser.webRequest.onAuthRequired.addListener(
-        currentHandlers.oauthRequired,
-        { urls: ['<all_urls>'] },
-        ['asyncBlocking'],
-      )
-    }
+  }
+  if (currentHandlers.oauthRequired) {
+    browser.webRequest.onAuthRequired.addListener(
+      currentHandlers.oauthRequired,
+      { urls: ['<all_urls>'] },
+      ['blocking'],
+    )
   }
   if (currentHandlers.default) {
     browser.proxy.onRequest.addListener(currentHandlers.default, { urls: ['<all_urls>'] })
@@ -265,17 +267,17 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 
       const sent = requestSizes.get(details.requestId) || 0
       requestSizes.delete(details.requestId)
-      if (details.responseSize > 0)  addNetworkData(details.url, sent, details.responseSize)
+      if (details.responseSize > 0) addNetworkData(details.url, sent, details.responseSize)
     },
     { urls: ['<all_urls>'] },
-    ['responseHeaders']
+    ['responseHeaders'],
   )
 
   browser.webRequest.onErrorOccurred.addListener(
     details => {
       if (monitoredTabs.has(details.tabId)) requestSizes.delete(details.requestId)
     },
-    { urls: ['<all_urls>'] }
+    { urls: ['<all_urls>'] },
   )
 
   browser.runtime.onMessage.addListener(async (message: unknown) => {
@@ -292,9 +294,18 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 
     if (isNetworkMessage(message)) {
       if (message.type === 'getNetworkStats') return networkStats
-      if (message.type === 'clearNetworkStats') { resetNetworkStats(); return }
-      if (message.type === 'monitorTabNetwork') { monitoredTabs.add(message.tabId); return }
-      if (message.type === 'unmonitorTabNetwork') { monitoredTabs.delete(message.tabId); return }
+      if (message.type === 'clearNetworkStats') {
+        resetNetworkStats()
+        return
+      }
+      if (message.type === 'monitorTabNetwork') {
+        monitoredTabs.add(message.tabId)
+        return
+      }
+      if (message.type === 'unmonitorTabNetwork') {
+        monitoredTabs.delete(message.tabId)
+        return
+      }
       if (message.type === 'isTabNetworkMonitored') return monitoredTabs.has(message.tabId)
       if (message.type === 'devtoolsNetworkData') {
         if (monitoredTabs.has(message.tabId)) {

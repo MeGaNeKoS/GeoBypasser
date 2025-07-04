@@ -1,5 +1,5 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
-import browser, { WebRequest } from 'webextension-polyfill'
+import browser from 'webextension-polyfill'
 import { getConfig, getUserStorageMode } from '@utils/storage'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 import { generatePacScript } from '@utils/pac'
