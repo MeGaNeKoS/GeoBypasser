@@ -18,7 +18,8 @@ import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, refuseOverr
 import { chooseAppliedSettingChanges } from './settingChangeModal'
 import { proxyFormValues, ruleFormValues } from '@utils/editFields'
 import { exportedRules } from '@utils/ruleExport'
-import { exportProxyList, keepStoredCredentials } from '@utils/proxyCredentials'
+import { keepStoredCredentials } from '@utils/proxyCredentials'
+import { buildConfigExport, buildProxiesExport } from '@utils/exportFiles'
 import { isValidProxyItem } from '@utils/validity'
 import { markInvalid, markRuleFieldsInvalid } from '@utils/fieldMarks'
 import {
@@ -1292,7 +1293,7 @@ function handleImportRules (files: FileList | null) {
 }
 
 function exportProxies (list: ProxyListItem[]) {
-  download('proxies.json', JSON.stringify({ proxyList: exportProxyList(list, 'omit') }, null, 2))
+  download('proxies.json', JSON.stringify(buildProxiesExport(list), null, 2))
 }
 
 function exportAllProxies () {
@@ -1558,7 +1559,7 @@ function openExportConfigModal () {
 
   ;['proxy', 'rule', 'override', 'keepalive'].forEach(updateExportToggleLabel)
   updateExportSelectAllLabel()
-  ;(document.getElementById('exportConfigCredentials') as HTMLInputElement).checked = false
+  ;(document.getElementById('exportConfigLeaveOutCredentials') as HTMLInputElement).checked = false
 
   document.getElementById('exportConfigModal')!.classList.remove('hidden')
 }
@@ -1602,40 +1603,23 @@ function closeExportConfigModal () {
   document.getElementById('exportConfigModal')!.classList.add('hidden')
 }
 
-type ExportedConfig = Partial<Omit<GeoBypassSettings, 'rules'>> & { rules?: Record<string, unknown>[] }
-
 function exportConfigFromModal () {
-  const obj: ExportedConfig = {}
   const container = document.getElementById('exportConfigItems')!
-  const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter(
+  const proxyIndexes = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
-  const includeCredentials = (document.getElementById('exportConfigCredentials') as HTMLInputElement).checked
-  if (proxyIdxs.length) {
-    obj.proxyList = exportProxyList(proxyIdxs.map(i => config.proxyList[i]), includeCredentials ? 'include' : 'omit')
-  }
-  const exportedProxyIds = new Set(obj.proxyList?.map(p => p?.id) || [])
-  const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter(
+  const ruleIndexes = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
-  if (ruleIdxs.length) {
-    obj.rules = exportedRules(ruleIdxs.map(i => config.rules[i]), proxyId => typeof proxyId === 'string' && exportedProxyIds.has(proxyId))
-  }
-  const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter(
+  const overrideDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
-  if (ovDomains.length) {
-    obj.perWebsiteOverride = {} as GeoBypassSettings['perWebsiteOverride']
-    ovDomains.forEach(d => {
-      obj.perWebsiteOverride![d] = config.perWebsiteOverride[d]
-    })
-  }
-  const kaIds = Array.from(container.querySelectorAll('input[data-group="keepalive"]')).filter(
+  const keepAliveIds = Array.from(container.querySelectorAll('input[data-group="keepalive"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
-  if (kaIds.length) {
-    obj.keepAliveRules = {} as GeoBypassSettings['keepAliveRules']
-    kaIds.forEach(id => {
-      if (config.keepAliveRules?.[id]) obj.keepAliveRules![id] = config.keepAliveRules[id]
-    })
-  }
-  download('config.json', JSON.stringify(obj, null, 2))
+  const leaveOut = (document.getElementById('exportConfigLeaveOutCredentials') as HTMLInputElement).checked
+  const exported = buildConfigExport(
+    config,
+    { proxyIndexes, ruleIndexes, overrideDomains, keepAliveIds },
+    leaveOut ? 'omit' : 'include',
+  )
+  download('config.json', JSON.stringify(exported, null, 2))
   closeExportConfigModal()
 }
 

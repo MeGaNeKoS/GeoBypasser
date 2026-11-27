@@ -27,7 +27,17 @@ const CREDENTIAL_INPUT_ATTRIBUTES = [
   { selector: '#diagPass', attribute: 'autocomplete', expected: 'new-password' },
 ]
 
-function checkNoCredentials (label, text, failures) {
+function checkCarriesCredentials (label, text, failures) {
+  if (text === null) {
+    failures.push(`${label} wrote no file`)
+    return
+  }
+  if (CREDENTIAL_TEXTS.some(credential => !text.includes(credential))) {
+    failures.push(`${label} left out a credential`)
+  }
+}
+
+function checkOmitsCredentials (label, text, failures) {
   if (text === null) {
     failures.push(`${label} wrote no file`)
     return
@@ -37,30 +47,30 @@ function checkNoCredentials (label, text, failures) {
   }
 }
 
-async function checkProxiesExportOmits (run, failures) {
+async function checkProxiesExportCarriesCredentials (run, failures) {
   const text = await run(captureDownload, ['#exportProxiesAll'])
-  checkNoCredentials('Export All', text, failures)
+  checkCarriesCredentials('Export All', text, failures)
   if (text !== null && !text.includes(CREDENTIAL_PROXY.host)) failures.push('Export All did not write the credentials proxy')
 
   await run(selectProxyRowByHost, [CREDENTIAL_PROXY.host])
   const selected = await run(captureDownload, ['#exportProxiesSelected'])
-  checkNoCredentials('Export Selected', selected, failures)
+  checkCarriesCredentials('Export Selected', selected, failures)
   if (selected !== null && !selected.includes(CREDENTIAL_PROXY.host)) failures.push('Export Selected did not write the selected proxy')
 }
 
-async function checkConfigExportControl (run, failures) {
+async function checkConfigExportLeaveOutControl (run, failures) {
   await run(clickSelector, ['#openExportConfig'])
-  if (await run(isCheckedSelector, ['#exportConfigCredentials'])) failures.push('the config export control is on when the dialog opens')
-  await run(clickSelector, ['#exportConfigCredentials'])
+  if (await run(isCheckedSelector, ['#exportConfigLeaveOutCredentials'])) failures.push('the leave out control is on when the dialog opens')
   const withCredentials = await run(captureDownload, ['#exportConfigConfirm'])
-  if (withCredentials === null || !withCredentials.includes(CREDENTIAL_PROXY.password)) {
-    failures.push('config export with the control on left out the credentials')
-  }
+  checkCarriesCredentials('config export with the control off', withCredentials, failures)
 
   await run(clickSelector, ['#openExportConfig'])
-  if (await run(isCheckedSelector, ['#exportConfigCredentials'])) failures.push('the config export control stayed on after the dialog reopened')
+  await run(clickSelector, ['#exportConfigLeaveOutCredentials'])
   const withoutCredentials = await run(captureDownload, ['#exportConfigConfirm'])
-  checkNoCredentials('config export with the control off', withoutCredentials, failures)
+  checkOmitsCredentials('config export with the control on', withoutCredentials, failures)
+
+  await run(clickSelector, ['#openExportConfig'])
+  if (await run(isCheckedSelector, ['#exportConfigLeaveOutCredentials'])) failures.push('the leave out control stayed on after the dialog reopened')
 }
 
 async function checkImportKeepsStoredCredentials (run, failures, { label, inputId }) {
@@ -87,12 +97,12 @@ async function checkCredentialInputAttributes (run, failures) {
 
 export async function checkCredentialWiring (run, failures) {
   const failuresBefore = failures.length
-  await runStep('proxies export', () => checkProxiesExportOmits(run, failures), failures)
-  await runStep('config export control', () => checkConfigExportControl(run, failures), failures)
+  await runStep('proxies export', () => checkProxiesExportCarriesCredentials(run, failures), failures)
+  await runStep('config export leave out control', () => checkConfigExportLeaveOutControl(run, failures), failures)
   await runStep('proxy import', () => checkImportKeepsStoredCredentials(run, failures, { label: 'proxy import', inputId: 'importProxies' }), failures)
   await runStep('config import', () => checkImportKeepsStoredCredentials(run, failures, { label: 'config import', inputId: 'importConfig' }), failures)
   await runStep('credential input attributes', () => checkCredentialInputAttributes(run, failures), failures)
   if (failures.length === failuresBefore) {
-    console.log('credentials: Export All and Export Selected omit them, the config export control is off on open, proxy and config imports keep stored ones, credential inputs are password and autofill-free')
+    console.log('credentials: Export All, Export Selected, and the default config export carry usernames and passwords, the leave out control is off on open and omits them, proxy and config imports keep stored ones, credential inputs are password and autofill-free')
   }
 }
