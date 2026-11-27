@@ -17,6 +17,7 @@
     "package:prod:chrome": "ts-node scripts/build.ts package chrome --minify",
     "test:firefox:android": "ts-node scripts/test-firefox-android.ts",
     "smoke:chrome": "npm run build:dev:chrome && node scripts/smoke-chrome.mjs",
+    "smoke:firefox": "npm run build:dev:firefox && node scripts/smoke-firefox.mjs",
     "test": "jest"
   },
   "author": "めがねこ",
