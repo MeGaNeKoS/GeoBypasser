@@ -30,6 +30,22 @@ export function resolveProxy (config: GeoBypassRuntimeSettings, proxyId?: ProxyI
     getProxyById(config.proxyList, config.defaultProxy)
 }
 
+const HTTP_AUTH_FAILOVER_TIMEOUT_SECONDS = 30
+const DEFAULT_FAILOVER_TIMEOUT_SECONDS = 3
+
+function isAuthenticatedHttp (proxy: ProxyListItem): boolean {
+  return proxy.type === 'http' && !!proxy.username
+}
+
+export function failoverTimeoutFor (proxy: ProxyListItem): number {
+  if (proxy.failoverTimeout !== undefined) return proxy.failoverTimeout
+  return isAuthenticatedHttp(proxy) ? HTTP_AUTH_FAILOVER_TIMEOUT_SECONDS : DEFAULT_FAILOVER_TIMEOUT_SECONDS
+}
+
+export function proxyInfoFor (proxy: ProxyListItem) {
+  return { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS }
+}
+
 export function makeTabProxyHandler (
   config: GeoBypassRuntimeSettings,
   tabProxyMap: Record<number, ProxyId> = {},
@@ -42,7 +58,7 @@ export function makeTabProxyHandler (
     if (proxy) {
       console.info(`[${APP_NAME}Proxy] Tab ${requestInfo.tabId} mapped to proxy ${mapped}`)
       return [
-        { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+        proxyInfoFor(proxy),
         ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
       ]
     }
@@ -74,7 +90,7 @@ export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings, lookup
       if (proxy) {
         console.info(`[${APP_NAME}Proxy] Domain override for "${hostname}" matched for tab ${requestInfo.tabId}`)
         return [
-          { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+          proxyInfoFor(proxy),
           ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
         ]
       } else {
@@ -118,7 +134,7 @@ export function makeProxyHandler (
           console.info(
             `[${APP_NAME}Proxy] Force proxy: Using ${proxy.type} proxy for ${url} -> ${proxy.host}:${proxy.port}`)
           return [
-            { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+            proxyInfoFor(proxy),
             ...(fallbackDirect ? [{ type: 'direct' }] : []),
           ]
         } else {
@@ -170,7 +186,7 @@ export function makeProxyHandler (
           `[${APP_NAME}Proxy] Using ${proxy.type} proxy for ${url} -> ${proxy.host}:${proxy.port} (rule "${ruleName}")`)
 
         return [
-          { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+          proxyInfoFor(proxy),
           ...(fallbackDirect ? [{ type: 'direct' }] : []),
         ]
 
@@ -190,7 +206,7 @@ export function makeDefaultProxyHandler (config: GeoBypassSettings) {
     if (proxy) {
       console.info(`[${APP_NAME}Proxy] Default handler: Using ${proxy.type} proxy -> ${proxy.host}:${proxy.port}`)
       return [
-        { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS },
+        proxyInfoFor(proxy),
         ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
       ]
     } else {
@@ -236,7 +252,7 @@ async function testProxyConfig (
         username: proxy.username,
         password: proxy.password,
         proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS,
-        failoverTimeout: proxy.failoverTimeout || (proxy.type === 'http' && !!proxy.username) ? 30 : 3,
+        failoverTimeout: failoverTimeoutFor(proxy),
       }
     }
     browser.proxy.onRequest.addListener(testProxyHandler, { urls: [testUrl] })
@@ -244,7 +260,7 @@ async function testProxyConfig (
   }
   try {
     const res = await fetchWithTimeout(new URL(testUrl), { method: 'HEAD', cache: 'no-store' },
-      (proxy.type === 'http' && !!proxy.username) ? 30_000 : 5_000)
+      isAuthenticatedHttp(proxy) ? 30_000 : 5_000)
     let result
     if (res.ok) {
       result = { success: true }
