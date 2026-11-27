@@ -11,6 +11,7 @@ import type { ListRow } from '../components/list-section'
 import { nothingLeftToFix, setAsideBanners } from '../components/set-aside-view'
 import type { SetAsideViewOptions } from '../components/set-aside-view'
 import { element, replaceContent, requireElement } from '../dom'
+import type { Child } from '../dom'
 import { downloadJsonFile } from '../download'
 import { isSetAsideOnlyHash } from '../shell/routes'
 import { rowTuningNodes } from './ruleFineTuning'
@@ -96,12 +97,11 @@ function rowFor (list: ProxyRule[], row: RuleRow, proxyList: unknown): ListRow {
     name,
     setAside: row.invalid,
     body: [
-      element('strong', {}, name),
+      element('p', {}, element('strong', {}, name), ' via ', row.proxyLabel),
       ...(row.invalid ? setAsideNotes(row.faults) : []),
       ...(row.ignoredNote === undefined ? [] : ignoredSettingNotes(row.ignoredNote)),
       ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
-      element('p', { class: 'help' }, matchLineOf(row.rule.match)),
-      element('p', { class: 'help' }, row.proxyLabel, ...(stored ? rowTuningNodes(ruleFormOf(stored)) : [])),
+      element('p', { class: 'help' }, ...patternsAndTuningOf(row.rule.match, stored)),
       row.invalid
         ? lockedSwitchText(name)
         : switchControl(`Active: ${name}`, row.active, checked => void setActive(row.index, checked), { focusKey: `switch-${key}` }),
@@ -124,6 +124,13 @@ function matchLineOf (patterns: unknown): string {
   if (!Array.isArray(patterns) || patterns.length === 0) return ''
   const more = patterns.length > 1 ? ` +${patterns.length - 1} more` : ''
   return `${String(patterns[0])}${more}`
+}
+
+function patternsAndTuningOf (patterns: unknown, stored: ProxyRule | undefined): Child[] {
+  const patternLine = matchLineOf(patterns)
+  const tuning = stored ? rowTuningNodes(ruleFormOf(stored)) : []
+  if (tuning.length === 0) return [patternLine]
+  return [patternLine, patternLine ? ' ' : null, ...tuning]
 }
 
 function openEditor (entry: RuleEntry | undefined, proxyList: unknown): void {

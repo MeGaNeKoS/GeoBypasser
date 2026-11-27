@@ -1,6 +1,5 @@
 import type { KeepAliveProxyRule, ProxyListItem, ProxyRule } from '@customTypes/proxy'
-import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
-import { compileRules } from '@utils/storage'
+import type { GeoBypassSettings } from '@customTypes/settings'
 import {
   isValidKeepAliveRule,
   isValidOverrideEntry,
@@ -251,8 +250,4 @@ export function withAppliedSettings (
     fallbackDirect: choose('fallbackDirect'),
     testProxyUrl: choose('testProxyUrl'),
   }
-}
-
-export function withImportedRules (settings: GeoBypassRuntimeSettings, rules: ProxyRule[]): GeoBypassRuntimeSettings {
-  return { ...settings, rules: [...settings.rules, ...compileRules(rules)] }
 }

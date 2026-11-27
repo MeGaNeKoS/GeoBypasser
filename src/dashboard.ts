@@ -4,7 +4,7 @@ import {
   saveTabProxyMap,
   updateConfig,
 } from '@utils/storage'
-import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from '@customTypes/proxy'
+import { KeepAliveProxyRule, ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import browser from 'webextension-polyfill'
 import { supportsProxyOnRequest } from '@utils/env'
@@ -17,7 +17,6 @@ import {
   KEEP_ALIVE_FORM_FIELDS,
   mergeEditedFields,
 } from '@utils/editFields'
-import { exportedRules } from '@utils/ruleExport'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
 import { buildConfigExport } from '@utils/exportFiles'
 import { isValidProxyItem } from '@utils/validity'
@@ -45,7 +44,6 @@ const selectedKeepAlive = new Set<string>()
 let listTargetInput: HTMLInputElement | null = null
 let currentListValidator: (val: string) => boolean = () => true
 let editingKeepAliveId: string | null = null
-const activeRows = new WeakMap<HTMLTableElement, HTMLTableRowElement | null>()
 let networkAutoInterval: ReturnType<typeof setInterval> | null = null
 
 // Helper to generate a signature for comparing proxy entries
@@ -59,69 +57,6 @@ function createOption (id: string, label: string) {
   opt.value = id
   opt.textContent = label
   return opt
-}
-
-function attachRowHandlers (
-  tr: HTMLTableRowElement,
-  table: HTMLTableElement,
-  exportBtn: HTMLElement,
-  deleteBtn?: HTMLElement,
-) {
-  const isTouch = window.matchMedia('(pointer: coarse)').matches
-  let timer: number | null = null
-
-  function openActions () {
-    const prev = activeRows.get(table)
-    if (prev && prev !== tr) prev.classList.remove('show-actions')
-    activeRows.set(table, tr)
-    tr.classList.add('show-actions')
-    table.dataset.showActions = 'true'
-    table.dataset.showSelect = 'true'
-    exportBtn.style.display = 'inline-block'
-    if (deleteBtn) deleteBtn.style.display = 'inline-block'
-  }
-
-  function closeActions () {
-    tr.classList.remove('show-actions')
-    if (activeRows.get(table) === tr) activeRows.set(table, null)
-    updateSelectVisibility(table, exportBtn, deleteBtn)
-  }
-
-  function showSelectOnly () {
-    table.dataset.showSelect = 'true'
-    exportBtn.style.display = 'inline-block'
-    if (deleteBtn) deleteBtn.style.display = 'inline-block'
-  }
-
-  if (isTouch) {
-    tr.addEventListener('touchstart', () => {
-      timer = window.setTimeout(() => {
-        openActions()
-        timer = null
-      }, 500)
-    })
-    tr.addEventListener('touchend', () => {
-      if (timer !== null) {
-        clearTimeout(timer)
-        if (tr.classList.contains('show-actions')) {
-          closeActions()
-        } else if (table.dataset.showSelect) {
-          updateSelectVisibility(table, exportBtn, deleteBtn)
-        } else {
-          showSelectOnly()
-        }
-      }
-    })
-  } else {
-    tr.addEventListener('click', ev => {
-      if ((ev.target as HTMLElement).closest('button,input')) return
-      if (tr.classList.contains('show-actions')) {
-        closeActions()
-      } else {
-        openActions()
-      }
-    })
-  }
 }
 
 function updateSelectVisibility (
@@ -512,18 +447,6 @@ function renderKeepAlive () {
       delete config.keepAliveRules?.[proxyId]
       saveConfig(config).then(renderAll)
     }
-  }
-}
-
-function getExportableConfig () {
-  return {
-    proxyList: config.proxyList,
-    defaultProxy: config.defaultProxy,
-    fallbackDirect: config.fallbackDirect,
-    rules: exportedRules(config.rules, () => true),
-    keepAliveRules: config.keepAliveRules,
-    testProxyUrl: config.testProxyUrl,
-    perWebsiteOverride: config.perWebsiteOverride,
   }
 }
 

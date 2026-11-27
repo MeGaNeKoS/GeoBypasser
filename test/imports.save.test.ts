@@ -1,6 +1,5 @@
-import { getConfig, saveConfig } from '@utils/storage'
-import { refuseRules, withImportedRules } from '@utils/importFiles'
 import { STORAGE_KEYS } from '@constant/storageKeys'
+import { importRuleFile } from '@ui/rules/ruleImport'
 import { browser } from './setup'
 
 function loadStored (data: Record<string, unknown>) {
@@ -15,6 +14,10 @@ function lastWrittenRules () {
   return calls[calls.length - 1][0][STORAGE_KEYS.rules]
 }
 
+function rulesFile (rules: unknown[]): File {
+  return { text: async () => JSON.stringify({ rules }) } as unknown as File
+}
+
 beforeEach(() => {
   jest.clearAllMocks()
 })
@@ -26,8 +29,7 @@ describe('an import save', () => {
     loadStored({ [STORAGE_KEYS.rules]: [setAside, valid] })
     const imported = { active: true, name: 'New', match: ['https://example.net/*'], proxyId: 'p1' }
 
-    const config = await getConfig()
-    await saveConfig(withImportedRules(config, refuseRules([imported]).accepted))
+    await importRuleFile(rulesFile([imported]))
 
     expect(lastWrittenRules()).toEqual([setAside, valid, imported])
   })
