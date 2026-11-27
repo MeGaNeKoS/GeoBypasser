@@ -26,7 +26,7 @@ As the owner, I click through the proposed popup, dashboard, and devtools panel 
 
 - Default proxy; fallback to direct; test proxy URL
 - Clear tab proxies (Firefox only)
-- Storage mode (hidden today; arrives with sync in E02)
+- No storage mode control: config sync was dropped in `E02/S06`, so the design's Storage slot is removed
 
 ### Dashboard: Proxy list
 
