@@ -108,6 +108,18 @@ describe('an entry that would be set aside is refused by each path', () => {
     expect(verdict.messages[0]).toContain('exa mple.com')
   })
 
+  it('overrides import refuses keys that are not bare hostnames and keeps the bare one', () => {
+    const verdict = refuseOverrides({
+      'https://example.com': 'p1',
+      'example.com/a': 'p1',
+      'example.com:8443': 'p1',
+      'example.com': 'p1',
+    })
+
+    expect(verdict.accepted).toEqual({ 'example.com': 'p1' })
+    expect(verdict.messages).toHaveLength(3)
+  })
+
   it('keep-alive import refuses a rule with a tab URL that is not valid and keeps the valid one', () => {
     const bad = { active: true, tabUrls: ['not valid!'] }
 

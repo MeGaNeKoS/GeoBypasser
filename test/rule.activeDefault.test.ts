@@ -1,4 +1,5 @@
 import { generatePacScript } from '@utils/pac'
+import { matchPatternSource } from '@utils/pacPattern'
 import { makeProxyHandler } from '@utils/proxy'
 import { popupRules, ruleRows } from '@utils/pageView'
 import { compileRules } from '@utils/storage'
@@ -24,7 +25,7 @@ function config (rules: unknown[]): any {
 describe('a rule without an active field is active', () => {
   it('the PAC script routes its pattern to its proxy', () => {
     const pac = generatePacScript(config([ruleWithoutActive]))
-    expect(pac).toContain('if (shExpMatch(url, "https://example.com/*")) return')
+    expect(pac).toContain(`new RegExp(${JSON.stringify(matchPatternSource('https://example.com/*'))}).test(url)`)
     expect(pac).toContain('good.lan')
   })
 

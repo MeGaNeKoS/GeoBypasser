@@ -4,6 +4,7 @@ import { PROXY_TYPES } from '@constant/proxy'
 import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 
 const STATIC_EXTENSIONS_FORM = /^\/(.*)\/([gimsuy]*)$/
+const BARE_HOSTNAME_FORM = /^(?:[a-z0-9-]+(?:\.[a-z0-9-]+)*\.?|\[[0-9a-f:.]+\])$/i
 
 function isObject (value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -105,34 +106,16 @@ export function isProxyShownInvalid (proxy: unknown): boolean {
   return !isValidProxyItem(proxy)
 }
 
-function parseDomain (val: string) {
-  let urlString = val.trim()
-
-  // If there's no protocol, add one
-  if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(urlString)) {
-    urlString = 'https://' + urlString
-  }
-
-  return new URL(urlString)
-}
-
-export function isValidDomain (val: string): boolean {
+function parseHostname (val: string): string | undefined {
   try {
-    parseDomain(val)
-    return true
+    return new URL(`https://${val}/`).hostname
   } catch {
-    return false
+    return undefined
   }
 }
 
-export function validateDomain (val: string) {
-  try {
-    parseDomain(val)
-    return true
-  } catch (e) {
-    console.error('Invalid URL:', e)
-    return false
-  }
+export function isBareHostname (val: string): boolean {
+  return BARE_HOSTNAME_FORM.test(val) && parseHostname(val) === val.toLowerCase()
 }
 
 export function validateHostnamePattern (val: string) {
@@ -145,7 +128,7 @@ export function validateHostnamePattern (val: string) {
 }
 
 export function isValidOverrideEntry (domain: string, proxyId: unknown): boolean {
-  return isValidDomain(domain) && typeof proxyId === 'string' && proxyId !== ''
+  return isBareHostname(domain) && typeof proxyId === 'string' && proxyId !== ''
 }
 
 export function isValidKeepAliveRule (rule: unknown): boolean {

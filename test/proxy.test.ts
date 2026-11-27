@@ -80,17 +80,17 @@ describe('makeProxyHandler', () => {
 
   it('bypasses via url pattern', async () => {
     const res = await handler({ url: 'https://bypass/1', type: 'script' } as any)
-    expect(res).toBeUndefined()
+    expect(res).toEqual([{ type: 'direct' }])
   })
 
   it('bypasses via request type', async () => {
     const res = await handler({ url: 'https://x/1', type: 'image' } as any)
-    expect(res).toBeUndefined()
+    expect(res).toEqual([{ type: 'direct' }])
   })
 
   it('bypasses via static extension', async () => {
     const res = await handler({ url: 'https://x/1.jpg', type: 'script' } as any)
-    expect(res).toBeUndefined()
+    expect(res).toEqual([{ type: 'direct' }])
   })
 
   it('supports direct rule', async () => {

@@ -28,6 +28,10 @@ export function getHostname (url: string): string | null {
   }
 }
 
+export function isHostOrSubdomain (hostname: string, domain: string): boolean {
+  return hostname === domain || hostname.endsWith('.' + domain)
+}
+
 export async function fetchWithTimeout (url: URL, options: RequestInit = {}, timeout = 5000) {
   const controller = new AbortController()
 

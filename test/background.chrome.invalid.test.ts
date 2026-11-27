@@ -42,6 +42,10 @@ function lastPac () {
   return calls[calls.length - 1][0].value.pacScript.data as string
 }
 
+function lastPacWithoutEscapes () {
+  return lastPac().replace(/\\/g, '')
+}
+
 function lastAuthListener () {
   const calls = addAuth.mock.calls as any[][]
   return calls[calls.length - 1][0] as (details: unknown) => unknown
@@ -72,9 +76,9 @@ describe('Chrome background with set aside entries', () => {
     await import('../src/background.chrome')
     await flush()
     expect(browser.proxy.settings.set).toHaveBeenCalled()
-    expect(lastPac()).toContain('setaside.example')
-    expect(lastPac()).not.toContain('a:1; PROXY x:8080')
-    expect(lastPac()).not.toContain('not a pattern')
+    expect(lastPacWithoutEscapes()).toContain('setaside.example')
+    expect(lastPacWithoutEscapes()).not.toContain('a:1; PROXY x:8080')
+    expect(lastPacWithoutEscapes()).not.toContain('not a pattern')
     expect(authFor('a:1; PROXY x:8080', 80)).toEqual({})
 
     setAsideStored[STORAGE_KEYS.rules] = [setAsideRule, setAsideProxyRule, goodRule, extraRule]
@@ -84,10 +88,10 @@ describe('Chrome background with set aside entries', () => {
     for (const fn of [...browser.storage.onChanged._listeners]) await fn(changes, 'local')
     await flush()
 
-    expect(lastPac()).toContain('example.org')
-    expect(lastPac()).toContain('setaside.example')
-    expect(lastPac()).not.toContain('a:1; PROXY x:8080')
-    expect(lastPac()).not.toContain('not a pattern')
+    expect(lastPacWithoutEscapes()).toContain('example.org')
+    expect(lastPacWithoutEscapes()).toContain('setaside.example')
+    expect(lastPacWithoutEscapes()).not.toContain('a:1; PROXY x:8080')
+    expect(lastPacWithoutEscapes()).not.toContain('not a pattern')
     expect(authFor('a:1; PROXY x:8080', 80)).toEqual({})
   })
 })
@@ -105,17 +109,17 @@ describe('Chrome background with wrong-type entries inside sections', () => {
     await import('../src/background.chrome')
     await flush()
     expect(browser.proxy.settings.set).toHaveBeenCalled()
-    expect(lastPac()).toContain('good.lan')
-    expect(lastPac()).toContain('wrong.example')
-    expect(lastPac()).not.toContain('wrong.lan')
+    expect(lastPacWithoutEscapes()).toContain('good.lan')
+    expect(lastPacWithoutEscapes()).toContain('wrong.example')
+    expect(lastPacWithoutEscapes()).not.toContain('wrong.lan')
     expect(authFor('wrong.lan', 3128)).toEqual({})
 
     const changes = Object.fromEntries(Object.entries(wrongTypeStored).map(([k, v]) => [k, { newValue: v }]))
     for (const fn of [...browser.storage.onChanged._listeners]) await fn(changes, 'local')
     await flush()
-    expect(lastPac()).toContain('good.lan')
-    expect(lastPac()).toContain('example.com')
-    expect(lastPac()).not.toContain('wrong.lan')
+    expect(lastPacWithoutEscapes()).toContain('good.lan')
+    expect(lastPacWithoutEscapes()).toContain('example.com')
+    expect(lastPacWithoutEscapes()).not.toContain('wrong.lan')
     expect(authFor('wrong.lan', 3128)).toEqual({})
   })
 })

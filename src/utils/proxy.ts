@@ -2,12 +2,12 @@ import type { ProxyListItem, ProxyTestResult, RuntimeProxyRule } from '@customTy
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import { ProxyId } from '@customTypes/generic'
 import browser, { Proxy, WebRequest } from 'webextension-polyfill'
-import { fetchWithTimeout, getHostname, matchPatternList } from '@utils/generic'
+import { fetchWithTimeout, getHostname, isHostOrSubdomain, matchPatternList } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { supportsProxyOnRequest } from '@utils/env'
 import { addTestURLToPac } from '@utils/pac'
-import { isRuleActive, usableOverrides, usableProxies, usableRules } from '@utils/usable'
+import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableProxies, usableRules } from '@utils/usable'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
 
@@ -47,6 +47,11 @@ export function makeTabProxyHandler (
   }
 }
 
+function overrideProxyIdForHost (overrides: unknown, hostname: string): string | undefined {
+  return overridesMostSpecificFirst(usableOverrides(overrides))
+    .find(([domain]) => isHostOrSubdomain(hostname, domain))?.[1]
+}
+
 export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings) {
   return async function handleDomainProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
     if (requestInfo.tabId === undefined) return
@@ -59,7 +64,7 @@ export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings) {
     if (!tab.url) return
     const hostname = getHostname(tab.url)
     if (!hostname) return
-    const overrideId = usableOverrides(config.perWebsiteOverride)[hostname]
+    const overrideId = overrideProxyIdForHost(config.perWebsiteOverride, hostname)
     if (overrideId) {
       const proxy = resolveProxy(config, overrideId)
       if (proxy) {
@@ -121,14 +126,14 @@ export function makeProxyHandler (
       // --- Bypass by URL ---
       if (compiledBypassUrlPatterns && matchPatternList(url, compiledBypassUrlPatterns)) {
         console.info(`[${APP_NAME}Proxy] Bypassed by URL pattern for rule "${ruleName}" and url ${url}`)
-        return
+        return [{ type: 'direct' }]
       }
 
       // --- Bypass by request type ---
       if (bypassResourceTypes && bypassResourceTypes.includes(requestInfo.type)) {
         console.info(
           `[${APP_NAME}Proxy] Bypassed by request type "${requestInfo.type}" for rule "${ruleName}" and url ${url}`)
-        return
+        return [{ type: 'direct' }]
       }
 
       // --- Bypass by static extension ---
@@ -137,7 +142,7 @@ export function makeProxyHandler (
           compiledStaticExtensions.lastIndex = 0
           if (compiledStaticExtensions.test(new URL(url).pathname)) {
             console.info(`[${APP_NAME}Proxy] Bypassed by static extension for rule "${ruleName}" and url ${url}`)
-            return
+            return [{ type: 'direct' }]
           }
         } catch (e) {
           console.error(`[${APP_NAME}Proxy] Error parsing URL for static extensions:`, e)

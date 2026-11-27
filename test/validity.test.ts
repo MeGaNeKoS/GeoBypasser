@@ -1,4 +1,4 @@
-import { isValidPattern, isValidProxyItem, isValidRule, isValidStaticExtensions, isValidTestUrl } from '@utils/validity'
+import { isValidOverrideEntry, isValidPattern, isValidProxyItem, isValidRule, isValidStaticExtensions, isValidTestUrl } from '@utils/validity'
 import type { ProxyListItem } from '@customTypes/proxy'
 
 function proxy (overrides: Partial<ProxyListItem>): ProxyListItem {
@@ -45,5 +45,16 @@ describe('isValidTestUrl', () => {
   it('accepts an absolute http or https URL', () => {
     expect(isValidTestUrl('https://www.google.com/')).toBe(true)
     expect(isValidTestUrl('http://example.com/ping')).toBe(true)
+  })
+})
+
+describe('isValidOverrideEntry with a key that is a bare hostname', () => {
+  it.each([
+    ['a bracketed IPv6 literal', '[::1]'],
+    ['a trailing dot', 'example.com.'],
+    ['an uppercase name', 'Example.COM'],
+    ['a dotted IPv4 address', '127.0.0.1'],
+  ])('accepts %s', (_, domain) => {
+    expect(isValidOverrideEntry(domain, 'p1')).toBe(true)
   })
 })

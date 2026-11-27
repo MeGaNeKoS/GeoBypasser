@@ -1,4 +1,4 @@
-import { isValidKeepAliveRule, isValidPattern, isValidProxyItem, isValidRule, isValidStaticExtensions, isValidTestUrl } from '@utils/validity'
+import { isValidKeepAliveRule, isValidOverrideEntry, isValidPattern, isValidProxyItem, isValidRule, isValidStaticExtensions, isValidTestUrl } from '@utils/validity'
 import type { ProxyListItem } from '@customTypes/proxy'
 
 function proxy (overrides: Partial<ProxyListItem>): ProxyListItem {
@@ -124,5 +124,25 @@ describe('isValidRule with bypassResourceTypes that are not known names', () => 
 describe('isValidKeepAliveRule with no tab URL pattern', () => {
   it('rejects a rule whose tabUrls list is empty', () => {
     expect(isValidKeepAliveRule({ active: true, tabUrls: [] })).toBe(false)
+  })
+})
+
+describe('isValidOverrideEntry with a key that is not a bare hostname', () => {
+  it.each([
+    ['a scheme', 'https://example.com'],
+    ['a path', 'example.com/a'],
+    ['a trailing slash', 'example.com/'],
+    ['a port', 'example.com:8443'],
+    ['a bracketed IPv6 literal with a port', '[::1]:8443'],
+    ['a path after a bracketed IPv6 literal', '[::1]/x'],
+    ['a query', 'example.com?x=1'],
+    ['a fragment', 'example.com#top'],
+    ['userinfo', 'user@example.com'],
+    ['a space inside', 'exa mple.com'],
+    ['a leading space', ' example.com'],
+    ['a wildcard', '*.example.com'],
+    ['an empty key', ''],
+  ])('rejects %s', (_, domain) => {
+    expect(isValidOverrideEntry(domain, 'p1')).toBe(false)
   })
 })

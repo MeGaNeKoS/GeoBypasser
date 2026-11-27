@@ -94,10 +94,10 @@ describe('proxy hierarchy scenarios', () => {
     expect(res).toBeUndefined()
   })
 
-  it('6. rule bypass for static assets', async () => {
+  it('6. rule bypass for static assets connects directly', async () => {
     const cfg = baseConfig()
     const res = await runRequest(cfg, 3, 'https://othersite.com', 'https://othersite.com/image.png')
-    expect(res[0].id).toBe('p2')
+    expect(res).toEqual([{ type: 'direct' }])
   })
 
   it('7. force-proxy pattern', async () => {

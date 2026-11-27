@@ -1,9 +1,17 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
-import type { ProxyListItem } from '@customTypes/proxy'
+import type { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { resolveProxy } from '@utils/proxy'
-import { isRuleActive, usableOverrides, usableRules } from '@utils/usable'
+import { matchPatternSource } from '@utils/pacPattern'
+import { compileStaticExtensions } from '@utils/validity'
+import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableRules } from '@utils/usable'
 import browser from 'webextension-polyfill'
+
+const PAC_HEADER = 'function FindProxyForURL(url, host) {'
+const DIRECT_ROUTE = 'DIRECT'
+const PAC_PATH_EXPRESSION = 'url.replace(/^[a-z]+:\\/\\/[^\\/]*/i, "").replace(/[?#].*$/, "")'
+const LINE_SEPARATOR = String.fromCharCode(0x2028)
+const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029)
 
 function proxyToPac (proxy: ProxyListItem, fallbackDirect: boolean): string {
   const scheme = proxy.type === 'socks' ? 'SOCKS' : 'PROXY'
@@ -12,49 +20,77 @@ function proxyToPac (proxy: ProxyListItem, fallbackDirect: boolean): string {
     : `${scheme} ${proxy.host}:${proxy.port}`
 }
 
+function pacString (text: string): string {
+  return JSON.stringify(text)
+    .split(LINE_SEPARATOR).join('\\u2028')
+    .split(PARAGRAPH_SEPARATOR).join('\\u2029')
+}
+
 export function generatePacScript (config: GeoBypassRuntimeSettings): string {
-  const lines: string[] = []
-  lines.push('function FindProxyForURL(url, host) {')
+  return [
+    PAC_HEADER,
+    ...overrideLines(config),
+    ...usableRules(config.rules).filter(isRuleActive).flatMap(rule => ruleBlock(config, rule)),
+    defaultRouteLine(config),
+    '}',
+  ].join('\n')
+}
 
-  for (const rule of usableRules(config.rules)) {
-    if (!isRuleActive(rule)) continue
-    const proxy = rule.proxyId === DIRECT_PROXY_ID ? null : resolveProxy(config, rule.proxyId)
-    const pacProxy = proxy ? proxyToPac(proxy, rule.fallbackDirect ?? false) : 'DIRECT'
-
-    if (rule.forceProxyUrlPatterns) {
-      for (const pat of rule.forceProxyUrlPatterns) {
-        lines.push(`  if (shExpMatch(url, ${JSON.stringify(pat)})) return ${JSON.stringify(pacProxy)};`)
-      }
-    }
-    if (rule.bypassUrlPatterns) {
-      for (const pat of rule.bypassUrlPatterns) {
-        lines.push(`  if (shExpMatch(url, ${JSON.stringify(pat)})) return "DIRECT";`)
-      }
-    }
-    const matches = Array.isArray(rule.match) ? rule.match : [rule.match]
-    for (const pat of matches) {
-      lines.push(`  if (shExpMatch(url, ${JSON.stringify(pat)})) return ${JSON.stringify(pacProxy)};`)
-    }
-  }
-  for (const [website, proxyId] of Object.entries(usableOverrides(config.perWebsiteOverride))) {
+function overrideLines (config: GeoBypassRuntimeSettings): string[] {
+  return overridesMostSpecificFirst(usableOverrides(config.perWebsiteOverride)).flatMap(([domain, proxyId]) => {
     const proxy = resolveProxy(config, proxyId)
-    if (proxy) {
-      lines.push(`  if (dnsDomainIs(host, ${JSON.stringify(website)})) return ${JSON.stringify(
-        proxyToPac(proxy, Boolean(config.fallbackDirect)))};`)
-    }
-  }
-  if (config.defaultProxy) {
-    const def = resolveProxy(config, config.defaultProxy)
-    if (def) {
-      lines.push(`  return ${JSON.stringify(proxyToPac(def, Boolean(config.fallbackDirect)))};`)
-    } else {
-      lines.push('  return "DIRECT";')
-    }
-  } else {
-    lines.push('  return "DIRECT";')
-  }
-  lines.push('}')
-  return lines.join('\n')
+    return proxy ? [overrideLine(domain, proxyToPac(proxy, Boolean(config.fallbackDirect)))] : []
+  })
+}
+
+function overrideLine (domain: string, pacProxy: string): string {
+  const name = domain.toLowerCase()
+  return `  if (host == ${pacString(name)} || dnsDomainIs(host, ${pacString('.' + name)})) ` +
+    `return ${pacString(pacProxy)};`
+}
+
+function ruleBlock (config: GeoBypassRuntimeSettings, rule: ProxyRule): string[] {
+  const pacProxy = rulePacProxy(config, rule)
+  return [
+    `  if (${anyPatternMatches(rule.match)}) {`,
+    ...routeWhenMatching(rule.forceProxyUrlPatterns, pacProxy),
+    ...routeWhenMatching(rule.bypassUrlPatterns, DIRECT_ROUTE),
+    ...staticExtensionLines(rule.staticExtensions),
+    `    return ${pacString(pacProxy)};`,
+    '  }',
+  ]
+}
+
+function rulePacProxy (config: GeoBypassRuntimeSettings, rule: ProxyRule): string {
+  if (rule.proxyId === DIRECT_PROXY_ID) return DIRECT_ROUTE
+  const proxy = resolveProxy(config, rule.proxyId)
+  return proxy ? proxyToPac(proxy, rule.fallbackDirect ?? false) : DIRECT_ROUTE
+}
+
+function routeWhenMatching (patterns: string[] | undefined, route: string): string[] {
+  if (!patterns?.length) return []
+  return [`    if (${anyPatternMatches(patterns)}) return ${pacString(route)};`]
+}
+
+function staticExtensionLines (staticExtensions: string | undefined): string[] {
+  const extensions = compileStaticExtensions(staticExtensions)
+  if (!extensions) return []
+  return [
+    `    if (new RegExp(${pacString(extensions.source)}, ${pacString(extensions.flags)})` +
+    `.test(${PAC_PATH_EXPRESSION})) return ${pacString(DIRECT_ROUTE)};`,
+  ]
+}
+
+function anyPatternMatches (patterns: string[]): string {
+  return patterns
+    .map(pattern => `new RegExp(${pacString(matchPatternSource(pattern))}).test(url)`)
+    .join(' || ')
+}
+
+function defaultRouteLine (config: GeoBypassRuntimeSettings): string {
+  const proxy = config.defaultProxy ? resolveProxy(config, config.defaultProxy) : null
+  const route = proxy ? proxyToPac(proxy, Boolean(config.fallbackDirect)) : DIRECT_ROUTE
+  return `  return ${pacString(route)};`
 }
 
 const TEST_START = '// GEO_TEST_START'
@@ -70,8 +106,8 @@ export function _resetTestPac () {
 function buildPacWithTests (): string {
   if (!basePac) return ''
   const lines = basePac.split('\n')
-  const start = lines.findIndex(l => l.includes(TEST_START))
-  const end = lines.findIndex(l => l.includes(TEST_END))
+  const start = lines.findIndex(l => l.trim() === TEST_START)
+  const end = lines.findIndex(l => l.trim() === TEST_END)
   if (start !== -1 && end !== -1) {
     lines.splice(start, end - start + 1)
   }
@@ -82,7 +118,7 @@ function buildPacWithTests (): string {
     testLines.push(`  if (url == ${JSON.stringify(url)}) return ${JSON.stringify(proxy)};`)
   }
   testLines.push(`  ${TEST_END}`)
-  const insertIdx = lines.findIndex(l => l.includes('{')) + 1
+  const insertIdx = lines.findIndex(l => l.trimEnd().endsWith('{')) + 1
   lines.splice(insertIdx, 0, ...testLines)
   return lines.join('\n')
 }

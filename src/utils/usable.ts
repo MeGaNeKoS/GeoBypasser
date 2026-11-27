@@ -19,9 +19,13 @@ export function usableOverrides (map: unknown): Record<string, string> {
   const result: Record<string, string> = {}
   if (typeof map !== 'object' || map === null) return result
   for (const [domain, proxyId] of Object.entries(map)) {
-    if (isValidOverrideEntry(domain, proxyId)) result[domain] = proxyId as string
+    if (isValidOverrideEntry(domain, proxyId)) result[domain.toLowerCase()] = proxyId as string
   }
   return result
+}
+
+export function overridesMostSpecificFirst (overrides: Record<string, string>): Array<[string, string]> {
+  return Object.entries(overrides).sort(([domainA], [domainB]) => domainB.length - domainA.length)
 }
 
 export function usableKeepAliveRules (map: unknown): KeepAliveProxyRule {

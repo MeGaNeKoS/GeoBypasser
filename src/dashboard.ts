@@ -21,12 +21,11 @@ import { exportProxyList, keepStoredCredentials } from '@utils/proxyCredentials'
 import { isValidProxyItem } from '@utils/validity'
 import { markInvalid, markRuleFieldsInvalid } from '@utils/fieldMarks'
 import {
-  isValidDomain,
+  isBareHostname,
   isValidPattern,
   isValidProxyId,
   isValidStaticExtensions,
   isValidTestUrl,
-  validateDomain,
   validateHostnamePattern,
 } from '@utils/validity'
 import {
@@ -818,7 +817,7 @@ function openOverrideModal () {
   proxyOptions(config.proxyList).forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
   proxy.value = proxyOptions(config.proxyList)[0]?.id || ''
   markInvalid(proxy, false)
-  setValidation(domain, validateDomain)
+  setValidation(domain, isBareHostname)
   modal.classList.remove('hidden')
 }
 
@@ -832,7 +831,7 @@ function saveOverrideFromModal () {
   const domain = domainField.value.trim()
   const proxyId = proxyField.value
   if (!canSaveOverride(domain, proxyId)) {
-    markInvalid(domainField, !isValidDomain(domain))
+    markInvalid(domainField, !isBareHostname(domain))
     markInvalid(proxyField, !proxyId)
     return
   }
