@@ -16,6 +16,7 @@
     "package:dev:chrome": "ts-node scripts/build.ts package chrome",
     "package:prod:chrome": "ts-node scripts/build.ts package chrome --minify",
     "test:firefox:android": "ts-node scripts/test-firefox-android.ts",
+    "smoke:chrome": "npm run build:dev:chrome && node scripts/smoke-chrome.mjs",
     "test": "jest"
   },
   "author": "めがねこ",
@@ -43,6 +44,7 @@
   },
   "dependencies": {
     "@types/chrome": "^0.0.326",
-    "browser-extension-url-match": "^1.2.0"
+    "browser-extension-url-match": "^1.2.0",
+    "zod": "3.25.67"
   }
 }

@@ -7,12 +7,17 @@ import { STORAGE_KEYS, STORAGE_MODE, TAB_PROXY_MAP } from '@constant/storageKeys
 import type { RuntimeProxyRule } from '@customTypes/proxy'
 import { matchPattern } from 'browser-extension-url-match'
 import { MatchPatternOptions } from 'browser-extension-url-match/dist/types'
+import { compileStaticExtensions, isValidOverrideEntry, isValidRule, isValidTestUrl } from '@utils/validity'
 
 function isValidTabProxyMap (obj: unknown): obj is Record<number, ProxyId> {
   if (typeof obj !== 'object' || obj === null) return false
   return Object.entries(obj).every(([key, value]) =>
     !isNaN(Number(key)) && typeof value === 'string',
   )
+}
+
+function isPlainObject (value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function safeCompile (pattern: string[] | string, options?: Partial<MatchPatternOptions>) {
@@ -24,6 +29,8 @@ function safeCompile (pattern: string[] | string, options?: Partial<MatchPattern
   }
 }
 
+const storedSnapshot = new Map<string, string | undefined>()
+
 export async function getUserStorageMode (): Promise<StorageMode> {
   const result = await browser.storage.local.get(STORAGE_MODE)
   const mode = result.storageMode === 'cloud' ? 'cloud' : 'local'
@@ -31,99 +38,131 @@ export async function getUserStorageMode (): Promise<StorageMode> {
   return mode
 }
 
-export function compileRules (rules: GeoBypassSettings['rules'] = []): RuntimeProxyRule[] {
-  return (rules || []).map(rule => {
-    // Compile staticExtensions RegExp
-    let compiledStaticExtensions: RegExp | undefined = undefined
-    const match = rule.staticExtensions?.match(/^\/(.*)\/([gimsuy]*)$/)
-    if (match) {
-      compiledStaticExtensions = new RegExp(match[1], match[2])
-    }
-
-    // Compile match patterns using Matcher type
-    const compiledMatch = safeCompile(rule.match, { strict: false })
-    const compiledBypassUrlPatterns = safeCompile(rule.bypassUrlPatterns || [], { strict: false })
-    const compiledForceProxyUrlPatterns = safeCompile(rule.forceProxyUrlPatterns || [], { strict: false })
-
+export function compileRules (rules: unknown[] = []): RuntimeProxyRule[] {
+  return rules.map(rule => {
+    if (!isValidRule(rule)) return rule as RuntimeProxyRule
     return {
       ...rule,
-      compiledMatch,
-      compiledBypassUrlPatterns,
-      compiledForceProxyUrlPatterns,
-      compiledStaticExtensions,
+      compiledMatch: safeCompile(rule.match, { strict: false }),
+      compiledBypassUrlPatterns: safeCompile(rule.bypassUrlPatterns || [], { strict: false }),
+      compiledForceProxyUrlPatterns: safeCompile(rule.forceProxyUrlPatterns || [], { strict: false }),
+      compiledStaticExtensions: compileStaticExtensions(rule.staticExtensions),
     } as RuntimeProxyRule
   })
+}
+
+export function sanitizeSection (key: string, value: unknown): any {
+  switch (key) {
+    case STORAGE_KEYS.proxyList:
+      return Array.isArray(value) ? value : []
+    case STORAGE_KEYS.defaultProxy:
+      return typeof value === 'string' ? value : undefined
+    case STORAGE_KEYS.fallbackDirect:
+      return typeof value === 'boolean' ? value : DEFAULT_SETTINGS.fallbackDirect
+    case STORAGE_KEYS.testProxyUrl:
+      return isValidTestUrl(value) ? value : DEFAULT_SETTINGS.testProxyUrl
+    case STORAGE_KEYS.rules:
+      return compileRules(Array.isArray(value) ? value : [])
+    case STORAGE_KEYS.keepAliveRules:
+      return isPlainObject(value) ? value : undefined
+    case STORAGE_KEYS.perWebsiteOverride:
+      if (!isPlainObject(value)) return {}
+      warnInvalidOverrides(value)
+      return value
+    default:
+      return value
+  }
+}
+
+function warnInvalidOverrides (overrides: Record<string, unknown>) {
+  for (const [domain, proxyId] of Object.entries(overrides)) {
+    if (!isValidOverrideEntry(domain, proxyId)) {
+      console.warn(`[${APP_NAME}] Website override "${domain}" is not valid and is ignored.`)
+    }
+  }
+}
+
+function omitCompiledFields (rule: unknown): unknown {
+  if (!isPlainObject(rule)) return rule
+  const plain: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(rule)) {
+    if (!key.startsWith('compiled')) plain[key] = value
+  }
+  return plain
+}
+
+function toStoredRules (rules: unknown): unknown {
+  return Array.isArray(rules) ? rules.map(omitCompiledFields) : rules
+}
+
+function sections (config: GeoBypassSettings): Record<string, unknown> {
+  return {
+    [STORAGE_KEYS.proxyList]: config.proxyList,
+    [STORAGE_KEYS.defaultProxy]: config.defaultProxy,
+    [STORAGE_KEYS.fallbackDirect]: config.fallbackDirect,
+    [STORAGE_KEYS.testProxyUrl]: config.testProxyUrl,
+    [STORAGE_KEYS.rules]: toStoredRules(config.rules),
+    [STORAGE_KEYS.keepAliveRules]: config.keepAliveRules,
+    [STORAGE_KEYS.perWebsiteOverride]: config.perWebsiteOverride,
+  }
+}
+
+async function writeSections (values: Record<string, unknown>, onlyChanged: boolean) {
+  const storageMode = await getUserStorageMode()
+  const storage = storageMode === 'cloud' ? browser.storage.sync : browser.storage.local
+  const update: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(values)) {
+    const serialized = JSON.stringify(value)
+    if (onlyChanged && storedSnapshot.has(key) && storedSnapshot.get(key) === serialized) continue
+    update[key] = value
+    storedSnapshot.set(key, serialized)
+  }
+  if (Object.keys(update).length === 0) return
+  await storage.set(update)
+  console.info(`[${APP_NAME}] Saved config to ${storageMode} storage.`)
 }
 
 export async function getConfig (): Promise<GeoBypassRuntimeSettings> {
   const storageMode = await getUserStorageMode()
   const storage = storageMode === 'cloud' ? browser.storage.sync : browser.storage.local
   const result = await storage.get(Object.values(STORAGE_KEYS)) as Record<string, unknown>
-  const config: GeoBypassSettings = {
-    proxyList: (result[STORAGE_KEYS.proxyList] as GeoBypassSettings['proxyList']) ?? DEFAULT_SETTINGS.proxyList,
-    defaultProxy: (result[STORAGE_KEYS.defaultProxy] as GeoBypassSettings['defaultProxy']) ??
-      DEFAULT_SETTINGS.defaultProxy,
-    fallbackDirect: (result[STORAGE_KEYS.fallbackDirect] as GeoBypassSettings['fallbackDirect']) ??
-      DEFAULT_SETTINGS.fallbackDirect,
-    testProxyUrl: (result[STORAGE_KEYS.testProxyUrl] as GeoBypassSettings['testProxyUrl']) ??
-      DEFAULT_SETTINGS.testProxyUrl,
-    rules: (result[STORAGE_KEYS.rules] as GeoBypassSettings['rules']) ?? DEFAULT_SETTINGS.rules,
-    keepAliveRules: result[STORAGE_KEYS.keepAliveRules] as GeoBypassSettings['keepAliveRules'],
-    perWebsiteOverride: (result[STORAGE_KEYS.perWebsiteOverride] as GeoBypassSettings['perWebsiteOverride']) ??
-      DEFAULT_SETTINGS.perWebsiteOverride,
-  }
-
   if (!result || Object.keys(result).length === 0) {
-    console.warn(`[${APP_NAME}] No config found. Saving and using default settings.`)
-    await saveConfig(DEFAULT_SETTINGS)
-    return DEFAULT_SETTINGS as GeoBypassRuntimeSettings
+    console.warn(`[${APP_NAME}] No config found. Using default settings.`)
   }
 
-  config.rules = compileRules(config.rules)
+  const config: GeoBypassRuntimeSettings = {
+    proxyList: sanitizeSection(STORAGE_KEYS.proxyList, result[STORAGE_KEYS.proxyList]),
+    defaultProxy: sanitizeSection(STORAGE_KEYS.defaultProxy, result[STORAGE_KEYS.defaultProxy]),
+    fallbackDirect: sanitizeSection(STORAGE_KEYS.fallbackDirect, result[STORAGE_KEYS.fallbackDirect]),
+    testProxyUrl: sanitizeSection(STORAGE_KEYS.testProxyUrl, result[STORAGE_KEYS.testProxyUrl]),
+    rules: sanitizeSection(STORAGE_KEYS.rules, result[STORAGE_KEYS.rules]),
+    keepAliveRules: sanitizeSection(STORAGE_KEYS.keepAliveRules, result[STORAGE_KEYS.keepAliveRules]),
+    perWebsiteOverride: sanitizeSection(STORAGE_KEYS.perWebsiteOverride, result[STORAGE_KEYS.perWebsiteOverride]),
+  }
+
+  storedSnapshot.clear()
+  for (const [key, value] of Object.entries(sections(config))) {
+    storedSnapshot.set(key, JSON.stringify(value))
+  }
   console.info(`[${APP_NAME}] Compiled ${config.rules.length} rule(s) with patterns.`)
 
-  return config as GeoBypassRuntimeSettings
+  return config
 }
 
 export async function saveConfig (config: GeoBypassSettings) {
-  const storageMode = await getUserStorageMode()
-  const storage = storageMode === 'cloud' ? browser.storage.sync : browser.storage.local
-  await storage.set({
-    [STORAGE_KEYS.proxyList]: config.proxyList,
-    [STORAGE_KEYS.defaultProxy]: config.defaultProxy,
-    [STORAGE_KEYS.fallbackDirect]: config.fallbackDirect,
-    [STORAGE_KEYS.testProxyUrl]: config.testProxyUrl,
-    [STORAGE_KEYS.rules]: config.rules?.map(rule => ({
-      // Only save original (non-compiled) fields
-      name: rule.name,
-      match: rule.match,
-      bypassUrlPatterns: rule.bypassUrlPatterns,
-      bypassResourceTypes: rule.bypassResourceTypes,
-      staticExtensions: rule.staticExtensions,
-      forceProxyUrlPatterns: rule.forceProxyUrlPatterns,
-      fallbackDirect: rule.fallbackDirect,
-      proxyId: rule.proxyId,
-      active: typeof rule.active !== 'undefined' ? rule.active : true,
-    })),
-    [STORAGE_KEYS.keepAliveRules]: config.keepAliveRules,
-    [STORAGE_KEYS.perWebsiteOverride]: config.perWebsiteOverride,
-  })
-  console.info(`[${APP_NAME}] Saved config to ${storageMode} storage.`)
+  await writeSections(sections(config), true)
 }
 
 export async function updateConfig (config: Partial<GeoBypassSettings>) {
-  const storageMode = await getUserStorageMode()
-  const storage = storageMode === 'cloud' ? browser.storage.sync : browser.storage.local
   const update: Record<string, unknown> = {}
   if ('proxyList' in config) update[STORAGE_KEYS.proxyList] = config.proxyList
   if ('defaultProxy' in config) update[STORAGE_KEYS.defaultProxy] = config.defaultProxy
   if ('fallbackDirect' in config) update[STORAGE_KEYS.fallbackDirect] = config.fallbackDirect
   if ('testProxyUrl' in config) update[STORAGE_KEYS.testProxyUrl] = config.testProxyUrl
-  if ('rules' in config) update[STORAGE_KEYS.rules] = config.rules
+  if ('rules' in config) update[STORAGE_KEYS.rules] = toStoredRules(config.rules)
   if ('keepAliveRules' in config) update[STORAGE_KEYS.keepAliveRules] = config.keepAliveRules
   if ('perWebsiteOverride' in config) update[STORAGE_KEYS.perWebsiteOverride] = config.perWebsiteOverride
-  await storage.set(update)
-  console.info(`[${APP_NAME}] Updated partial config in ${storageMode} storage.`)
+  await writeSections(update, false)
 }
 
 export async function getTabProxyMap (): Promise<Record<number, ProxyId>> {
@@ -147,4 +186,3 @@ export async function saveTabProxyMap (map: Record<number, ProxyId>) {
   await browser.storage.local.set({ [TAB_PROXY_MAP]: map })
   console.info(`[${APP_NAME}] Saved tabProxyMap to local storage.`)
 }
-

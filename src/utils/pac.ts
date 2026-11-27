@@ -2,6 +2,7 @@ import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import type { ProxyListItem } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { resolveProxy } from '@utils/proxy'
+import { isRuleActive, usableOverrides, usableRules } from '@utils/usable'
 import browser from 'webextension-polyfill'
 
 function proxyToPac (proxy: ProxyListItem, fallbackDirect: boolean): string {
@@ -15,8 +16,8 @@ export function generatePacScript (config: GeoBypassRuntimeSettings): string {
   const lines: string[] = []
   lines.push('function FindProxyForURL(url, host) {')
 
-  for (const rule of config.rules) {
-    if (!rule.active) continue
+  for (const rule of usableRules(config.rules)) {
+    if (!isRuleActive(rule)) continue
     const proxy = rule.proxyId === DIRECT_PROXY_ID ? null : resolveProxy(config, rule.proxyId)
     const pacProxy = proxy ? proxyToPac(proxy, rule.fallbackDirect ?? false) : 'DIRECT'
 
@@ -35,7 +36,7 @@ export function generatePacScript (config: GeoBypassRuntimeSettings): string {
       lines.push(`  if (shExpMatch(url, ${JSON.stringify(pat)})) return ${JSON.stringify(pacProxy)};`)
     }
   }
-  for (const [website, proxyId] of Object.entries(config.perWebsiteOverride || {})) {
+  for (const [website, proxyId] of Object.entries(usableOverrides(config.perWebsiteOverride))) {
     const proxy = resolveProxy(config, proxyId)
     if (proxy) {
       lines.push(`  if (dnsDomainIs(host, ${JSON.stringify(website)})) return ${JSON.stringify(

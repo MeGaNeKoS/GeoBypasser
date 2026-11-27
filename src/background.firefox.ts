@@ -10,13 +10,14 @@ import {
   resolveProxy,
 } from '@utils/proxy'
 import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@utils/generic'
-import { compileRules, getConfig, getTabProxyMap, getUserStorageMode, saveTabProxyMap } from '@utils/storage'
-import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
+import { getConfig, getTabProxyMap, getUserStorageMode, sanitizeSection, saveTabProxyMap } from '@utils/storage'
+import { ProxyListItem } from '@customTypes/proxy'
 import { APP_NAME } from '@constant/defaults'
 import { STORAGE_KEYS, TAB_PROXY_MAP } from '@constant/storageKeys'
 import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
 import { isNetworkMessage, isTabProxyMessage } from '@utils/messages'
 import { addNetworkData, networkStats, resetNetworkStats } from '@utils/network'
+import { usableKeepAliveRules } from '@utils/usable'
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
 import BlockingResponseOrPromiseOrVoid = WebRequest.BlockingResponseOrPromiseOrVoid
 import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
@@ -74,9 +75,13 @@ function attachProxyHandlers (
       currentHandlers.oauthRequired = undefined
     }
   }
-  if (!currentHandlers.oauthRequired && config.proxyList.length > 0) {
-    console.log(`[${APP_NAME}BG] Creating OAuth required handler for proxy list with ${config.proxyList.length} items.`)
-    currentHandlers.oauthRequired = createAuthRequiredHandler(config.proxyList)
+  if (changedKeys.includes('proxyList') || !currentHandlers.oauthRequired) {
+    if (config.proxyList.length > 0) {
+      console.log(`[${APP_NAME}BG] Creating OAuth required handler for proxy list with ${config.proxyList.length} items.`)
+      currentHandlers.oauthRequired = createAuthRequiredHandler(config.proxyList)
+    } else {
+      currentHandlers.oauthRequired = undefined
+    }
   }
   if (changedKeys.includes('defaultProxy')) {
     currentHandlers.default = config.defaultProxy
@@ -153,9 +158,11 @@ async function initKeepAlive (config: GeoBypassRuntimeSettings) {
     console.debug(`[${APP_NAME}BG] Removed keepAliveState for proxy: ${key}`)
   })
 
+  const keepAliveRules = usableKeepAliveRules(config.keepAliveRules)
+
   // Group keepAliveStates by proxyId
-  for (const proxyId in config.keepAliveRules) {
-    const rule = config.keepAliveRules[proxyId]
+  for (const proxyId in keepAliveRules) {
+    const rule = keepAliveRules[proxyId]
     if (!rule.active) {
       console.info(`[${APP_NAME}BG] Keep-alive rule for proxyId ${proxyId} is inactive, skipping.`)
       continue
@@ -178,8 +185,8 @@ async function initKeepAlive (config: GeoBypassRuntimeSettings) {
       continue
     }
 
-    for (const proxyId in config.keepAliveRules) {
-      const rule = config.keepAliveRules[proxyId]
+    for (const proxyId in keepAliveRules) {
+      const rule = keepAliveRules[proxyId]
       if (!rule.active) continue
 
       for (const pattern of rule.tabUrls) {
@@ -364,35 +371,34 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 
     const changedKeys: string[] = []
     if (changes[STORAGE_KEYS.proxyList]) {
-      config.proxyList = changes[STORAGE_KEYS.proxyList].newValue as ProxyListItem[]
+      config.proxyList = sanitizeSection(STORAGE_KEYS.proxyList, changes[STORAGE_KEYS.proxyList].newValue)
       changedKeys.push('proxyList')
     }
     if (changes[STORAGE_KEYS.defaultProxy]) {
-      config.defaultProxy = changes[STORAGE_KEYS.defaultProxy].newValue as string | undefined
+      config.defaultProxy = sanitizeSection(STORAGE_KEYS.defaultProxy, changes[STORAGE_KEYS.defaultProxy].newValue)
       changedKeys.push('defaultProxy')
     }
     if (changes[STORAGE_KEYS.fallbackDirect]) {
-      config.fallbackDirect = changes[STORAGE_KEYS.fallbackDirect].newValue as boolean | undefined
+      config.fallbackDirect = sanitizeSection(STORAGE_KEYS.fallbackDirect, changes[STORAGE_KEYS.fallbackDirect].newValue)
       changedKeys.push('fallbackDirect')
     }
     if (changes[STORAGE_KEYS.testProxyUrl]) {
-      config.testProxyUrl = changes[STORAGE_KEYS.testProxyUrl].newValue as string
+      config.testProxyUrl = sanitizeSection(STORAGE_KEYS.testProxyUrl, changes[STORAGE_KEYS.testProxyUrl].newValue)
       changedKeys.push('testProxyUrl')
     }
     if (changes[STORAGE_KEYS.rules]) {
-      config.rules = compileRules(changes[STORAGE_KEYS.rules].newValue as ProxyRule[])
+      config.rules = sanitizeSection(STORAGE_KEYS.rules, changes[STORAGE_KEYS.rules].newValue)
       changedKeys.push('rules')
     }
     if (changes[STORAGE_KEYS.keepAliveRules]) {
-      config.keepAliveRules = changes[STORAGE_KEYS.keepAliveRules].newValue as Record<string, {
-        active: boolean;
-        tabUrls: string[];
-        testProxyUrl?: string;
-      }>
+      config.keepAliveRules = sanitizeSection(STORAGE_KEYS.keepAliveRules, changes[STORAGE_KEYS.keepAliveRules].newValue)
       changedKeys.push('keepAliveRules')
     }
     if (changes[STORAGE_KEYS.perWebsiteOverride]) {
-      config.perWebsiteOverride = changes[STORAGE_KEYS.perWebsiteOverride].newValue as Record<string, string>
+      config.perWebsiteOverride = sanitizeSection(
+        STORAGE_KEYS.perWebsiteOverride,
+        changes[STORAGE_KEYS.perWebsiteOverride].newValue,
+      )
       changedKeys.push('perWebsiteOverride')
     }
 

@@ -34,7 +34,7 @@ describe('getConfig', () => {
 
     const config = await getConfig()
     expect(config).toEqual({ ...DEFAULT_SETTINGS, rules: [] })
-    expect(browser.storage.local.set).toHaveBeenCalled()
+    expect(browser.storage.local.set).not.toHaveBeenCalled()
     spyMode.mockRestore()
   })
 })

@@ -1,4 +1,4 @@
-import type { ProxyListItem, ProxyTestResult } from '@customTypes/proxy'
+import type { ProxyListItem, ProxyTestResult, RuntimeProxyRule } from '@customTypes/proxy'
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import { ProxyId } from '@customTypes/generic'
 import browser, { Proxy, WebRequest } from 'webextension-polyfill'
@@ -7,6 +7,7 @@ import { APP_NAME } from '@constant/defaults'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { supportsProxyOnRequest } from '@utils/env'
 import { addTestURLToPac } from '@utils/pac'
+import { isRuleActive, usableOverrides, usableProxies, usableRules } from '@utils/usable'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 
 type ProxyTestJob = {
@@ -18,7 +19,7 @@ const proxyTestQueues = new Map<string, Array<ProxyTestJob>>()
 const proxyTestRunning = new Set<string>()
 
 function getProxyById (proxyList: ProxyListItem[], id: string | undefined) {
-  return proxyList.find(proxy => proxy.id === id) || null
+  return usableProxies(proxyList).find(proxy => proxy.id === id) || null
 }
 
 export function resolveProxy (config: GeoBypassRuntimeSettings, proxyId?: ProxyId) {
@@ -57,7 +58,7 @@ export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings) {
     if (!tab.url) return
     const hostname = getHostname(tab.url)
     if (!hostname) return
-    const overrideId = config.perWebsiteOverride?.[hostname]
+    const overrideId = usableOverrides(config.perWebsiteOverride)[hostname]
     if (overrideId) {
       const proxy = resolveProxy(config, overrideId)
       if (proxy) {
@@ -77,7 +78,7 @@ export function makeProxyHandler (
   config: GeoBypassRuntimeSettings,
 ) {
   return async function handleProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
-    for (const rule of config.rules) {
+    for (const rule of usableRules<RuntimeProxyRule>(config.rules)) {
       const {
         proxyId,
         bypassResourceTypes,
@@ -87,9 +88,8 @@ export function makeProxyHandler (
         compiledForceProxyUrlPatterns,
         compiledStaticExtensions,
         name: ruleName,
-        active,
       } = rule
-      if (!active) continue
+      if (!isRuleActive(rule)) continue
 
       const url = requestInfo.url
 
@@ -133,6 +133,7 @@ export function makeProxyHandler (
       // --- Bypass by static extension ---
       if (compiledStaticExtensions) {
         try {
+          compiledStaticExtensions.lastIndex = 0
           if (compiledStaticExtensions.test(new URL(url).pathname)) {
             console.info(`[${APP_NAME}Proxy] Bypassed by static extension for rule "${ruleName}" and url ${url}`)
             return
@@ -187,7 +188,7 @@ export function getProxyTypeByChallenger (
   host: OnAuthRequiredDetailsTypeChallengerType['host'],
   port: OnAuthRequiredDetailsTypeChallengerType['port'],
   proxyList: ProxyListItem[]): ProxyListItem | undefined {
-  return proxyList.find(proxy =>
+  return usableProxies(proxyList).find(proxy =>
     proxy.host === host && proxy.port == port && proxy.type === 'http',
   )
 }
@@ -249,7 +250,7 @@ export async function testProxyConfigQueued (
   if (!proxyTestQueues.has(testUrl)) proxyTestQueues.set(testUrl, [])
 
   const queue = proxyTestQueues.get(testUrl)!
-  const job: ProxyTestJob = { proxy, testUrl, sendResult }
+  const job: ProxyTestJob = { proxy: { ...proxy, host: proxy.host.trim() }, testUrl, sendResult }
   queue.push(job)
 
   // If already running, just queue the job

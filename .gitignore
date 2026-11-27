@@ -1,2 +1,5 @@
 node_modules/
 dist/
+.chrome-profile/
+.chrome-cdp-work/
+.chrome-cdp.json

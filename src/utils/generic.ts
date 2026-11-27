@@ -1,13 +1,14 @@
 import type { GeoBypassSettings } from '@customTypes/settings'
 
 import { Matcher } from 'browser-extension-url-match/dist/types'
+import { usableRules } from '@utils/usable'
 
 export function matchPatternList (url: string, compiledMatchers: Matcher): boolean {
   return compiledMatchers.match(url)
 }
 
 export function getAllMatchUrls (config: GeoBypassSettings): string[] {
-  return config.rules.flatMap(rule => rule.match)
+  return usableRules(config.rules).flatMap(rule => rule.match)
 }
 
 export function matchHostname (hostname: string, pattern: string): boolean {

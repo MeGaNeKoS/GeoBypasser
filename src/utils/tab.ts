@@ -2,6 +2,7 @@ import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import { resolveProxy, testProxyConfigQueued } from '@utils/proxy'
 import browser, { Tabs } from 'webextension-polyfill'
 import { getHostname, KeepAliveState, matchHostname } from '@utils/generic'
+import { usableKeepAliveRules } from '@utils/usable'
 import { ProxyListItem, ProxyListRuntimeItem } from '@customTypes/proxy'
 import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
 import Tab = Tabs.Tab
@@ -13,8 +14,9 @@ export function makeOnUpdateHandler (
   return (tabId: number, changeInfo: OnUpdatedChangeInfoType, tab: Tab) => {
     if (!changeInfo.url) return
 
-    for (const proxyId in config.keepAliveRules) {
-      const rule = config.keepAliveRules[proxyId]
+    const keepAliveRules = usableKeepAliveRules(config.keepAliveRules)
+    for (const proxyId in keepAliveRules) {
+      const rule = keepAliveRules[proxyId]
       if (!rule.active) continue
 
       // Remove tab from previous patterns
@@ -36,8 +38,9 @@ export function makeOnActiveHandler (
   keepAliveStates: Record<string, KeepAliveState>) {
   return async (activeInfo: Tabs.OnActivatedActiveInfoType) => {
     const tab = await browser.tabs.get(activeInfo.tabId)
-    for (const proxyId in config.keepAliveRules) {
-      const rule = config.keepAliveRules[proxyId]
+    const keepAliveRules = usableKeepAliveRules(config.keepAliveRules)
+    for (const proxyId in keepAliveRules) {
+      const rule = keepAliveRules[proxyId]
       if (!rule.active) continue
 
       trackTabForKeepAlive(activeInfo.tabId, tab.url, proxyId, rule, !tab.discarded, keepAliveStates)
@@ -54,8 +57,9 @@ export function makeOnRemovedHandler (
   config: GeoBypassRuntimeSettings,
   keepAliveStates: Record<string, KeepAliveState>) {
   return (tabId: number) => {
-    for (const proxyId in config.keepAliveRules) {
-      const rule = config.keepAliveRules[proxyId]
+    const keepAliveRules = usableKeepAliveRules(config.keepAliveRules)
+    for (const proxyId in keepAliveRules) {
+      const rule = keepAliveRules[proxyId]
       if (!rule.active) continue
 
       const state = keepAliveStates[proxyId]
