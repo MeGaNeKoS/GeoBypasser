@@ -122,21 +122,48 @@ async function writeSections (values: Record<string, unknown>, onlyChanged: bool
   console.info(`[${APP_NAME}] Saved config to local storage.`)
 }
 
-export async function getConfig (): Promise<GeoBypassRuntimeSettings> {
+export type StoredSections = {
+  [STORAGE_KEYS.proxyList]: unknown;
+  [STORAGE_KEYS.defaultProxy]: unknown;
+  [STORAGE_KEYS.fallbackDirect]: unknown;
+  [STORAGE_KEYS.testProxyUrl]: unknown;
+  [STORAGE_KEYS.rules]: unknown;
+  [STORAGE_KEYS.keepAliveRules]: unknown;
+  [STORAGE_KEYS.perWebsiteOverride]: unknown;
+}
+
+export type StoredSectionKey = keyof StoredSections
+
+export async function readStoredSections (): Promise<StoredSections> {
   const result = await browser.storage.local.get(Object.values(STORAGE_KEYS)) as Record<string, unknown>
   if (!result || Object.keys(result).length === 0) {
     console.warn(`[${APP_NAME}] No config found. Using default settings.`)
   }
-
-  const config: GeoBypassRuntimeSettings = {
-    proxyList: sanitizeSection(STORAGE_KEYS.proxyList, result[STORAGE_KEYS.proxyList]),
-    defaultProxy: sanitizeSection(STORAGE_KEYS.defaultProxy, result[STORAGE_KEYS.defaultProxy]),
-    fallbackDirect: sanitizeSection(STORAGE_KEYS.fallbackDirect, result[STORAGE_KEYS.fallbackDirect]),
-    testProxyUrl: sanitizeSection(STORAGE_KEYS.testProxyUrl, result[STORAGE_KEYS.testProxyUrl]),
-    rules: sanitizeSection(STORAGE_KEYS.rules, result[STORAGE_KEYS.rules]),
-    keepAliveRules: sanitizeSection(STORAGE_KEYS.keepAliveRules, result[STORAGE_KEYS.keepAliveRules]),
-    perWebsiteOverride: sanitizeSection(STORAGE_KEYS.perWebsiteOverride, result[STORAGE_KEYS.perWebsiteOverride]),
+  return {
+    [STORAGE_KEYS.proxyList]: result[STORAGE_KEYS.proxyList],
+    [STORAGE_KEYS.defaultProxy]: result[STORAGE_KEYS.defaultProxy],
+    [STORAGE_KEYS.fallbackDirect]: result[STORAGE_KEYS.fallbackDirect],
+    [STORAGE_KEYS.testProxyUrl]: result[STORAGE_KEYS.testProxyUrl],
+    [STORAGE_KEYS.rules]: result[STORAGE_KEYS.rules],
+    [STORAGE_KEYS.keepAliveRules]: result[STORAGE_KEYS.keepAliveRules],
+    [STORAGE_KEYS.perWebsiteOverride]: result[STORAGE_KEYS.perWebsiteOverride],
   }
+}
+
+export function settingsFromSections (sections: StoredSections): GeoBypassRuntimeSettings {
+  return {
+    proxyList: sanitizeSection(STORAGE_KEYS.proxyList, sections[STORAGE_KEYS.proxyList]),
+    defaultProxy: sanitizeSection(STORAGE_KEYS.defaultProxy, sections[STORAGE_KEYS.defaultProxy]),
+    fallbackDirect: sanitizeSection(STORAGE_KEYS.fallbackDirect, sections[STORAGE_KEYS.fallbackDirect]),
+    testProxyUrl: sanitizeSection(STORAGE_KEYS.testProxyUrl, sections[STORAGE_KEYS.testProxyUrl]),
+    rules: sanitizeSection(STORAGE_KEYS.rules, sections[STORAGE_KEYS.rules]),
+    keepAliveRules: sanitizeSection(STORAGE_KEYS.keepAliveRules, sections[STORAGE_KEYS.keepAliveRules]),
+    perWebsiteOverride: sanitizeSection(STORAGE_KEYS.perWebsiteOverride, sections[STORAGE_KEYS.perWebsiteOverride]),
+  }
+}
+
+export async function getConfig (): Promise<GeoBypassRuntimeSettings> {
+  const config = settingsFromSections(await readStoredSections())
 
   storedSnapshot.clear()
   for (const [key, value] of Object.entries(sections(config))) {

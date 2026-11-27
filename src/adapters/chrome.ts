@@ -3,7 +3,7 @@ import type { NetworkMonitor } from '@core/networkMonitor'
 import type { ProxyControlState } from '@customTypes/proxyControl'
 import { APP_NAME } from '@constant/defaults'
 
-export { getConfig as readStoredConfig } from '@utils/storage'
+export { readStoredSections } from '@utils/storage'
 
 type CompletedDetails = WebRequest.OnCompletedDetailsType & { encodedDataLength?: number }
 

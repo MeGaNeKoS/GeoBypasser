@@ -5,7 +5,7 @@ import type { RoutingPorts } from '@core/routing'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { saveTabProxyMap } from '@utils/storage'
 
-export { getConfig as readStoredConfig, getTabProxyMap as readStoredTabProxyMap } from '@utils/storage'
+export { readStoredSections, getTabProxyMap as readStoredTabProxyMap } from '@utils/storage'
 
 type ProxyAuthListener = Parameters<typeof browser.webRequest.onAuthRequired.addListener>[0]
 type StorageChangedListener = Parameters<typeof browser.storage.onChanged.addListener>[0]

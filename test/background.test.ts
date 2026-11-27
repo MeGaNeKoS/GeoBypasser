@@ -1,17 +1,18 @@
 import { browser } from './setup'
-import { DEFAULT_SETTINGS } from '@constant/defaults'
-import { compileRules } from '@utils/storage'
 import { letBackgroundStart } from './keepAliveFakeCheck'
 
 jest.mock('@utils/storage', () => {
   const original = jest.requireActual('@utils/storage')
   return {
     ...original,
-    getConfig: jest.fn(async () => ({
-      ...DEFAULT_SETTINGS,
+    readStoredSections: jest.fn(async () => ({
       proxyList: [{ id: 'p1', type: 'http', host: 'h', port: 80, proxyDNS: true }],
-      rules: compileRules([{ active: true, name: 'r', match: ['<all_urls>'], proxyId: 'p1' }]),
+      defaultProxy: undefined,
+      fallbackDirect: undefined,
+      testProxyUrl: undefined,
+      rules: [{ active: true, name: 'r', match: ['<all_urls>'], proxyId: 'p1' }],
       keepAliveRules: { p1: { active: true, tabUrls: ['example.com'] } },
+      perWebsiteOverride: undefined,
     })),
     getTabProxyMap: jest.fn(async () => ({})),
   }
