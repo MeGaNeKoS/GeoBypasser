@@ -14,7 +14,8 @@ import { supportsProxyOnRequest } from '@utils/env'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
-import { refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseProxyItems, refuseRules, withImportedRules } from '@utils/importFiles'
+import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseProxyItems, refuseRules, withAppliedSettings, withImportedRules } from '@utils/importFiles'
+import { chooseAppliedSettingChanges } from './settingChangeModal'
 import { proxyFormValues, ruleFormValues } from '@utils/editFields'
 import { exportedRules } from '@utils/ruleExport'
 import { exportProxyList, keepStoredCredentials } from '@utils/proxyCredentials'
@@ -1045,6 +1046,9 @@ async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
   if (cfg.defaultProxy) {
     updated.defaultProxy = idMap.get(cfg.defaultProxy) ?? cfg.defaultProxy
   }
+
+  const applied = await chooseAppliedSettingChanges(findSettingChanges(base, updated, updated.proxyList))
+  Object.assign(updated, withAppliedSettings(base, updated, applied))
 
   if (cfg.rules && Array.isArray(cfg.rules)) {
     const mappedRules = cfg.rules.map((r: ProxyRule) => ({

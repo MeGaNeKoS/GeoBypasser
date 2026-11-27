@@ -46,6 +46,31 @@ export function importFile (inputId, text) {
   input.dispatchEvent(new Event('change'))
 }
 
+export function readOpenSettingChange () {
+  if (document.getElementById('settingChangeModal').classList.contains('hidden')) return null
+  return {
+    title: document.getElementById('settingChangeTitle').textContent,
+    oldText: document.getElementById('settingChangeOld').textContent,
+    newText: document.getElementById('settingChangeNew').textContent
+  }
+}
+
+export function readFieldValue (fieldId) {
+  return document.getElementById(fieldId).value
+}
+
+export function clickSettingChoice (choice) {
+  document.getElementById(choice === 'apply' ? 'settingChangeApply' : 'settingChangeKeep').click()
+}
+
+export function pressEscapeInSettingChange () {
+  const focused = document.activeElement
+  if (!document.getElementById('settingChangeModal').contains(focused)) {
+    throw new Error('the setting change dialog does not hold focus')
+  }
+  focused.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+}
+
 export function selectProxyRowByHost (host) {
   const row = Array.from(document.querySelectorAll('#proxyTable tbody tr')).find(tr => tr.textContent.includes(host))
   const box = row.querySelector('input[type="checkbox"]')

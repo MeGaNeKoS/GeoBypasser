@@ -11,6 +11,7 @@ import { checkPacRoute } from './smoke-chrome-route.mjs'
 import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
+import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -238,6 +239,7 @@ async function runSmoke (options) {
   await editSetAsideEntries(runOnDashboard)
 
   await checkUrlImport(runOnDashboard, failures, async () => dialogs)
+  await checkSettingChanges(runOnDashboard, failures)
 
   await checkRefusedProxySave(runOnDashboard, failures)
   await checkCredentialWiring(runOnDashboard, failures)

@@ -11,6 +11,7 @@ import { checkMixedOverrideInDashboard, addProxyAsDefault, clickSiteClearInPopup
 import { checkNetworkStatsNames, FIREFOX_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { startRecordingListener } from './smoke-chrome-route.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
+import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -271,6 +272,7 @@ async function runFirefoxSmoke (settings) {
   await removeSetAsideEntries(evaluate, failures)
   await editSetAsideEntries(evaluate)
   await checkUrlImport(evaluate, failures, shownDialogs)
+  await checkSettingChanges(evaluate, failures)
   await checkRefusedProxySave(evaluate, failures)
   await checkCredentialWiring(evaluate, failures)
   await checkSetAsideExports(evaluate, failures)

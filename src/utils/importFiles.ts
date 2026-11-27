@@ -182,6 +182,74 @@ export function refuseConfigFile (obj: unknown): ImportResult<Partial<GeoBypassS
   return { accepted, messages }
 }
 
+export type ImportableSetting = 'defaultProxy' | 'fallbackDirect' | 'testProxyUrl'
+export type ImportableSettings = Pick<GeoBypassSettings, ImportableSetting>
+
+export interface SettingChange {
+  setting: ImportableSetting
+  title: string
+  oldText: string
+  newText: string
+}
+
+const IMPORTABLE_SETTINGS: readonly ImportableSetting[] = ['defaultProxy', 'fallbackDirect', 'testProxyUrl']
+
+const SETTING_TITLES: Record<ImportableSetting, string> = {
+  defaultProxy: 'Default proxy',
+  fallbackDirect: 'Connect directly when a proxy fails',
+  testProxyUrl: 'Test URL',
+}
+
+function describeProxy (proxyId: unknown, proxies: ProxyListItem[]): string {
+  if (typeof proxyId !== 'string' || proxyId === '') return 'None'
+  const proxy = proxies.find(p => isValidProxyItem(p) && p.id === proxyId)
+  return proxy ? (proxy.label || proxy.host) : `${proxyId} (not in your list)`
+}
+
+function describeSetting (setting: ImportableSetting, value: unknown, proxies: ProxyListItem[]): string {
+  if (setting === 'defaultProxy') return describeProxy(value, proxies)
+  if (setting === 'fallbackDirect') return value ? 'On' : 'Off'
+  return typeof value === 'string' && value !== '' ? value : 'None'
+}
+
+function settingChangeFor (
+  setting: ImportableSetting,
+  stored: Partial<ImportableSettings>,
+  imported: Partial<ImportableSettings>,
+  proxies: ProxyListItem[],
+): SettingChange[] {
+  const next = imported[setting]
+  if (next === undefined || next === stored[setting]) return []
+  return [{
+    setting,
+    title: SETTING_TITLES[setting],
+    oldText: describeSetting(setting, stored[setting], proxies),
+    newText: describeSetting(setting, next, proxies),
+  }]
+}
+
+export function findSettingChanges (
+  stored: Partial<ImportableSettings>,
+  imported: Partial<ImportableSettings>,
+  proxies: ProxyListItem[],
+): SettingChange[] {
+  return IMPORTABLE_SETTINGS.flatMap(setting => settingChangeFor(setting, stored, imported, proxies))
+}
+
+export function withAppliedSettings (
+  stored: ImportableSettings,
+  imported: ImportableSettings,
+  applied: readonly ImportableSetting[],
+): ImportableSettings {
+  const choose = <S extends ImportableSetting>(setting: S): ImportableSettings[S] =>
+    applied.includes(setting) ? imported[setting] : stored[setting]
+  return {
+    defaultProxy: choose('defaultProxy'),
+    fallbackDirect: choose('fallbackDirect'),
+    testProxyUrl: choose('testProxyUrl'),
+  }
+}
+
 export function withImportedRules (settings: GeoBypassRuntimeSettings, rules: ProxyRule[]): GeoBypassRuntimeSettings {
   return { ...settings, rules: [...settings.rules, ...compileRules(rules)] }
 }
