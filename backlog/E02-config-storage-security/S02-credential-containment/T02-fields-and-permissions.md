@@ -1,5 +1,5 @@
 ---
-status: open
+status: done
 owner: extension
 depends_on: [E02/S02/T01]
 ---

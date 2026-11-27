@@ -20,7 +20,7 @@ A user's configuration and proxy credentials are safe at rest and in use. Nothin
 Each line is closed by a story under this epic and removed when it is.
 
 - An import replaces the default proxy, the fallback setting, and the test URL without showing the user (`src/dashboard.ts`).
-- The Chrome PAC script matches more than the rule says: raw patterns go to `shExpMatch`, force and bypass lines ignore the rule's match, website overrides match by suffix, and the static extension and resource type bypasses are not applied (`src/utils/pac.ts`).
+- The Chrome PAC script matches more than the rule says: raw patterns go to `shExpMatch`, force and bypass lines ignore the rule's match, website overrides match by suffix, and the static extension and resource type bypasses are not applied (`src/utils/pac.ts`). Closed by `S03`.
 - The Firefox background logs the full config and every storage change, passwords included (`src/background.firefox.ts`). Closed by `S02`.
 - The proxies export and the config export include passwords (`src/dashboard.ts`). Closed by `S02`.
 - Proxy auth answers a challenge by host and port without checking that it came from a proxy (`src/utils/proxy.ts`). Closed by `S02`.
