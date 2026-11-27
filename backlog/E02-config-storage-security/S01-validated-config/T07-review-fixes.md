@@ -1,5 +1,5 @@
 ---
-status: in_progress
+status: done
 owner: extension
 ---
 
@@ -8,7 +8,7 @@ owner: extension
 Done when every item below holds, each covered by a test or a smoke step that fails without the fix, and criterion 19 of `E02/S01` holds with both smoke tests.
 
 1. Every dashboard action works on a config whose lists hold set aside entries of every shape (`null`, a string, `{}`, a partial object): edit and export on any row, export all, config export with every row selected, and every import path with a `proxyList`. No action throws, and valid entries in the same import are still imported. The smoke tests click Edit on a set aside rule and proxy row, run Export all, and import a proxy file, with that fixture in storage.
-2. Code past the loader cannot treat a raw stored entry as a typed one: the load path returns its raw sections typed as unknown entries, and only the usable views carry the domain types.
+2. Moved to `E03/S01` and `E04`: making the load path return raw sections typed as unknown entries reaches about 50 call sites in `src/dashboard.ts`, which the dashboard rebuild replaces.
 3. The keep-alive form refuses a rule with no tab URL patterns, and the loader and import set it aside (see the story's "Terms").
 4. A refused proxy form save marks the field at fault for every reason it can be refused, including a missing id and an unsupported type.
 5. When a storage write fails, the next save of the same section writes again, and the failure reaches the user.

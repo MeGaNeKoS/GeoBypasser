@@ -11,4 +11,5 @@ As the maintainer, I change proxy auth, network monitoring, or keep-alive in one
 5. Each background entry file registers listeners and calls into the core. It holds no routing, auth, keep-alive, or statistics logic of its own.
 6. `test/proxyHierarchy.test.ts` passes with its assertions unchanged.
 7. `npm test` passes, and `npm run build:dev:firefox` and `npm run build:dev:chrome` both succeed.
+9. The config load path returns raw stored sections typed as unknown entries, and only the usable views carry the domain types, for both backgrounds and the popup. The dashboard follows in `E04`.
 8. `npm test` finishes without "A worker process has failed to exit gracefully" and without "Cannot log after tests are done". Both come from keep-alive checks that outlive the test that started them.
