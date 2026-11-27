@@ -1,8 +1,8 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
-import browser, { Proxy, Tabs, WebRequest } from 'webextension-polyfill'
+import browser, { Proxy, Tabs } from 'webextension-polyfill'
 
+import { createProxyAuthListener } from '@core/proxyAuth'
 import {
-  authCredentialsFor,
   makeDefaultProxyHandler,
   makeDomainProxyHandler,
   makeProxyHandler,
@@ -11,15 +11,12 @@ import {
 } from '@utils/proxy'
 import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@utils/generic'
 import { getConfig, getTabProxyMap, sanitizeSection, saveTabProxyMap } from '@utils/storage'
-import { ProxyListItem } from '@customTypes/proxy'
 import { APP_NAME } from '@constant/defaults'
 import { STORAGE_KEYS, TAB_PROXY_MAP } from '@constant/storageKeys'
 import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
 import { isNetworkMessage, isTabProxyMessage } from '@utils/messages'
 import { addNetworkData, networkStats, resetNetworkStats } from '@utils/network'
 import { usableKeepAliveRules } from '@utils/usable'
-import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
-import BlockingResponseOrPromiseOrVoid = WebRequest.BlockingResponseOrPromiseOrVoid
 import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
 import Tab = Tabs.Tab
 
@@ -28,7 +25,6 @@ type currentProxyHandler = {
   domain?: (details: Proxy.OnRequestDetailsType) => void;
   main?: (details: Proxy.OnRequestDetailsType) => void;
   default?: (details: Proxy.OnRequestDetailsType) => void;
-  oauthRequired?: (details: OnAuthRequiredDetailsType) => BlockingResponseOrPromiseOrVoid;
 }
 type currentKeepAliveHandler = {
   onUpdate?: (tabId: number, changeInfo: OnUpdatedChangeInfoType, tab: Tab) => void;
@@ -53,10 +49,6 @@ function attachProxyHandlers (
     }
   })
 
-  if (currentHandlers.oauthRequired && browser.webRequest.onAuthRequired.hasListener(currentHandlers.oauthRequired)) {
-    browser.webRequest.onAuthRequired.removeListener(currentHandlers.oauthRequired)
-  }
-
   const urls = getAllMatchUrls(config)
 
   if (!currentHandlers.tab) {
@@ -72,15 +64,6 @@ function attachProxyHandlers (
       currentHandlers.main = makeProxyHandler(config)
     } else {
       currentHandlers.main = undefined
-      currentHandlers.oauthRequired = undefined
-    }
-  }
-  if (changedKeys.includes('proxyList') || !currentHandlers.oauthRequired) {
-    if (config.proxyList.length > 0) {
-      console.log(`[${APP_NAME}BG] Creating OAuth required handler for proxy list with ${config.proxyList.length} items.`)
-      currentHandlers.oauthRequired = createAuthRequiredHandler(config.proxyList)
-    } else {
-      currentHandlers.oauthRequired = undefined
     }
   }
   if (changedKeys.includes('defaultProxy')) {
@@ -100,31 +83,8 @@ function attachProxyHandlers (
   if (currentHandlers.main) {
     browser.proxy.onRequest.addListener(currentHandlers.main, { urls })
   }
-  if (currentHandlers.oauthRequired) {
-    browser.webRequest.onAuthRequired.addListener(
-      currentHandlers.oauthRequired,
-      { urls: ['<all_urls>'] },
-      ['blocking'],
-    )
-  }
   if (currentHandlers.default) {
     browser.proxy.onRequest.addListener(currentHandlers.default, { urls: ['<all_urls>'] })
-  }
-}
-
-function createAuthRequiredHandler (proxyList: ProxyListItem[]) {
-  return function (details: OnAuthRequiredDetailsType) {
-    console.debug(`[${APP_NAME}BG] Auth required detected:`, details)
-
-    const credentials = authCredentialsFor(details, proxyList)
-    if (credentials) {
-      console.debug(
-        `[${APP_NAME}BG] Auth required for ${details.challenger.host}:${details.challenger.port} - providing proxy credentials.`)
-      return { authCredentials: credentials }
-    }
-    console.debug(
-      `[${APP_NAME}BG] Auth required for ${details.challenger.host}:${details.challenger.port} - no proxy credentials apply.`)
-    return {}
   }
 }
 
@@ -257,6 +217,11 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
     console.info(`[${APP_NAME}BG] Loaded tab proxy mappings from storage.`)
   }
 
+  browser.webRequest.onAuthRequired.addListener(
+    createProxyAuthListener(() => config.proxyList),
+    { urls: ['<all_urls>'] },
+    ['blocking'],
+  )
   attachProxyHandlers(config, handlers)
   console.info(`[${APP_NAME}BG] Proxy handlers attached for initial config.`)
 

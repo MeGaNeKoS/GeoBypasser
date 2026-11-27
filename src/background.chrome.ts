@@ -5,29 +5,14 @@ import { getConfig } from '@utils/storage'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 import { generatePacScript } from '@utils/pac'
 import { APP_NAME } from '@constant/defaults'
-import { authCredentialsFor } from '@utils/proxy'
+import { createProxyAuthListener } from '@core/proxyAuth'
 import { isNetworkMessage, isProxyControlMessage } from '@utils/messages'
 import { addNetworkData, networkStats, resetNetworkStats } from '@utils/network'
 import { canApplyPac, proxyControlStateFor } from '@utils/proxyControl'
 
-function answerAuthRequest (details: chrome.webRequest.OnAuthRequiredDetails, config: GeoBypassRuntimeSettings) {
-  console.debug(`[${APP_NAME}BG] Auth required detected:`, details)
-
-  const credentials = authCredentialsFor(details, config.proxyList)
-  if (credentials) {
-    console.debug(
-      `[${APP_NAME}BG] Auth required for ${details.challenger.host}:${details.challenger.port} - providing proxy credentials.`)
-    return { authCredentials: credentials }
-  }
-
-  console.debug(
-    `[${APP_NAME}BG] Auth required for ${details.challenger.host}:${details.challenger.port} - no proxy credentials apply.`)
-  return {}
-}
-
 function registerProxyAuthListener (currentConfig: () => GeoBypassRuntimeSettings) {
   chrome.webRequest.onAuthRequired.addListener(
-    details => answerAuthRequest(details, currentConfig()),
+    createProxyAuthListener(() => currentConfig().proxyList),
     { urls: ['<all_urls>'] },
     ['blocking'], // Chrome only supports 'blocking', not 'asyncBlocking'
   )
