@@ -1,5 +1,5 @@
 ---
-status: open
+status: in_progress
 owner: extension
 depends_on: [E04/S02/T01]
 ---
