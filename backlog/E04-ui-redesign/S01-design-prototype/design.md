@@ -24,7 +24,7 @@ The popup's job is "what is this tab using, change it, flip a rule". The dashboa
 
 ## Information architecture
 
-Nine sections, addressed by URL hash (`#proxies`, `#rules`, ...). The landing section is Proxies.
+Ten sections, addressed by URL hash (`#home`, `#proxies`, `#rules`, ...). The landing section is Home (see "Home"); it sits first in the nav, above the "Set up" group.
 
 | Group | Section | Was |
 | --- | --- | --- |
@@ -633,7 +633,7 @@ Routing ladder: the dashboard's main page is the priority order (Tab, Site, Rule
 
 Workbench: dense list on the left, always open editor on the right, 28 px rows. Fastest for dozens of rules, but breaks at 360 px and makes first run look harder.
 
-Dropped for breaking a constraint: an overview home page, undo after delete, an in-app theme switch, "apply to all" on import, any backup proxy affordance, an icon or web font, and a dismissible Chrome banner (it would need a new stored setting).
+Dropped for breaking a constraint: undo after delete, an in-app theme switch, "apply to all" on import, any backup proxy affordance, an icon or web font, and a dismissible Chrome banner (it would need a new stored setting).
 
 ## Other proxy extensions (E05/S02)
 
@@ -710,3 +710,386 @@ Copy in Defaults:
 - Body: "Another proxy extension can change where your requests go. Firefox does not let GeoBypass detect this. For predictable routing, run one proxy extension at a time."
 
 Copy in About: the same heading and body, plus "Requests that no tab proxy, site proxy, rule or default proxy applies to are left untouched, so another extension may route them."
+
+## Home (owner addition)
+
+The owner asked for a welcome and home page. It is the landing section. It adds no setting and stores nothing: which parts show is derived from existing data each time it opens.
+
+### Place in the information architecture
+
+Home is first in the nav, above the "Set up" group, with no count; hash `#home`. An empty or unknown hash opens Home. The "GeoBypass" brand in the sidebar and in the 360 px top bar links to Home. The popup's Dashboard button opens Home; its "N rules need fixing" link still opens `#rules` filtered.
+
+### Which case applies
+
+| Case | Condition | Shows |
+| --- | --- | --- |
+| First time | No proxy, no rule, no site | Welcome line, Get started |
+| Part way | A usable proxy exists but no active rule, site or default proxy uses one; or rules exist with no usable proxy | Status, Get started with finished steps ticked, routing order, Proxies card |
+| Set up | A usable proxy, and an active rule, a site or a default proxy | Status, routing order, Proxies card |
+
+### Parts
+
+Welcome line (first time only): title "Welcome to GeoBypass", text "Send some of your traffic through a proxy and leave the rest direct." In the other cases the title is "Home".
+
+Status card (`role="status"`, icon plus words):
+
+- Set up: check icon, "Routing is on. 7 active rules, 3 sites, default proxy Tokyo SOCKS." Zero counts are left out. With no default proxy it ends "Everything else connects directly."
+- Part way: info icon, "You have 2 proxies, but nothing uses them yet."
+- Something to fix: a second line with the warning icon, "3 entries are not used because they are invalid:" then links "1 proxy", "1 rule", "1 site", each opening its section with the filter on.
+- Chrome, not in control: the sentence becomes "Your settings are saved but not in effect." The E05 banner sits above it as on every section.
+
+Quick actions (button row): "Add rule" (primary), "Add proxy", "Add site", "Import", "Browse community rules". Each opens the same sheet or flow as in its own section.
+
+"Where your traffic goes" card: an ordered list, sub line "Top wins." Each row is a link to its section.
+
+| Row | Live value | Link | On Chrome |
+| --- | --- | --- | --- |
+| 1. Tab proxy | "2 tabs have a proxy" or "No tab has a proxy"; "Set from the popup." | Defaults | "Firefox only" badge, no value |
+| 2. Sites | "3 sites", plus "1 needs fixing" | Sites | "Limited on Chrome" badge |
+| 3. Rules | "7 active, 5 off", plus "1 needs fixing" | Rules | |
+| 4. Default proxy | Proxy label, "None", or the "Proxy unavailable" badge | Defaults | |
+| 5. Everything else | "Connects directly" | none | |
+
+Below the list, one muted line linking to Defaults: "If a proxy fails: connect directly" or "If a proxy fails: the request fails".
+
+"Proxies" card: "4 proxies" plus "1 needs fixing"; "Keep-alive: 3 rules" ("Firefox only" badge on Chrome); "Notify if down: on for 2"; links "Manage proxies", "Keep-alive", "Test a proxy".
+
+"Get started" card: an ordered list. A step is ticked (check icon plus the word "Done") when its condition holds.
+
+1. "Add a proxy", text "A server your traffic can go through." Buttons "Add proxy", "Import a file", "Browse community rules". Ticked when a usable proxy exists.
+2. "Choose what uses it", text "A rule for matching requests, one site, or everything by default." Buttons "Add a rule", "Add a site", "Set a default" (opens Defaults). Ticked when an active rule, a site or a default proxy exists. Until step 1 is ticked the buttons are disabled, with the line "Add a proxy first."
+3. "Check it works", text "Test a proxy. Then open a site and look at the popup." "Test a proxy" links to Test. Never ticked.
+
+The card is removed when steps 1 and 2 are both ticked.
+
+### Layout
+
+At 720 px and wider: status card full width, quick actions below it, then "Where your traffic goes" (three fifths) beside "Proxies" (two fifths). Below 720 px: one column in that order. Get started, when shown, sits directly under the status card and above the quick actions; in the first time case it replaces them.
+
+### States
+
+- Empty: the first time case. There is no separate empty state.
+- Loading: `aria-busy`, shown after 150 ms: one skeleton line for the status and four skeleton lines in each card.
+- Error: `role="alert"`, "Could not load your settings", "The saved settings could not be read: <browser message>", button "Try again". The nav still works.
+
+### Wireframes
+
+First time, 1280:
+
+```
++------------------+------------------------------------------------------+
+| GeoBypass        | Welcome to GeoBypass                                 |
+|                  | Send some of your traffic through a proxy and leave  |
+| | Home           | the rest direct.                                     |
+|                  +------------------------------------------------------+
+| SET UP           | GET STARTED                                          |
+|   Proxies      0 |                                                      |
+|   Rules        0 | 1  Add a proxy                                       |
+|   Sites        0 |    A server your traffic can go through.             |
+|   Keep-alive   0 |    [ + Add proxy ] [ Import a file ]                 |
+|   Defaults       |    [ Browse community rules ]                        |
+|                  |                                                      |
+| TOOLS            | 2  Choose what uses it                               |
+|   Test           |    A rule for matching requests, one site, or        |
+|   Network        |    everything by default.                            |
+|   Import and     |    [ Add a rule ] [ Add a site ] [ Set a default ]   |
+|     export       |    (disabled)  Add a proxy first.                    |
+|   About          |                                                      |
+|                  | 3  Check it works                                    |
+|                  |    Test a proxy. Then open a site and look at the    |
+|                  |    popup.                                            |
++------------------+------------------------------------------------------+
+```
+
+First time, 360:
+
+```
++----------------------------------+
+| GeoBypass  [= Home             v]|
++----------------------------------+
+| Welcome to GeoBypass             |
+| Send some of your traffic        |
+| through a proxy and leave the    |
+| rest direct.                     |
++----------------------------------+
+| GET STARTED                      |
+| 1  Add a proxy                   |
+|    A server your traffic can go  |
+|    through.                      |
+|    [ + Add proxy ]               |
+|    [ Import a file ]             |
+|    [ Browse community rules ]    |
+| 2  Choose what uses it           |
+|    [ Add a rule ] [ Add a site ] |
+|    [ Set a default ]             |
+|    Add a proxy first.            |
+| 3  Check it works                |
+|    Test a proxy. Then open a     |
+|    site and look at the popup.   |
++----------------------------------+
+```
+
+Set up, 1280:
+
+```
++------------------+------------------------------------------------------+
+| GeoBypass        | Home                                                 |
+|                  +------------------------------------------------------+
+| | Home           | (ok) Routing is on. 7 active rules, 3 sites, default |
+|                  |      proxy Tokyo SOCKS.                              |
+| SET UP           | /!\  3 entries are not used because they are invalid:|
+|   Proxies  4 /!\1|      1 proxy, 1 rule, 1 site                         |
+|   Rules   12 /!\1+------------------------------------------------------+
+|   Sites    4 /!\1| [ + Add rule ] [ Add proxy ] [ Add site ] [ Import ] |
+|   Keep-alive 3   | [ Browse community rules ]                           |
+|   Defaults       +-------------------------------+----------------------+
+|                  | WHERE YOUR TRAFFIC GOES       | PROXIES              |
+| TOOLS            | Top wins.                     | 4 proxies            |
+|   Test           | 1 Tab proxy                   | /!\ 1 needs fixing   |
+|   Network        |   2 tabs have a proxy.        | Keep-alive: 3 rules  |
+|   Import and     |   Set from the popup.         | Notify if down: on   |
+|     export       | 2 Sites               3 sites >|   for 2              |
+|   About          |   /!\ 1 needs fixing          |                      |
+|                  | 3 Rules       7 active, 5 off >| Manage proxies       |
+|                  |   /!\ 1 needs fixing          | Keep-alive           |
+|                  | 4 Default proxy  Tokyo SOCKS >| Test a proxy         |
+|                  | 5 Everything else             |                      |
+|                  |   Connects directly           |                      |
+|                  | If a proxy fails: connect     |                      |
+|                  | directly                      |                      |
++------------------+-------------------------------+----------------------+
+```
+
+On Chrome, row 1 reads "1 Tab proxy [ Firefox only ]" with no value, and row 2 reads "2 Sites [ Limited on Chrome ] 3 sites >".
+
+Set up, 360:
+
+```
++----------------------------------+
+| GeoBypass  [= Home             v]|
++----------------------------------+
+| Home                             |
+| (ok) Routing is on. 7 active     |
+|      rules, 3 sites, default     |
+|      proxy Tokyo SOCKS.          |
+| /!\  3 entries are not used:     |
+|      1 proxy, 1 rule, 1 site     |
++----------------------------------+
+| [ + Add rule ] [ Add proxy ]     |
+| [ Add site ] [ Import ]          |
+| [ Browse community rules ]       |
++----------------------------------+
+| WHERE YOUR TRAFFIC GOES          |
+| Top wins.                        |
+| 1 Tab proxy                      |
+|   2 tabs have a proxy.           |
+| 2 Sites                3 sites > |
+|   /!\ 1 needs fixing             |
+| 3 Rules        7 active, 5 off > |
+| 4 Default proxy    Tokyo SOCKS > |
+| 5 Everything else                |
+|   Connects directly              |
+| If a proxy fails: connect        |
+| directly                         |
++----------------------------------+
+| PROXIES                          |
+| 4 proxies   /!\ 1 needs fixing   |
+| Keep-alive: 3 rules              |
+| Notify if down: on for 2         |
+| Manage proxies                   |
+| Keep-alive      Test a proxy     |
++----------------------------------+
+```
+
+Loading and error:
+
+```
+LOADING   (aria-busy; shown after 150 ms)
+| Home                                                        |
+| ##########################                                  |
+| +-----------------------------+---------------------------+ |
+| | ############                | ########                  | |
+| | ####################        | ##############            | |
+| | ################            | ###########               | |
+| | ####################        |                           | |
+| +-----------------------------+---------------------------+ |
+
+ERROR     (role="alert"; the nav still works)
+| Home                                                        |
+| /!\ Could not load your settings                            |
+|     The saved settings could not be read: <browser message> |
+|     [ Try again ]                                           |
+```
+
+The dashboard frame wireframes above gain a "Home" item above "SET UP", in the sidebar and in the 360 px menu.
+
+## Fine tuning a rule (E06/S01)
+
+This section replaces the rule editor wireframe above, the "Exceptions" entries in the Components table (Disclosure) and the Inventory mapping, and places refinement 4's label in the "By kind of request" group.
+
+The rule sheet's "Exceptions" disclosure is renamed "Fine tuning" and holds every option that narrows a rule beyond its match patterns. "If the proxy fails" moves inside it. A new rule shows Basics (Name, Active, Send through, Match patterns) and the folded disclosure, nothing else.
+
+### Disclosure
+
+- Summary when nothing is in use: "Not tuned".
+- Summary when in use: "Tuned:" followed by the phrases below, comma separated, in the order of the groups.
+- It opens by itself when any option is in use or has a fault.
+- First line inside: "Every matching request uses the proxy unless an option here narrows it."
+
+| Option in use | Phrase |
+| --- | --- |
+| Never proxy these hosts | "skips 2 hosts" |
+| Always proxy these hosts | "forces 1 host" |
+| Resource types, mode Never, 1 or more ticked | "skips 3 types" |
+| Resource types, mode Only, 1 or more ticked | "only 3 types" |
+| Never proxy files matching | "skips files" |
+| Only when the page is on | "on 2 sites" |
+
+"Connect directly instead" is not tuning and has no phrase.
+
+### Groups and controls
+
+Group "By host" (both browsers):
+
+- "Never proxy these hosts": PatternList. Help: "Matching requests connect directly. Matched by scheme and host; a path in the pattern is ignored." Placeholder `*://cdn.example.com/*`.
+- "Always proxy these hosts": PatternList. Help: "Wins over 'Never proxy these hosts', 'Never proxy files matching', and the limits below." Same placeholder.
+- Row error for both: "Pattern N is not a valid match pattern."
+
+Group "By kind of request":
+
+- "Resource types": Segmented "Never proxy these" or "Only proxy these" (default "Never proxy these"), then the TypeGrid of 21 types. Help by mode: Never, "Requests of the ticked types connect directly."; Only, "Only requests of the ticked types use the proxy. Every other type connects directly."; none ticked, "No type is ticked, so every type uses the proxy."
+- "Never proxy files matching": mono text field. Help: "A JavaScript regular expression tested against the path, such as /\.(jpg|png|css)$/." Error: "Not a valid regular expression. Write it between slashes, such as /\.(jpg|png)$/."
+
+Group "By page":
+
+- "Only when the page is on": PatternList of host names, same form as keep-alive tab patterns. Placeholder `example.com`. Help: "The rule applies only to requests made by pages on these sites or their subdomains. Requests that belong to no page connect directly. Leave empty to apply on every page." Row error: "Site N is not valid. Use a host name such as example.com or *.example.com."
+
+Group "If the proxy fails":
+
+- "Connect directly instead": Switch. Help: "For this rule only. Sites and the default proxy follow the switch in Defaults."
+
+Basics, help under "Match patterns": "Matched by scheme and host, such as *://*.example.com/*. A path in the pattern is ignored."
+
+### On Chrome
+
+Nothing is hidden and every control stays editable.
+
+| Part | Badge | Line under the heading or field |
+| --- | --- | --- |
+| Group "By host" | none | none |
+| "Resource types" | "Firefox only" on the field label | "Chrome does not tell extensions the kind of request, so it ignores this." |
+| "Never proxy files matching" | "Limited on Chrome" on the field label | "On Chrome this works for http:// addresses only. Chrome hides the path of https:// addresses from extensions." |
+| Group "By page" | "Firefox only" on the group heading | "Chrome does not tell extensions which page a request belongs to, so it ignores this." |
+| "Connect directly instead" | none | none |
+
+When, on Chrome, "Only proxy these" has a type ticked or "Only when the page is on" has a site, an info Banner shows at the top of the disclosure body: "On Chrome these limits are ignored, so this rule proxies every request to its hosts. They take effect in Firefox."
+
+The disclosure summary on Chrome keeps the same phrases and puts the "Firefox only" badge before the first phrase Chrome ignores: "Tuned: skips 1 host, [Firefox only] only 3 types, on 2 sites". "skips files" counts as applying and carries no badge in the summary.
+
+### Rules list row
+
+A tuned rule shows the summary on its second line, after the match pattern, in muted small text: "*://*.video.example/* +2 more   Tuned: only 3 types, on 2 sites". At most two phrases, then "+N more". On Chrome the "Firefox only" badge sits as in the disclosure summary. Below 720 px the summary wraps to its own line. An untuned rule shows nothing extra.
+
+### Set aside
+
+An invalid value in a new field sets the rule aside. Reason copy: "Resource type mode is not valid." and "Site N in 'Only when the page is on' is not valid." Fix opens the sheet with Fine tuning open and the field marked. Import messages for the new fields appear under "Needs your attention" word for word.
+
+### Wireframes
+
+New rule (folded):
+
+```
++----------------------------------------------+
+| Add rule                                 [x] |
++----------------------------------------------+
+| BASICS                                       |
+| Name                                         |
+| [                                          ] |
+| Active                            (  o) On   |
+| Send through                                 |
+| [ Tokyo SOCKS                            v ] |
+| Match patterns                               |
+| [ *://*.example.com/*              ] [Remove]|
+| [ + Add pattern ]                            |
+|   Matched by scheme and host, such as        |
+|   *://*.example.com/*. A path in the pattern |
+|   is ignored.                                |
+|                                              |
+| > FINE TUNING                     Not tuned  |
++----------------------------------------------+
+| [ Save rule ]  [ Cancel ]                    |
++----------------------------------------------+
+```
+
+Tuned rule, Firefox (disclosure open):
+
+```
+| v FINE TUNING   Tuned: skips 1 host, only 3  |
+|                 types, on 2 sites            |
+|   Every matching request uses the proxy      |
+|   unless an option here narrows it.          |
+|                                              |
+|   BY HOST                                    |
+|   Never proxy these hosts                    |
+|   [ *://cdn.video.example/*        ] [Remove]|
+|   [ + Add pattern ]                          |
+|   Always proxy these hosts                   |
+|   [ + Add pattern ]                          |
+|                                              |
+|   BY KIND OF REQUEST                         |
+|   Resource types                             |
+|   [ Never proxy these | Only proxy these ]   |
+|   [ ] font     [x] media    [ ] image        |
+|   [ ] script   [x] xmlhttprequest            |
+|   [x] websocket  [ ] stylesheet  ... (21)    |
+|   Never proxy files matching                 |
+|   [                                        ] |
+|                                              |
+|   BY PAGE                                    |
+|   Only when the page is on                   |
+|   [ video.example.com              ] [Remove]|
+|   [ *.video.example                ] [Remove]|
+|   [ + Add site ]                             |
+|                                              |
+|   IF THE PROXY FAILS                         |
+|   Connect directly instead        (  o) On   |
++----------------------------------------------+
+| [ Save rule ]  [ Cancel ]                    |
++----------------------------------------------+
+```
+
+Same rule on Chrome (lines that differ):
+
+```
+| v FINE TUNING   Tuned: skips 1 host,         |
+|                 [ Firefox only ] only 3      |
+|                 types, on 2 sites            |
+|   (i) On Chrome these limits are ignored, so |
+|       this rule proxies every request to its |
+|       hosts. They take effect in Firefox.    |
+|   BY KIND OF REQUEST                         |
+|   Resource types  [ Firefox only ]           |
+|   Never proxy files matching                 |
+|                     [ Limited on Chrome ]    |
+|   BY PAGE  [ Firefox only ]                  |
+```
+
+Rules list row, tuned:
+
+```
+Firefox
+| [ ] (  o) On   Streaming JP   via Tokyo SOCKS      [Edit] Export Delete |
+|     *://*.video.example/* +2 more   Tuned: only 3 types, on 2 sites     |
+
+Chrome
+| [ ] (  o) On   Streaming JP   via Tokyo SOCKS      [Edit] Export Delete |
+|     *://*.video.example/* +2 more   Tuned: skips 1 host,                |
+|     [ Firefox only ] only 3 types, on 2 sites                           |
+```
+
+## Refinements after the owner's review
+
+1. Row actions: Edit or Fix is the one bordered button per row. Export and Delete are borderless text buttons.
+2. A new rule opens with one empty match pattern row.
+3. Help under the rule sheet's "Connect directly instead": "For this rule only. Sites and the default proxy follow the switch in Defaults." Help under the Defaults switch: "For sites and the default proxy. Each rule has its own switch."
+4. The rule sheet label "Static extensions" becomes "Never proxy files matching", with help "A JavaScript regular expression tested against the path, such as /\.(jpg|png|css)$/." The stored field is unchanged.

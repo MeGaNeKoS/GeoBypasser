@@ -11,6 +11,8 @@ As the owner, I click through the proposed popup, dashboard, and devtools panel 
 5. The dashboard prototype is usable at 360 px width, since the Firefox build is tested on Android.
 6. The owner has reviewed the prototype and recorded in this story either approval or the changes wanted. The decision to make: is this the layout and visual direction to build.
 
+Owner review, 2026-11-28: approved as the starting point ("good enough for me", "current design I think already a good starting point"), with one addition: a welcome or home page. The owner's bar for the build: simple enough, yet with advanced tuning available, and properly designed with nothing broken.
+
 ## Inventory
 
 ### Popup
