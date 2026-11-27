@@ -86,6 +86,11 @@ describe('Firefox background with set aside entries', () => {
 
 describe('Firefox background with wrong-type entries inside sections', () => {
   beforeAll(resetBackground)
+  beforeAll(() => jest.useFakeTimers())
+  afterAll(() => {
+    jest.clearAllTimers()
+    jest.useRealTimers()
+  })
 
   it('starts, keeps a proxy of an unknown type out of the request filter, and survives a live change carrying the same entries', async () => {
     browser.storage.local.get.mockImplementation(async (keys: any) => {
