@@ -1,6 +1,7 @@
 import { matchPattern } from 'browser-extension-url-match'
 import type { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { PROXY_TYPES } from '@constant/proxy'
+import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 
 const STATIC_EXTENSIONS_FORM = /^\/(.*)\/([gimsuy]*)$/
 
@@ -47,14 +48,19 @@ export function isValidStaticExtensions (value: unknown): boolean {
   return compileStaticExtensions(value) !== undefined
 }
 
+export function isValidResourceTypes (list: unknown): boolean {
+  return list === undefined || (Array.isArray(list) && list.every(type => WEB_REQUEST_RESOURCE_TYPES.some(known => known === type)))
+}
+
 export function isValidRule (rule: unknown): rule is ProxyRule {
   if (!isObject(rule)) return false
-  const { name, match, proxyId, bypassUrlPatterns, forceProxyUrlPatterns } = rule
+  const { name, match, proxyId, bypassUrlPatterns, forceProxyUrlPatterns, bypassResourceTypes } = rule
   return typeof name === 'string' && name.trim() !== '' &&
     Array.isArray(match) && match.length > 0 && match.every(isValidPattern) &&
     typeof proxyId === 'string' && proxyId !== '' &&
     isValidOptionalPatternList(bypassUrlPatterns) &&
-    isValidOptionalPatternList(forceProxyUrlPatterns)
+    isValidOptionalPatternList(forceProxyUrlPatterns) &&
+    isValidResourceTypes(bypassResourceTypes)
 }
 
 export function isValidProxyHost (host: unknown): boolean {
@@ -67,7 +73,7 @@ export function isValidProxyPort (port: unknown): boolean {
   return typeof port === 'number' && Number.isInteger(port) && port >= 1 && port <= 65535
 }
 
-export function isValidProxyId (id: unknown): boolean {
+export function isValidProxyId (id: unknown): id is string {
   return typeof id === 'string' && id !== ''
 }
 
@@ -145,6 +151,6 @@ export function isValidOverrideEntry (domain: string, proxyId: unknown): boolean
 export function isValidKeepAliveRule (rule: unknown): boolean {
   if (!isObject(rule)) return false
   const { active, tabUrls } = rule
-  return typeof active === 'boolean' && Array.isArray(tabUrls) &&
+  return typeof active === 'boolean' && Array.isArray(tabUrls) && tabUrls.length > 0 &&
     tabUrls.every(url => typeof url === 'string' && validateHostnamePattern(url))
 }

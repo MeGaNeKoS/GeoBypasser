@@ -1,4 +1,4 @@
-import { isValidPattern, isValidProxyItem, isValidRule, isValidStaticExtensions, isValidTestUrl } from '@utils/validity'
+import { isValidKeepAliveRule, isValidPattern, isValidProxyItem, isValidRule, isValidStaticExtensions, isValidTestUrl } from '@utils/validity'
 import type { ProxyListItem } from '@customTypes/proxy'
 
 function proxy (overrides: Partial<ProxyListItem>): ProxyListItem {
@@ -59,6 +59,10 @@ describe('isValidRule', () => {
     expect(isValidRule(rule({ match: [] }))).toBe(false)
   })
 
+  it('accepts a rule whose staticExtensions value is not valid', () => {
+    expect(isValidRule(rule({ staticExtensions: '\\.(png|css)$' }))).toBe(true)
+  })
+
   it('rejects a rule with an invalid match pattern', () => {
     expect(isValidRule(rule({ match: ['https://example.com:8080/*'] }))).toBe(false)
   })
@@ -104,5 +108,21 @@ describe('isValidTestUrl', () => {
   it('rejects a non http scheme and a value that is not a string', () => {
     expect(isValidTestUrl('ftp://example.com/')).toBe(false)
     expect(isValidTestUrl(undefined)).toBe(false)
+  })
+})
+
+describe('isValidRule with bypassResourceTypes that are not known names', () => {
+  it.each([
+    ['an unknown name', ['not-a-type']],
+    ['a list with one unknown name', ['script', 'unknown']],
+    ['a value that is not a list', 'script'],
+  ])('rejects %s', (_, bypassResourceTypes) => {
+    expect(isValidRule(rule({ bypassResourceTypes }))).toBe(false)
+  })
+})
+
+describe('isValidKeepAliveRule with no tab URL pattern', () => {
+  it('rejects a rule whose tabUrls list is empty', () => {
+    expect(isValidKeepAliveRule({ active: true, tabUrls: [] })).toBe(false)
   })
 })

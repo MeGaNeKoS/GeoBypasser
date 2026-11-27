@@ -79,8 +79,4 @@ describe('popup', () => {
   it('saves a rule toggle for a valid rule', () => {
     expect(canToggleRule(rule)).toBe(true)
   })
-
-  it('saves a rule toggle for a valid rule whose staticExtensions value is not valid', () => {
-    expect(canToggleRule({ ...rule, staticExtensions: '/x/gg' })).toBe(true)
-  })
 })

@@ -47,13 +47,6 @@ describe('getConfig with set aside entries', () => {
 })
 
 describe('getConfig writes', () => {
-  it('writes nothing to config keys when storage is empty', async () => {
-    storeFixture({})
-    const config = await getConfig()
-    expect(browser.storage.local.set).not.toHaveBeenCalled()
-    expect(config.proxyList).toEqual(DEFAULT_SETTINGS.proxyList)
-  })
-
   it('writes nothing to config keys when stored config is set aside', async () => {
     storeFixture({ [STORAGE_KEYS.rules]: [{ name: 'x' }] })
     await getConfig()

@@ -2,13 +2,29 @@ import { createServer } from 'node:http'
 
 export const sleep = ms => new Promise(done => setTimeout(done, ms))
 
+export const STEP_TIMEOUT_MS = 20000
+export const STORAGE_WAIT_MS = 10000
+export const POLL_INTERVAL_MS = 100
+export const STOP_GRACE_MS = 10000
+export const TAB_SETTLE_MS = 200
+export const UI_SETTLE_MS = 500
+export const POPUP_SETTLE_MS = 1000
+
 export async function waitFor (fn, ms, what) {
   const end = Date.now() + ms
   for (;;) {
     const value = await Promise.resolve().then(fn).catch(() => undefined)
     if (value) return value
     if (Date.now() > end) throw new Error(`timed out waiting for ${what}`)
-    await sleep(100)
+    await sleep(POLL_INTERVAL_MS)
+  }
+}
+
+export async function runStep (name, step, failures) {
+  try {
+    await step()
+  } catch (err) {
+    failures.push(`${name}: ${err.message}`)
   }
 }
 
@@ -33,7 +49,8 @@ export const FIXTURE = {
     null,
     'set aside text',
     {},
-    CREDENTIAL_PROXY
+    CREDENTIAL_PROXY,
+    { id: 'proxy-partial', host: 'partial.lan' }
   ],
   defaultProxy: 'proxy-good',
   fallbackDirect: false,
@@ -59,6 +76,7 @@ export const FIXTURE = {
 
 export const SET_ASIDE_RULE = 1
 export const SET_ASIDE_PROXY = 1
+export const SET_ASIDE_EDIT_INDEXES = [2, 3]
 
 export const URL_IMPORT_FILE = {
   rules: [

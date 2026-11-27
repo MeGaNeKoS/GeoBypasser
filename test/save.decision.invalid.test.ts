@@ -6,10 +6,25 @@ import {
   canSaveRuleForm,
   canSaveTestUrl,
   canToggleRule,
+  proxyFieldsAtFault,
 } from '@utils/saveDecisions'
 
 const proxy = { id: 'p1', type: 'socks', proxyDNS: true, host: 'proxy_1.lan', port: 1080 }
 const rule = { active: true, name: 'Example', match: ['https://example.com/*'], proxyId: 'p1' }
+
+describe('proxy form fields at fault', () => {
+  it('marks only the port when the port is out of range', () => {
+    expect(proxyFieldsAtFault({ ...proxy, port: 70000 })).toEqual({ type: false, host: false, port: true })
+  })
+
+  it('marks the type when the type is not supported', () => {
+    expect(proxyFieldsAtFault({ ...proxy, type: 'ftp' })).toEqual({ type: true, host: false, port: false })
+  })
+
+  it('marks the host when the host is blank', () => {
+    expect(proxyFieldsAtFault({ ...proxy, host: '   ' })).toEqual({ type: false, host: true, port: false })
+  })
+})
 
 describe('proxy form', () => {
   it('refuses a host that contains a semicolon and a space', () => {
@@ -94,5 +109,9 @@ describe('popup', () => {
 
   it('refuses a rule toggle for a rule whose match pattern is not valid', () => {
     expect(canToggleRule({ ...rule, match: ['not a pattern'] })).toBe(false)
+  })
+
+  it('saves a rule toggle for a rule whose staticExtensions value is not valid', () => {
+    expect(canToggleRule({ ...rule, staticExtensions: '/x/gg' })).toBe(true)
   })
 })

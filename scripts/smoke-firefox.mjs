@@ -3,18 +3,19 @@ import { cpSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFil
 import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { canon, FIXTURE, serveImportFile, SET_ASIDE_PROXY, SET_ASIDE_RULE, sleep, URL_IMPORT_FILE, waitFor } from './smoke-fixture.mjs'
+import { FIXTURE, sleep, STEP_TIMEOUT_MS, STOP_GRACE_MS, STORAGE_WAIT_MS, TAB_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
 import { connectOnce, MarionetteClient } from './smoke-marionette.mjs'
 import { checkCredentialWiring } from './smoke-credentials.mjs'
+import { checkSetAsideExports } from './smoke-set-aside.mjs'
+import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
+import { clickSelector } from './smoke-dashboard.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const DIST = resolve(process.argv[2] ?? join(ROOT, 'dist'))
 const WORK = join(ROOT, '.chrome-cdp-work')
 const PROFILE = join(WORK, 'firefox-profile')
 const SMOKE_DIST = join(WORK, 'firefox-smoke-dist')
 const SMOKE_ADDON_ID = 'geobypass-smoke@localhost'
-const FIREFOX = 'C:/Program Files/Mozilla Firefox/firefox.exe'
-const STEP_TIMEOUT = 20000
+const DEFAULT_FIREFOX_PATH = 'C:/Program Files/Mozilla Firefox/firefox.exe'
 const CHROME_SANDBOX = 'smoke'
 
 const PREFS = port => [
@@ -48,6 +49,14 @@ let marionette = null
 let recording = false
 let sessionOrigin = null
 
+function readSettings (argv, env) {
+  return {
+    dist: resolve(argv[2] ?? join(ROOT, 'dist')),
+    firefoxPath: env.SMOKE_FIREFOX_PATH ?? DEFAULT_FIREFOX_PATH,
+    env: { ...env, MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1' }
+  }
+}
+
 function freePort () {
   return new Promise((done, reject) => {
     const server = createServer().once('error', reject).listen(0, '127.0.0.1', () => {
@@ -57,19 +66,19 @@ function freePort () {
   })
 }
 
-function requireFirefoxManifest () {
-  const manifestFile = join(DIST, 'manifest.json')
-  if (!existsSync(manifestFile)) throw new Error(`no extension manifest in ${DIST}`)
+function requireFirefoxManifest (dist) {
+  const manifestFile = join(dist, 'manifest.json')
+  if (!existsSync(manifestFile)) throw new Error(`no extension manifest in ${dist}`)
   const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'))
   if (!manifest.browser_specific_settings?.gecko) {
-    throw new Error(`${DIST} is not a Firefox build: its manifest has no browser_specific_settings.gecko`)
+    throw new Error(`${dist} is not a Firefox build: its manifest has no browser_specific_settings.gecko`)
   }
 }
 
-function prepareSmokeDist () {
-  requireFirefoxManifest()
+function prepareSmokeDist (dist) {
+  requireFirefoxManifest(dist)
   rmSync(SMOKE_DIST, { recursive: true, force: true })
-  cpSync(DIST, SMOKE_DIST, { recursive: true })
+  cpSync(dist, SMOKE_DIST, { recursive: true })
   const manifestFile = join(SMOKE_DIST, 'manifest.json')
   const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'))
   manifest.browser_specific_settings.gecko.id = SMOKE_ADDON_ID
@@ -86,12 +95,12 @@ function writePrefs (port) {
   writeFileSync(join(PROFILE, 'user.js'), `${lines.join('\n')}\n`)
 }
 
-function launchFirefox (port) {
+function launchFirefox (port, settings) {
   writePrefs(port)
   const log = openSync(join(PROFILE, 'firefox.log'), 'a')
-  firefox = spawn(FIREFOX, ['-no-remote', '-profile', PROFILE, '--marionette', '--headless', 'about:blank'], {
+  firefox = spawn(settings.firefoxPath, ['-no-remote', '-profile', PROFILE, '--marionette', '--headless', 'about:blank'], {
     stdio: ['ignore', log, log],
-    env: { ...process.env, MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1' }
+    env: settings.env
   })
   exited = new Promise(done => firefox.on('exit', done))
 }
@@ -112,6 +121,11 @@ async function takeDialogs () {
   if (recording) dialogs.push(...await evaluate(drainDialogs))
 }
 
+async function shownDialogs () {
+  await takeDialogs()
+  return dialogs
+}
+
 async function navigate (url) {
   await takeDialogs()
   await marionette.send('Marionette:SetContext', { value: 'content' })
@@ -120,10 +134,10 @@ async function navigate (url) {
   recording = true
 }
 
-async function openSession () {
+async function openSession (settings) {
   const port = await freePort()
-  launchFirefox(port)
-  const socket = await waitFor(() => connectOnce(port), STEP_TIMEOUT, 'the Marionette port')
+  launchFirefox(port, settings)
+  const socket = await waitFor(() => connectOnce(port), STEP_TIMEOUT_MS, 'the Marionette port')
   marionette = new MarionetteClient(socket)
   await marionette.handshake()
   await marionette.send('WebDriver:NewSession', {})
@@ -149,7 +163,7 @@ async function closeSession () {
   }
   recording = false
   if (firefox) {
-    await Promise.race([exited, sleep(10000)])
+    await Promise.race([exited, sleep(STOP_GRACE_MS)])
     if (firefox.exitCode === null) firefox.kill()
     await exited
     console.log(`firefox exit ${firefox.exitCode}`)
@@ -165,7 +179,7 @@ async function seedFixture (session) {
 
 async function checkStartupFromStorage (session) {
   await navigate(`${session.origin}dashboard.html`)
-  await waitFor(() => evaluate(pingBackground), STEP_TIMEOUT, 'the background to answer in the second session')
+  await waitFor(() => evaluate(pingBackground), STEP_TIMEOUT_MS, 'the background to answer in the second session')
   console.log('background answered in the second session, after a restart with the stored config')
 }
 
@@ -173,68 +187,10 @@ async function visitDashboardTabs () {
   const tabs = await evaluate(dashboardTabs)
   if (!tabs.includes('override')) failures.push('dashboard has no website overrides tab')
   for (const tab of tabs) {
-    await evaluate(clickTab, [tab])
-    await sleep(200)
+    await evaluate(clickSelector, [`[data-tab="${tab}"]`])
+    await sleep(TAB_SETTLE_MS)
   }
   console.log(`dashboard tabs visited: ${tabs.join(', ')}`)
-}
-
-function expectedAfterRemoval () {
-  return {
-    ...FIXTURE,
-    rules: FIXTURE.rules.filter((_, i) => i !== SET_ASIDE_RULE),
-    proxyList: FIXTURE.proxyList.filter((_, i) => i !== SET_ASIDE_PROXY)
-  }
-}
-
-async function removeSetAsideEntries () {
-  await evaluate(clickTab, ['rules'])
-  await evaluate(removeRow, ['ruleTable', SET_ASIDE_RULE])
-  await evaluate(removeRow, ['proxyTable', SET_ASIDE_PROXY])
-  const expected = expectedAfterRemoval()
-  await waitFor(async () => {
-    const stored = await evaluate(readStorage)
-    return canon(stored.rules) === canon(expected.rules) && canon(stored.proxyList) === canon(expected.proxyList)
-  }, 10000, 'the removal to reach storage.local')
-  const stored = await evaluate(readStorage)
-  for (const key of Object.keys(FIXTURE)) {
-    if (canon(stored[key]) !== canon(expected[key])) failures.push(`storage ${key} differs after removal`)
-  }
-  console.log(`removed rule row ${SET_ASIDE_RULE} and proxy row ${SET_ASIDE_PROXY}; storage holds every other entry unchanged`)
-}
-
-async function importRulesFromUrl () {
-  const importFile = await serveImportFile(JSON.stringify(URL_IMPORT_FILE))
-  try {
-    await evaluate(importFromUrl, [importFile.url])
-    await waitFor(async () => {
-      const stored = await evaluate(readStorage)
-      return stored.rules.some(rule => rule?.name === 'url valid rule')
-    }, 10000, 'the URL import to reach storage.local')
-  } catch (err) {
-    failures.push(err.message)
-  } finally {
-    await importFile.close()
-  }
-  const imported = await evaluate(readStorage)
-  const expected = expectedAfterRemoval()
-  if (imported.rules.some(rule => rule?.name === 'url refused rule')) failures.push('storage gained the refused URL import rule')
-  if (canon(imported.rules.slice(0, expected.rules.length)) !== canon(expected.rules)) {
-    failures.push('storage rules stored before the URL import changed')
-  }
-  await takeDialogs()
-  if (!dialogs.some(message => message.includes('url refused rule'))) failures.push('no message named the refused URL import rule')
-  console.log(`URL import from ${importFile.url}: valid rule stored, refused rule not stored, message shown`)
-}
-
-async function refuseInvalidProxySave () {
-  const before = (await evaluate(readStorage)).proxyList
-  await evaluate(refuseProxySave)
-  await sleep(500)
-  const after = (await evaluate(readStorage)).proxyList
-  if (canon(after) !== canon(before)) failures.push('storage proxyList changed after a refused proxy save')
-  if (!await evaluate(proxyHostMarkedInvalid)) failures.push('the proxy host field is not marked after a refused proxy save')
-  console.log('refused proxy save with host "a:1; PROXY x:8080": storage unchanged, host field marked')
 }
 
 async function setTabProxyFromPopup (session) {
@@ -243,27 +199,29 @@ async function setTabProxyFromPopup (session) {
   const { handle } = await marionette.send('WebDriver:NewWindow', { type: 'tab' })
   await marionette.send('WebDriver:SwitchToWindow', { handle, focus: true })
   await navigate(`${session.origin}popup.html`)
-  await waitFor(() => evaluate(popupProxyListReady), STEP_TIMEOUT, 'the popup proxy list in its own tab')
+  await waitFor(() => evaluate(popupProxyListReady), STEP_TIMEOUT_MS, 'the popup proxy list in its own tab')
   const tabId = await evaluate(setTabProxy, ['proxy-good'])
-  await waitFor(async () => (await evaluate(readTabProxies))[tabId] === 'proxy-good', 10000, 'the tab proxy to reach storage.local')
+  await waitFor(async () => (await evaluate(readTabProxies))[tabId] === 'proxy-good', STORAGE_WAIT_MS, 'the tab proxy to reach storage.local')
   console.log(`popup set tab ${tabId} to proxy-good; tabProxyMap holds it`)
 }
 
-async function runFirefoxSmoke () {
-  prepareSmokeDist()
+async function runFirefoxSmoke (settings) {
+  prepareSmokeDist(settings.dist)
   resetProfile()
 
-  const first = await openSession()
+  const first = await openSession(settings)
   await seedFixture(first)
   await closeSession()
 
-  const second = await openSession()
+  const second = await openSession(settings)
   await checkStartupFromStorage(second)
   await visitDashboardTabs()
-  await removeSetAsideEntries()
-  await importRulesFromUrl()
-  await refuseInvalidProxySave()
+  await removeSetAsideEntries(evaluate, failures)
+  await editSetAsideEntries(evaluate)
+  await checkUrlImport(evaluate, failures, shownDialogs)
+  await checkRefusedProxySave(evaluate, failures)
   await checkCredentialWiring(evaluate, failures)
+  await checkSetAsideExports(evaluate, failures)
   await setTabProxyFromPopup(second)
 }
 
@@ -314,10 +272,6 @@ async function seedStorage (fixture) {
   return true
 }
 
-async function readStorage () {
-  return browser.storage.local.get(null)
-}
-
 async function readTabProxies () {
   return (await browser.storage.local.get('tabProxyMap')).tabProxyMap ?? {}
 }
@@ -329,31 +283,6 @@ async function pingBackground () {
 
 async function dashboardTabs () {
   return [...document.querySelectorAll('[data-tab]')].map(button => button.dataset.tab)
-}
-
-function clickTab (name) {
-  document.querySelector(`[data-tab="${name}"]`).click()
-}
-
-function removeRow (tableId, index) {
-  document.querySelector(`#${tableId} button[data-remove="${index}"]`).click()
-}
-
-function importFromUrl (url) {
-  document.getElementById('importUrlInput').value = url
-  document.getElementById('importUrlBtn').click()
-}
-
-function refuseProxySave () {
-  document.querySelector('[data-tab="proxy"]').click()
-  document.getElementById('addProxy').click()
-  document.getElementById('proxyHost').value = 'a:1; PROXY x:8080'
-  document.getElementById('proxyPort').value = '8080'
-  document.getElementById('saveProxy').click()
-}
-
-function proxyHostMarkedInvalid () {
-  return document.getElementById('proxyHost').classList.contains('invalid')
 }
 
 function popupProxyListReady () {
@@ -368,20 +297,25 @@ async function setTabProxy (proxyId) {
   return id
 }
 
-let runError = null
-process.on('SIGINT', () => closeSession().finally(() => process.exit(130)))
-try {
-  await runFirefoxSmoke()
-} catch (err) {
-  runError = err
-} finally {
-  await closeSession().catch(err => console.error(`shutdown: ${err.message}`))
+async function main () {
+  const settings = readSettings(process.argv, process.env)
+  let runError = null
+  process.on('SIGINT', () => closeSession().finally(() => process.exit(130)))
+  try {
+    await runFirefoxSmoke(settings)
+  } catch (err) {
+    runError = err
+  } finally {
+    await closeSession().catch(err => console.error(`shutdown: ${err.message}`))
+  }
+
+  if (runError) failures.push(`run: ${runError.message}`)
+  if (failures.length) {
+    console.error(`FAIL: ${failures.join('\n')}`)
+    process.exitCode = 1
+  } else {
+    console.log(`PASS: no uncaught exception or unhandled rejection in any page or the background page; ${dialogs.length} dialog(s) dismissed`)
+  }
 }
 
-if (runError) failures.push(`run: ${runError.message}`)
-if (failures.length) {
-  console.error(`FAIL: ${failures.join('\n')}`)
-  process.exitCode = 1
-} else {
-  console.log(`PASS: no uncaught exception or unhandled rejection in any page or the background page; ${dialogs.length} dialog(s) dismissed`)
-}
+await main()

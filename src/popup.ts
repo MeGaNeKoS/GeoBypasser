@@ -8,6 +8,7 @@ import { DIRECT_PROXY_ID } from '@constant/proxy'
 import type { SetTabProxyMessage, ClearTabProxyMessage } from '@customTypes/messages'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { supportsProxyOnRequest } from '@utils/env'
+import { alertUnsavedChanges } from '@utils/saveFailure'
 
 function getHostname (url?: string) {
   if (!url) return null
@@ -17,6 +18,8 @@ function getHostname (url?: string) {
     return null
   }
 }
+
+alertUnsavedChanges(window, alert)
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (/android|iphone|ipad|mobile/i.test(navigator.userAgent)) {

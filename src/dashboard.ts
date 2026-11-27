@@ -15,15 +15,15 @@ import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
 import { refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseProxyItems, refuseRules, withImportedRules } from '@utils/importFiles'
-import { isRuleActive } from '@utils/usable'
+import { proxyFormValues, ruleFormValues } from '@utils/editFields'
+import { exportedRules } from '@utils/ruleExport'
 import { exportProxyList, keepStoredCredentials } from '@utils/proxyCredentials'
 import { isValidProxyItem } from '@utils/validity'
 import { markInvalid, markRuleFieldsInvalid } from '@utils/fieldMarks'
 import {
   isValidDomain,
   isValidPattern,
-  isValidProxyHost,
-  isValidProxyPort,
+  isValidProxyId,
   isValidStaticExtensions,
   isValidTestUrl,
   validateDomain,
@@ -36,8 +36,10 @@ import {
   canSaveProxy,
   canSaveRuleForm,
   canSaveTestUrl,
+  proxyFieldsAtFault,
 } from '@utils/saveDecisions'
 import { keepAliveRows, overrideRows, proxyOptions, proxyRows, ruleRows } from '@utils/pageView'
+import { alertUnsavedChanges } from '@utils/saveFailure'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let editingProxyIndex: number | null = null
@@ -497,15 +499,15 @@ function openProxyModal (index?: number) {
   const notify = document.getElementById('proxyNotify') as HTMLInputElement
 
   if (editingProxyIndex !== null) {
-    const p = config.proxyList[editingProxyIndex]
+    const values = proxyFormValues(config.proxyList[editingProxyIndex])
     title.textContent = 'Edit Proxy'
-    label.value = p.label || ''
-    type.value = p.type
-    host.value = p.host
-    port.value = String(p.port)
-    user.value = p.username || ''
-    pass.value = p.password || ''
-    notify.checked = !!p.notifyIfDown
+    label.value = values.label
+    type.value = values.type
+    host.value = values.host
+    port.value = values.port
+    user.value = values.username
+    pass.value = values.password
+    notify.checked = values.notifyIfDown
   } else {
     title.textContent = 'Add Proxy'
     label.value = ''
@@ -524,6 +526,11 @@ function closeProxyModal () {
   document.getElementById('proxyModal')!.classList.add('hidden')
 }
 
+function proxyIdForSave (): string {
+  const editedId = editingProxyIndex !== null ? config.proxyList[editingProxyIndex]?.id : undefined
+  return isValidProxyId(editedId) ? editedId : crypto.randomUUID()
+}
+
 function saveProxyFromModal () {
   const label = (document.getElementById('proxyLabel') as HTMLInputElement).value
   const type = (document.getElementById('proxyType') as HTMLSelectElement).value as ProxyType
@@ -534,7 +541,7 @@ function saveProxyFromModal () {
   const notify = (document.getElementById('proxyNotify') as HTMLInputElement).checked
 
   const base: ProxyListItem = {
-    id: editingProxyIndex !== null ? config.proxyList[editingProxyIndex].id : crypto.randomUUID(),
+    id: proxyIdForSave(),
     type,
     host,
     port,
@@ -546,8 +553,10 @@ function saveProxyFromModal () {
   if (notify) base.notifyIfDown = true
 
   if (!canSaveProxy(base)) {
-    markInvalid(document.getElementById('proxyHost')!, !isValidProxyHost(host))
-    markInvalid(document.getElementById('proxyPort')!, !isValidProxyPort(port))
+    const faults = proxyFieldsAtFault(base)
+    markInvalid(document.getElementById('proxyType')!, faults.type)
+    markInvalid(document.getElementById('proxyHost')!, faults.host)
+    markInvalid(document.getElementById('proxyPort')!, faults.port)
     return
   }
 
@@ -636,7 +645,7 @@ function renderRules () {
       config.rules.splice(idx, 1)
       saveConfig(config).then(renderAll)
     }
-    expBtn.onclick = () => exportRules([r as ProxyRule])
+    expBtn.onclick = () => exportRules([config.rules[idx]])
   })
 }
 
@@ -667,17 +676,17 @@ function openRuleModal (index?: number) {
   }
 
   if (editingRuleIndex !== null) {
-    const r = config.rules[editingRuleIndex]
+    const values = ruleFormValues(config.rules[editingRuleIndex])
     title.textContent = 'Edit Rule'
-    name.value = r.name
-    match.value = r.match.join(', ')
-    proxy.value = r.proxyId
-    bypassUrls.value = (r.bypassUrlPatterns || []).join(', ')
-    bypassTypes.value = (r.bypassResourceTypes || []).join(', ')
-    staticExt.value = r.staticExtensions || ''
-    forceUrls.value = (r.forceProxyUrlPatterns || []).join(', ')
-    fbDirect.checked = !!r.fallbackDirect
-    active.checked = isRuleActive(r)
+    name.value = values.name
+    match.value = values.match
+    proxy.value = values.proxyId
+    bypassUrls.value = values.bypassUrlPatterns
+    bypassTypes.value = values.bypassResourceTypes
+    staticExt.value = values.staticExtensions
+    forceUrls.value = values.forceProxyUrlPatterns
+    fbDirect.checked = values.fallbackDirect
+    active.checked = values.active
   } else {
     title.textContent = 'Add Rule'
     name.value = ''
@@ -973,26 +982,12 @@ function renderKeepAlive () {
   }
 }
 
-function stripRule (r: RuntimeProxyRule, keepProxyId = true): ProxyRule {
-  return {
-    active: typeof r.active === 'undefined' ? true : r.active,
-    proxyId: keepProxyId ? r.proxyId : DIRECT_PROXY_ID,
-    name: r.name,
-    match: r.match,
-    bypassUrlPatterns: r.bypassUrlPatterns,
-    bypassResourceTypes: r.bypassResourceTypes,
-    staticExtensions: r.staticExtensions,
-    forceProxyUrlPatterns: r.forceProxyUrlPatterns,
-    fallbackDirect: r.fallbackDirect,
-  }
-}
-
 function getExportableConfig () {
   return {
     proxyList: config.proxyList,
     defaultProxy: config.defaultProxy,
     fallbackDirect: config.fallbackDirect,
-    rules: config.rules.map(rule => stripRule(rule, true)),
+    rules: exportedRules(config.rules, () => true),
     keepAliveRules: config.keepAliveRules,
     testProxyUrl: config.testProxyUrl,
     perWebsiteOverride: config.perWebsiteOverride,
@@ -1022,7 +1017,7 @@ async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
   const idMap = new Map<string, string>()
 
   if (cfg.proxyList) {
-    const existing = new Map(updated.proxyList.map((p, idx) => [proxySignature(p), idx]))
+    const existing = new Map(updated.proxyList.flatMap((p, idx) => isValidProxyItem(p) ? [[proxySignature(p), idx] as const] : []))
     for (const p of keepStoredCredentials(cfg.proxyList as ProxyListItem[], updated.proxyList)) {
       const sig = proxySignature(p)
       if (existing.has(sig)) {
@@ -1255,8 +1250,8 @@ async function confirmRemoteImport () {
   closeRemoteImportModal()
 }
 
-function exportRules (rules: RuntimeProxyRule[]) {
-  const sanitized = rules.map(r => stripRule(r, false))
+function exportRules (rules: unknown[]) {
+  const sanitized = exportedRules(rules, () => false)
   const data = JSON.stringify({ rules: sanitized }, null, 2)
   download('rules.json', data)
 }
@@ -1610,8 +1605,10 @@ function closeExportConfigModal () {
   document.getElementById('exportConfigModal')!.classList.add('hidden')
 }
 
+type ExportedConfig = Partial<Omit<GeoBypassSettings, 'rules'>> & { rules?: Record<string, unknown>[] }
+
 function exportConfigFromModal () {
-  const obj: Partial<GeoBypassSettings> = {}
+  const obj: ExportedConfig = {}
   const container = document.getElementById('exportConfigItems')!
   const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
@@ -1622,7 +1619,9 @@ function exportConfigFromModal () {
   const exportedProxyIds = new Set(obj.proxyList?.map(p => p?.id) || [])
   const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
-  if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => config.rules[i]).filter(r => r).map(r => stripRule(r, exportedProxyIds.has(r.proxyId)))
+  if (ruleIdxs.length) {
+    obj.rules = exportedRules(ruleIdxs.map(i => config.rules[i]), proxyId => typeof proxyId === 'string' && exportedProxyIds.has(proxyId))
+  }
   const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
   if (ovDomains.length) {
@@ -1763,6 +1762,8 @@ function renderAll () {
 
 
 document.addEventListener('DOMContentLoaded', async () => {
+alertUnsavedChanges(window, alert)
+
   config = await getConfig()
   renderAll()
 

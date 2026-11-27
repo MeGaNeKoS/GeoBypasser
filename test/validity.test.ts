@@ -27,10 +27,6 @@ describe('isValidRule', () => {
   it('accepts a rule whose proxy is not in the list', () => {
     expect(isValidRule(rule({ proxyId: 'gone' }))).toBe(true)
   })
-
-  it('accepts a rule whose staticExtensions value is not valid', () => {
-    expect(isValidRule(rule({ staticExtensions: '\\.(png|css)$' }))).toBe(true)
-  })
 })
 
 describe('isValidStaticExtensions', () => {

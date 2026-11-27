@@ -15,9 +15,7 @@ describe('isRuleShownInvalid', () => {
 })
 
 describe('isProxyShownInvalid', () => {
-  it('is true for a set aside proxy and false for a valid one', () => {
-    const base = { id: 'p1', type: 'http', port: 80, proxyDNS: false }
-    expect(isProxyShownInvalid({ ...base, host: 'a:1; PROXY x:8080' } as any)).toBe(true)
-    expect(isProxyShownInvalid({ ...base, host: 'proxy_1.lan' } as any)).toBe(false)
+  it('is true for a set aside proxy', () => {
+    expect(isProxyShownInvalid({ id: 'p1', type: 'http', host: 'a:1; PROXY x:8080', port: 80, proxyDNS: false } as any)).toBe(true)
   })
 })

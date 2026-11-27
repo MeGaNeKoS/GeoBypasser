@@ -4,6 +4,46 @@ const proxy = { id: 'p1', type: 'socks', proxyDNS: true, host: 'proxy_1.lan', po
 const rule = { active: true, name: 'Example', match: ['https://example.com/*'], proxyId: 'p1' }
 const keepAlive = { active: true, tabUrls: ['*.example.com'] }
 
+describe('rules import refuses bypassResourceTypes that are not known names', () => {
+  it('refuses the rule and keeps the valid rule', () => {
+    const bad = { ...rule, name: 'Bad types', bypassResourceTypes: ['not-a-type'] }
+
+    const verdict = refuseRules([bad, rule])
+
+    expect(verdict.accepted).toEqual([rule])
+    expect(verdict.messages).toHaveLength(1)
+    expect(verdict.messages[0]).toContain('"Bad types"')
+    expect(verdict.messages[0]).toContain('bypass resource types')
+  })
+})
+
+describe('a refusal message names the entry by its name or label, or else by its position', () => {
+  it('names a rule by its name when the name is not empty', () => {
+    const verdict = refuseRules([{ ...rule, name: 'Bad rule', match: ['not a pattern'] }])
+
+    expect(verdict.messages[0]).toContain('"Bad rule"')
+  })
+
+  it('names a rule with a blank name by its position in the list', () => {
+    const verdict = refuseRules([rule, { ...rule, name: '   ', match: ['not a pattern'] }])
+
+    expect(verdict.messages[0]).toContain('"entry 2"')
+  })
+
+  it('names a proxy by its label when the label is not empty', () => {
+    const verdict = refuseProxyItems([{ ...proxy, label: 'Office', host: 'a:1; PROXY x:8080' }])
+
+    expect(verdict.messages[0]).toContain('"Office"')
+  })
+
+  it('names a proxy without a label by its position, not by its host and port', () => {
+    const verdict = refuseProxyItems([proxy, { ...proxy, label: '', host: 'a:1; PROXY x:8080' }])
+
+    expect(verdict.messages[0]).toContain('"entry 2"')
+    expect(verdict.messages[0]).not.toContain('a:1')
+  })
+})
+
 describe('an entry that would be set aside is refused by each path', () => {
   it('config file refuses a rule with a match pattern of "not a pattern" and keeps the valid rule', () => {
     const bad = { ...rule, name: 'Bad rule', match: ['not a pattern'] }
@@ -36,7 +76,7 @@ describe('an entry that would be set aside is refused by each path', () => {
 
     expect(verdict.accepted.proxyList).toEqual([proxy])
     expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain(String(bad.host))
+    expect(verdict.messages[0]).toContain('"entry 1"')
   })
 
   it.each([
@@ -48,7 +88,7 @@ describe('an entry that would be set aside is refused by each path', () => {
 
     expect(verdict.accepted).toEqual([proxy])
     expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain(String(bad.host))
+    expect(verdict.messages[0]).toContain('"entry 1"')
   })
 
   it('config file skips a test URL of www.google.com and imports the rest of the file', () => {

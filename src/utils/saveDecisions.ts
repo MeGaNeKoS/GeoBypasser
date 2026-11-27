@@ -2,7 +2,10 @@ import { usableProxies } from '@utils/usable'
 import {
   isValidKeepAliveRule,
   isValidOverrideEntry,
+  isValidProxyHost,
   isValidProxyItem,
+  isValidProxyPort,
+  isValidProxyType,
   isValidRule,
   isValidStaticExtensions,
   isValidTestUrl,
@@ -10,6 +13,14 @@ import {
 
 export function canSaveProxy (proxy: unknown): boolean {
   return isValidProxyItem(proxy)
+}
+
+export function proxyFieldsAtFault (proxy: Record<'type' | 'host' | 'port', unknown>) {
+  return {
+    type: !isValidProxyType(proxy.type),
+    host: !isValidProxyHost(proxy.host),
+    port: !isValidProxyPort(proxy.port),
+  }
 }
 
 export function canSaveRuleForm (rule: unknown): boolean {

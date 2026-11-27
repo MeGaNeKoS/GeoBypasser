@@ -82,12 +82,12 @@ function warnInvalidOverrides (overrides: Record<string, unknown>) {
   }
 }
 
+const COMPILED_RULE_FIELDS = ['compiledMatch', 'compiledBypassUrlPatterns', 'compiledForceProxyUrlPatterns', 'compiledStaticExtensions']
+
 function omitCompiledFields (rule: unknown): unknown {
   if (!isPlainObject(rule)) return rule
-  const plain: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(rule)) {
-    if (!key.startsWith('compiled')) plain[key] = value
-  }
+  const plain: Record<string, unknown> = { ...rule }
+  for (const field of COMPILED_RULE_FIELDS) delete plain[field]
   return plain
 }
 
@@ -107,18 +107,27 @@ function sections (config: GeoBypassSettings): Record<string, unknown> {
   }
 }
 
+export class StorageWriteError extends Error {}
+
 async function writeSections (values: Record<string, unknown>, onlyChanged: boolean) {
   const storageMode = await getUserStorageMode()
   const storage = storageMode === 'cloud' ? browser.storage.sync : browser.storage.local
   const update: Record<string, unknown> = {}
+  const serializedUpdate = new Map<string, string>()
   for (const [key, value] of Object.entries(values)) {
     const serialized = JSON.stringify(value)
-    if (onlyChanged && storedSnapshot.has(key) && storedSnapshot.get(key) === serialized) continue
+    if (onlyChanged && storedSnapshot.get(key) === serialized) continue
     update[key] = value
-    storedSnapshot.set(key, serialized)
+    serializedUpdate.set(key, serialized)
   }
-  if (Object.keys(update).length === 0) return
-  await storage.set(update)
+  if (serializedUpdate.size === 0) return
+  try {
+    await storage.set(update)
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : String(cause)
+    throw new StorageWriteError(`Your last change was not saved to ${storageMode} storage: ${detail}`)
+  }
+  for (const [key, serialized] of serializedUpdate) storedSnapshot.set(key, serialized)
   console.info(`[${APP_NAME}] Saved config to ${storageMode} storage.`)
 }
 

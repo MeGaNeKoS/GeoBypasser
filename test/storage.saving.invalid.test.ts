@@ -1,4 +1,4 @@
-import { getConfig, saveConfig, updateConfig } from '@utils/storage'
+import { getConfig, saveConfig, StorageWriteError, updateConfig } from '@utils/storage'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 import { browser } from './setup'
 
@@ -77,6 +77,18 @@ describe('updateConfig from the popup', () => {
   })
 })
 
+describe('a save whose write fails', () => {
+  it('rejects, and the next save of the same section writes again', async () => {
+    loadStored({ [STORAGE_KEYS.perWebsiteOverride]: {} })
+    const config = await getConfig()
+    config.perWebsiteOverride['example.com'] = 'p1'
+    browser.storage.local.set.mockRejectedValueOnce(new Error('quota exceeded'))
+    await expect(saveConfig(config)).rejects.toBeInstanceOf(StorageWriteError)
+    await saveConfig(config)
+    expect(browser.storage.local.set).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('a section of the wrong type that is not saved', () => {
   it('is not written when another section is saved', async () => {
     loadStored({ [STORAGE_KEYS.rules]: 'oops', [STORAGE_KEYS.proxyList]: [] })
@@ -91,5 +103,16 @@ describe('a section of the wrong type that is not saved', () => {
     await saveConfig(config)
     const written = (browser.storage.local.set.mock.calls as any[][]).flatMap(call => Object.keys(call[0]))
     expect(written).not.toContain(STORAGE_KEYS.rules)
+  })
+})
+
+describe('a section of the wrong type that the user saves', () => {
+  it('is replaced when the user saves that section', async () => {
+    loadStored({ [STORAGE_KEYS.rules]: 'oops' })
+    const config = await getConfig()
+    config.rules.push({ name: 'new', match: ['https://example.net/*'], proxyId: 'p1' } as any)
+    await saveConfig(config)
+    const last = (browser.storage.local.set.mock.calls as any[][]).slice(-1)[0][0]
+    expect(last[STORAGE_KEYS.rules]).toEqual([{ name: 'new', match: ['https://example.net/*'], proxyId: 'p1' }])
   })
 })

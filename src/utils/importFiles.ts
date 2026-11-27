@@ -10,6 +10,7 @@ import {
   isValidProxyItem,
   isValidProxyPort,
   isValidProxyType,
+  isValidResourceTypes,
   isValidRule,
   isValidStaticExtensions,
   isValidTestUrl,
@@ -30,15 +31,20 @@ function notImported (section: string, shape: string) {
   return `${section} was not imported: the file does not hold ${shape}.`
 }
 
-function entryName (entry: unknown, index: number) {
-  if (isPlainObject(entry) && typeof entry.name === 'string') return entry.name
+function positionName (index: number) {
   return `entry ${index + 1}`
 }
 
+function nonEmptyText (value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() !== '' ? value : undefined
+}
+
+function entryName (entry: unknown, index: number) {
+  return (isPlainObject(entry) && nonEmptyText(entry.name)) || positionName(index)
+}
+
 function proxyName (entry: unknown, index: number) {
-  if (!isPlainObject(entry)) return `entry ${index + 1}`
-  if (typeof entry.label === 'string') return entry.label
-  return `${String(entry.host)}:${String(entry.port)}`
+  return (isPlainObject(entry) && nonEmptyText(entry.label)) || positionName(index)
 }
 
 function proxyProblem (entry: unknown) {
@@ -65,6 +71,7 @@ function ruleProblem (entry: unknown) {
   if (typeof entry.name !== 'string' || entry.name.trim() === '') return 'it has no name'
   if (!Array.isArray(entry.match) || entry.match.length === 0) return 'it has no match pattern'
   if (typeof entry.proxyId !== 'string' || entry.proxyId === '') return 'it has no proxy'
+  if (!isValidResourceTypes(entry.bypassResourceTypes)) return 'its bypass resource types are not known names'
   return invalidPatternProblem(entry) ?? 'a field is missing or has the wrong type'
 }
 

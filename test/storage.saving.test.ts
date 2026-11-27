@@ -19,13 +19,12 @@ beforeEach(() => {
   jest.clearAllMocks()
 })
 
-describe('a section of the wrong type', () => {
-  it('is replaced when the user saves that section', async () => {
-    loadStored({ [STORAGE_KEYS.rules]: 'oops' })
+describe('a stored rule field named like a compiled field', () => {
+  it('survives a save of that rule', async () => {
+    loadStored({ [STORAGE_KEYS.rules]: [{ name: 'ok', match: ['https://example.com/*'], proxyId: 'p1', compiledNote: 'kept' }] })
     const config = await getConfig()
-    config.rules.push({ name: 'new', match: ['https://example.net/*'], proxyId: 'p1' } as any)
+    config.rules[0].active = false
     await saveConfig(config)
-    const last = (browser.storage.local.set.mock.calls as any[][]).slice(-1)[0][0]
-    expect(last[STORAGE_KEYS.rules]).toEqual([{ name: 'new', match: ['https://example.net/*'], proxyId: 'p1' }])
+    expect(writtenValue(STORAGE_KEYS.rules)[0]).toHaveProperty('compiledNote', 'kept')
   })
 })
