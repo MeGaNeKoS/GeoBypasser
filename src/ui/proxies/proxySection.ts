@@ -6,7 +6,7 @@ import { isValidProxyId } from '@utils/validity'
 import { button } from '../components/button'
 import { switchControl } from '../components/controls'
 import { banner } from '../components/feedback'
-import { listSection, setAsideNotes } from '../components/list-section'
+import { ignoredSettingNotes, listSection, setAsideNotes } from '../components/list-section'
 import type { ListRow } from '../components/list-section'
 import { nothingLeftToFix, setAsideBanners } from '../components/set-aside-view'
 import type { SetAsideViewOptions } from '../components/set-aside-view'
@@ -26,7 +26,13 @@ const EXPORT_FILENAME = 'proxies.json'
 
 type ProxyRow = ReturnType<typeof proxyRows>[number]
 
+type PasswordReveal = {
+  all: boolean;
+  overrides: Map<string, boolean>;
+}
+
 let importNotes: string[] = []
+const passwordReveal: PasswordReveal = { all: false, overrides: new Map() }
 
 export async function renderProxySection (setAsideOnly = false): Promise<void> {
   const container = requireElement(PROXY_CONTAINER_ID)
@@ -34,8 +40,28 @@ export async function renderProxySection (setAsideOnly = false): Promise<void> {
   replaceContent(container, [element('div', { class: 'stack' }, importNoteBanner(), proxySection(list, setAsideOnly))])
 }
 
+export function resetPasswordReveal (): void {
+  passwordReveal.all = false
+  passwordReveal.overrides.clear()
+}
+
 function rerender (): void {
   void renderProxySection(isSetAsideOnlyHash(location.hash))
+}
+
+function isPasswordShown (key: string): boolean {
+  return passwordReveal.overrides.get(key) ?? passwordReveal.all
+}
+
+function togglePassword (key: string): void {
+  passwordReveal.overrides.set(key, !isPasswordShown(key))
+  rerender()
+}
+
+function toggleAllPasswords (): void {
+  passwordReveal.all = !passwordReveal.all
+  passwordReveal.overrides.clear()
+  rerender()
 }
 
 function proxySection (list: ProxyListItem[], setAsideOnly: boolean): HTMLElement {
@@ -46,7 +72,7 @@ function proxySection (list: ProxyListItem[], setAsideOnly: boolean): HTMLElemen
     hidden: true,
     onchange: (event: Event) => void importFrom(event),
   })
-  const rows = proxyRows(list)
+  const rows = proxyRows(list, index => isPasswordShown(keyOf(list[index], index)))
   const view: SetAsideViewOptions = {
     sectionHash: PROXY_SECTION_HASH,
     noun: 'proxy',
@@ -64,6 +90,7 @@ function proxySection (list: ProxyListItem[], setAsideOnly: boolean): HTMLElemen
     state: 'populated',
     rows: shownRows.map(row => rowFor(list, row)),
     banners: setAsideBanners(view),
+    toolbarExtras: [button(passwordReveal.all ? 'Hide all' : 'Show all passwords', { focusKey: 'reveal-all', onClick: toggleAllPasswords })],
     empty: setAsideOnly
       ? nothingLeftToFix(view)
       : {
@@ -92,8 +119,10 @@ function rowFor (list: ProxyListItem[], row: ProxyRow): ListRow {
     body: [
       element('strong', {}, row.label),
       ...(row.invalid ? setAsideNotes(row.faults) : []),
+      ...(row.ignoredNote === undefined ? [] : ignoredSettingNotes(row.ignoredNote)),
       ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
       element('p', { class: 'help' }, detailsOf(row)),
+      ...passwordLine(key, row),
       switchControl(`Notify if ${row.label} is down`, row.notifyIfDown, checked => void setNotify(key, checked), { focusKey: `switch-${key}` }),
     ],
     actions: [
@@ -103,6 +132,17 @@ function rowFor (list: ProxyListItem[], row: ProxyRow): ListRow {
       }),
     ],
   }
+}
+
+function passwordLine (key: string, row: ProxyRow): Node[] {
+  if (!row.hasPassword) return []
+  const shown = isPasswordShown(key)
+  return [element('p', { class: 'row__password' },
+    'Password ',
+    element('span', { class: 'mono' }, row.password),
+    ' ',
+    button(shown ? 'Hide' : 'Show', { variant: 'quiet', focusKey: `reveal-${key}`, onClick: () => togglePassword(key) }),
+  )]
 }
 
 function detailsOf (row: ProxyRow): string {

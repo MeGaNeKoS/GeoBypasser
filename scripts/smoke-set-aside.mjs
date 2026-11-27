@@ -160,6 +160,61 @@ export async function checkSetAsideOnlyAndFocus (run, failures) {
   }
 }
 
+const REVEAL_ALL_SELECTOR = '[data-focus-key="reveal-all"]'
+const REVEAL_ROW_SELECTOR = '[data-focus-key^="reveal-"]:not([data-focus-key="reveal-all"])'
+
+function countRevealedPasswords () {
+  return Array.from(document.querySelectorAll('#proxyContent .row__password .mono'))
+    .filter(node => node.textContent !== '******').length
+}
+
+function readRevealAllLabel () {
+  return document.querySelector('[data-focus-key="reveal-all"]')?.textContent.trim() ?? null
+}
+
+async function checkPasswordReveal (run, failures) {
+  await run(setLocationHash, ['#proxies'])
+  await sleep(UI_SETTLE_MS)
+  const masked = await run(countRevealedPasswords)
+  if (masked !== 0) failures.push(`${masked} password(s) shown before any Show was pressed`)
+  await run(clickSelector, [REVEAL_ALL_SELECTOR])
+  await sleep(UI_SETTLE_MS)
+  const revealed = await run(countRevealedPasswords)
+  if (revealed === 0) failures.push('Show all passwords revealed no password')
+  if (await run(readRevealAllLabel) !== 'Hide all') failures.push('the toolbar did not change to Hide all after Show all passwords')
+  await run(clickSelector, [REVEAL_ROW_SELECTOR])
+  await sleep(UI_SETTLE_MS)
+  if (await run(countRevealedPasswords) !== revealed - 1) failures.push('Hide on one row did not hide only that row')
+  await run(setLocationHash, ['#home'])
+  await sleep(UI_SETTLE_MS)
+  await run(setLocationHash, ['#proxies'])
+  await sleep(UI_SETTLE_MS)
+  if (await run(countRevealedPasswords) !== 0) failures.push('password reveal survived leaving and returning to Proxies')
+  await run(clickSelector, [REVEAL_ALL_SELECTOR])
+  await sleep(UI_SETTLE_MS)
+  await run(clickSelector, [REVEAL_ALL_SELECTOR])
+  await sleep(UI_SETTLE_MS)
+  if (await run(countRevealedPasswords) !== 0) failures.push('Hide all left a password shown')
+  if (await run(readRevealAllLabel) !== 'Show all passwords') failures.push('the toolbar did not return to Show all passwords after Hide all')
+}
+
+async function checkRuleRowExport (run, failures) {
+  await run(setLocationHash, ['#rules'])
+  await sleep(UI_SETTLE_MS)
+  const text = await run(captureDownload, ['#rulesContent li.row:nth-child(1)', 'Export'])
+  const parsed = parseExport('rule row Export', text, failures)
+  if (parsed && (!Array.isArray(parsed.rules) || parsed.rules.length !== 1)) failures.push('rule row Export did not write exactly one rule')
+}
+
+export async function checkRevealAndRowExport (run, failures) {
+  const failuresBefore = failures.length
+  await runStep('password reveal on Proxies', () => checkPasswordReveal(run, failures), failures)
+  await runStep('rule row Export', () => checkRuleRowExport(run, failures), failures)
+  if (failures.length === failuresBefore) {
+    console.log('proxies: Show all passwords and Hide all work, a row Show or Hide changes one row, reveal resets on leaving Proxies; each rule row Export writes one rule')
+  }
+}
+
 export async function checkSetAsideExports (run, failures) {
   const failuresBefore = failures.length
   await runStep('set aside row export', () => checkRowExportsSetAside(run, failures), failures)

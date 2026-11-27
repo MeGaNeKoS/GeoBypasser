@@ -111,6 +111,11 @@ function rowFor (list: ProxyRule[], row: RuleRow, proxyList: unknown): ListRow {
         focusKey: `edit-${key}`,
         onClick: () => openEditor({ raw: list[row.index], position: row.index, invalid: row.invalid }, proxyList),
       }),
+      button('Export', {
+        variant: 'quiet',
+        focusKey: `export-${key}`,
+        onClick: () => { exportRules(list, [key]) },
+      }),
     ],
   }
 }

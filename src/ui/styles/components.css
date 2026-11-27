@@ -529,10 +529,22 @@
 .row--set-aside {
   box-shadow: inset var(--stripe) 0 0 var(--warn);
   background: var(--surface);
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
+.row__gutter {
+  color: var(--warn);
+  display: inline-flex;
+}
+
+.set-aside__reason {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 .row__body {
   display: grid;
+  justify-items: start;
   gap: var(--space-1);
   min-width: 0;
 }

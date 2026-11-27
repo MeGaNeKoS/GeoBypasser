@@ -158,7 +158,7 @@ tr.invalid-rule, tr.invalid-proxy { background: var(--warn-bg); }
   overflow-y: auto;
 }
 @media (max-width: 600px) {
-  #content button:not(#home button, table button),
+  #content button:not(#home button, #proxyContent button, #rulesContent button, table button),
   .modal button {
     min-width: 100%;
     font-size: 1em;

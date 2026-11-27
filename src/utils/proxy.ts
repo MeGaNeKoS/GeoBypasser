@@ -10,6 +10,7 @@ import { supportsProxyOnRequest } from '@utils/env'
 import { addTestURLToPac } from '@utils/pac'
 import { pacRouteFor } from '@utils/pacRoute'
 import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableProxies, usableRules } from '@utils/usable'
+import { isValidFailoverTimeout } from '@utils/validity'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
 
@@ -37,13 +38,20 @@ function isAuthenticatedHttp (proxy: ProxyListItem): boolean {
   return proxy.type === 'http' && !!proxy.username
 }
 
-export function failoverTimeoutFor (proxy: ProxyListItem): number {
-  if (proxy.failoverTimeout !== undefined) return proxy.failoverTimeout
-  return isAuthenticatedHttp(proxy) ? HTTP_AUTH_FAILOVER_TIMEOUT_SECONDS : DEFAULT_FAILOVER_TIMEOUT_SECONDS
+export function failoverTimeoutFor (proxy: ProxyListItem): number | undefined {
+  if (proxy.failoverTimeout === undefined) {
+    return isAuthenticatedHttp(proxy) ? HTTP_AUTH_FAILOVER_TIMEOUT_SECONDS : DEFAULT_FAILOVER_TIMEOUT_SECONDS
+  }
+  return isValidFailoverTimeout(proxy.failoverTimeout) ? proxy.failoverTimeout : undefined
 }
 
 export function proxyInfoFor (proxy: ProxyListItem) {
-  return { ...proxy, proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS }
+  const { failoverTimeout, ...rest } = proxy
+  return {
+    ...rest,
+    proxyDNS: proxy.type === 'http' ? false : proxy.proxyDNS,
+    ...(isValidFailoverTimeout(failoverTimeout) ? { failoverTimeout } : {}),
+  }
 }
 
 export function makeTabProxyHandler (

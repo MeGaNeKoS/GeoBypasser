@@ -6,7 +6,7 @@ import type { NavCount, NavCounts } from '@utils/pageView'
 import { element, replaceContent, requireElement } from '../dom'
 import { renderHome } from '../home/home'
 import { icon, installSprite } from '../icons'
-import { renderProxySection } from '../proxies/proxySection'
+import { renderProxySection, resetPasswordReveal } from '../proxies/proxySection'
 import { renderRuleSection } from '../rules/ruleSection'
 import { clearSelections } from '../components/list-section'
 import { HOME_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
@@ -72,6 +72,7 @@ async function showSection (requestedId: string, nav: FrameNav, options: FrameOp
   }
   renderMenuToggle(nav.menuToggle, labelOf(nav.buttons.find(button => sectionIdOf(button) === shownId)) ?? shownId)
   closeMenuOnCompactScreen(nav)
+  if (shownId !== PROXY_SECTION_ID) resetPasswordReveal()
   await renderSection(shownId)
   if (menuWasOpen) focusSectionHeading(shownId)
   options.onSectionShown?.(shownId)

@@ -84,6 +84,10 @@ export function isValidProxyPort (port: unknown): boolean {
   return typeof port === 'number' && Number.isInteger(port) && port >= 1 && port <= 65535
 }
 
+export function isValidFailoverTimeout (timeout: unknown): timeout is number {
+  return typeof timeout === 'number' && Number.isInteger(timeout) && timeout >= 1
+}
+
 export function isValidProxyId (id: unknown): id is string {
   return typeof id === 'string' && id !== ''
 }

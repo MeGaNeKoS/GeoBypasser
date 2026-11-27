@@ -2,7 +2,7 @@ import { DIRECT_PROXY_ID } from '@constant/proxy'
 import type { KeepAliveProxyRule, ProxyRule } from '@customTypes/proxy'
 import { isProxyShownInvalid, isRuleShownInvalid } from '@utils/validity'
 import { isRuleActive, usableKeepAliveRules, usableOverrides, usableProxies, usableRules } from '@utils/usable'
-import { proxyReasons, ruleReasons, staticExtensionsIgnoredNote } from '@utils/setAsideReasons'
+import { failoverTimeoutIgnoredNote, proxyReasons, ruleReasons, staticExtensionsIgnoredNote } from '@utils/setAsideReasons'
 
 type Entry = Record<string, any>
 
@@ -44,6 +44,7 @@ export function proxyRows (list: unknown, isRevealed: (index: number) => boolean
       hasPassword: !!proxy.password,
       password: proxy.password ? (isRevealed(index) ? asText(proxy.password) : '******') : '',
       notifyIfDown: !!proxy.notifyIfDown,
+      ignoredNote: invalid ? undefined : failoverTimeoutIgnoredNote(value),
     }
   })
 }
