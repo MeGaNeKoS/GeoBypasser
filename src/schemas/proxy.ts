@@ -18,10 +18,6 @@ export const ProxyListItemSchema = ProxyConfigSchema.extend({
   notifyIfDown: z.boolean().optional(),
 })
 
-export const ProxyListRuntimeItemSchema = ProxyListItemSchema.extend({
-  downNotification: z.number().optional(),
-})
-
 export const RuleProxyIdSchema = z.union([
   ProxyIdSchema,
   z.literal(DIRECT_PROXY_ID),

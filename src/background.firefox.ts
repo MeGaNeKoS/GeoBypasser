@@ -135,11 +135,10 @@ async function initKeepAlive (config: GeoBypassRuntimeSettings) {
     return
   }
 
-  // Clean up old intervals
   Object.values(keepAliveStates).forEach(state => {
-    if (state.interval) {
-      clearInterval(state.interval)
-      console.debug(`[${APP_NAME}BG] Cleared previous keep-alive interval for a proxy.`)
+    if (state.timer) {
+      clearTimeout(state.timer)
+      console.debug(`[${APP_NAME}BG] Cleared previous keep-alive timer for a proxy.`)
     }
   })
 
@@ -158,7 +157,13 @@ async function initKeepAlive (config: GeoBypassRuntimeSettings) {
       console.info(`[${APP_NAME}BG] Keep-alive rule for proxyId ${proxyId} is inactive, skipping.`)
       continue
     }
-    keepAliveStates[proxyId] = { activeTabs: new Map(), interval: null, testUrl: config.testProxyUrl }
+    keepAliveStates[proxyId] = {
+      activeTabs: new Map(),
+      timer: null,
+      testUrl: config.testProxyUrl,
+      consecutiveFailures: 0,
+      reportedDown: false,
+    }
     console.debug(`[${APP_NAME}BG] Initialized keepAliveState for proxyId ${proxyId}`)
   }
 
@@ -326,12 +331,6 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
   // Error listener
   browser.proxy.onError.addListener((error: Proxy.OnErrorErrorType) => {
     console.error(`[${APP_NAME}BG] Proxy error occurred:`, error?.message)
-    console.dir(error)
-    browser.notifications.create('proxy-error', {
-      type: 'basic',
-      title: 'GeoBypass-er encountered an error!',
-      message: error.message as string || 'An unknown error occurred.',
-    })
   })
 
   // Storage listener for live config updates

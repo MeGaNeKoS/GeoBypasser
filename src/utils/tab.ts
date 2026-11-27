@@ -3,7 +3,7 @@ import { resolveProxy, testProxyConfigQueued } from '@utils/proxy'
 import browser, { Tabs } from 'webextension-polyfill'
 import { getHostname, KeepAliveState, matchHostname } from '@utils/generic'
 import { usableKeepAliveRules } from '@utils/usable'
-import { ProxyListItem, ProxyListRuntimeItem } from '@customTypes/proxy'
+import { ProxyListItem, ProxyTestResult } from '@customTypes/proxy'
 import OnUpdatedChangeInfoType = Tabs.OnUpdatedChangeInfoType
 import Tab = Tabs.Tab
 import { APP_NAME } from '@constant/defaults'
@@ -112,38 +112,109 @@ function trackTabForKeepAlive (
   }
 }
 
+const KEEP_ALIVE_HEALTHY_INTERVAL_MS = 15000
+const KEEP_ALIVE_FAILED_RETRY_MS = 5000
+const KEEP_ALIVE_START_DELAY_MS = 0
+const DOWN_AFTER_FAILED_CHECKS = 3
+
+type KeepAliveNotice = 'down' | 'back'
+
 export function maybeUpdateProxyKeepAlive (proxy: ProxyListItem, state: KeepAliveState) {
-  const shouldKeepAlive = Array.from(state.activeTabs.values()).some(set => set.size > 0)
-  if (shouldKeepAlive && !state.interval) {
-    state.interval = setInterval(() => keepAliveProxyStatus(proxy, state.testUrl), 15000)
-    keepAliveProxyStatus(proxy, state.testUrl)
-  } else if (!shouldKeepAlive && state.interval) {
-    clearInterval(state.interval)
-    state.interval = null
+  const shouldKeepAlive = hasActiveTabs(state)
+  if (shouldKeepAlive && !state.timer) {
+    scheduleNextCheck(proxy, state, KEEP_ALIVE_START_DELAY_MS)
+  } else if (!shouldKeepAlive && state.timer) {
+    stopKeepAlive(state)
   }
 }
 
-export async function keepAliveProxyStatus (proxy: ProxyListRuntimeItem, testUrl: string) {
-  testProxyConfigQueued(proxy, testUrl, (result) => {
-    if (result.success) {
-      console.debug(`[KeepAlive] Proxy ${proxy.host}:${proxy.port} is alive.`)
-      proxy.downNotification = 0
-    } else {
-      console.warn(`[KeepAlive] Proxy ${proxy.host}:${proxy.port} failed: ${result.error}`)
-      if (proxy.notifyIfDown) {
-        if ((proxy.downNotification || 0) < 4) {
-          browser.notifications.create('proxy-error', {
-            type: 'basic',
-            iconUrl: 'icons/icon128.png',
-            title: `${APP_NAME} keep alive encountered an error!`,
-            message: `Proxy ${proxy.host}:${proxy.port} failed: ${result.error || 'Unknown error'}`,
-          })
-          if (!proxy.downNotification) {
-            proxy.downNotification = 0
-          }
-          proxy.downNotification++
-        }
-      }
-    }
+export function keepAliveProxyStatus (proxy: ProxyListItem, state: KeepAliveState) {
+  testProxyConfigQueued(proxy, state.testUrl, (result) => {
+    logCheck(proxy, result)
+    const notice = applyCheckResult(state, result.success)
+    if (notice && proxy.notifyIfDown) notifyProxyChange(proxy, notice)
+    if (hasActiveTabs(state)) scheduleNextCheck(proxy, state, nextCheckDelayMs(state.consecutiveFailures))
+    else stopKeepAlive(state)
   })
+}
+
+function hasActiveTabs (state: KeepAliveState) {
+  return Array.from(state.activeTabs.values()).some(set => set.size > 0)
+}
+
+function scheduleNextCheck (proxy: ProxyListItem, state: KeepAliveState, delayMs: number) {
+  if (state.timer) clearTimeout(state.timer)
+  state.timer = setTimeout(() => keepAliveProxyStatus(proxy, state), delayMs)
+}
+
+function stopKeepAlive (state: KeepAliveState) {
+  if (state.timer) clearTimeout(state.timer)
+  state.timer = null
+  state.consecutiveFailures = 0
+  state.reportedDown = false
+}
+
+function nextCheckDelayMs (consecutiveFailures: number) {
+  return consecutiveFailures > 0 ? KEEP_ALIVE_FAILED_RETRY_MS : KEEP_ALIVE_HEALTHY_INTERVAL_MS
+}
+
+function applyCheckResult (state: KeepAliveState, success: boolean): KeepAliveNotice | null {
+  const notice = keepAliveNotice(state.consecutiveFailures, state.reportedDown, success)
+  state.consecutiveFailures = success ? 0 : state.consecutiveFailures + 1
+  if (notice === 'down') state.reportedDown = true
+  if (notice === 'back') state.reportedDown = false
+  return notice
+}
+
+function keepAliveNotice (
+  consecutiveFailures: number,
+  reportedDown: boolean,
+  success: boolean,
+): KeepAliveNotice | null {
+  if (success) return reportedDown ? 'back' : null
+  const failuresAfterCheck = consecutiveFailures + 1
+  return !reportedDown && failuresAfterCheck >= DOWN_AFTER_FAILED_CHECKS ? 'down' : null
+}
+
+function logCheck (proxy: ProxyListItem, result: ProxyTestResult) {
+  if (result.success) console.debug(`[KeepAlive] Proxy ${proxy.host}:${proxy.port} is alive.`)
+  else console.warn(`[KeepAlive] Proxy ${proxy.host}:${proxy.port} failed: ${result.error}`)
+}
+
+function notifyProxyChange (proxy: ProxyListItem, notice: KeepAliveNotice) {
+  if (notice === 'down') notifyProxyDown(proxy)
+  else notifyProxyBack(proxy)
+}
+
+function notifyProxyDown (proxy: ProxyListItem) {
+  createProxyNotification(
+    proxyDownNotificationId(proxy),
+    `${APP_NAME} proxy is down`,
+    `${proxyDisplayName(proxy)} has failed ${DOWN_AFTER_FAILED_CHECKS} checks in a row.`,
+  )
+}
+
+function notifyProxyBack (proxy: ProxyListItem) {
+  browser.notifications.clear(proxyDownNotificationId(proxy))
+  createProxyNotification(
+    proxyBackNotificationId(proxy),
+    `${APP_NAME} proxy is back`,
+    `${proxyDisplayName(proxy)} is responding again.`,
+  )
+}
+
+function createProxyNotification (id: string, title: string, message: string) {
+  browser.notifications.create(id, { type: 'basic', iconUrl: 'icons/icon128.png', title, message })
+}
+
+function proxyDownNotificationId (proxy: ProxyListItem) {
+  return `proxy-down-${proxy.id}`
+}
+
+function proxyBackNotificationId (proxy: ProxyListItem) {
+  return `proxy-back-${proxy.id}`
+}
+
+function proxyDisplayName (proxy: ProxyListItem) {
+  return proxy.label || `${proxy.host}:${proxy.port}`
 }

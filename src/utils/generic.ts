@@ -51,6 +51,8 @@ export async function fetchWithTimeout (url: URL, options: RequestInit = {}, tim
 
 export type KeepAliveState = {
   activeTabs: Map<string, Set<number>>;
-  interval: ReturnType<typeof setInterval> | null;
+  timer: ReturnType<typeof setTimeout> | null;
   testUrl: string;
+  consecutiveFailures: number;
+  reportedDown: boolean;
 }

@@ -60,6 +60,7 @@ const browser: any = {
     },
     notifications: {
       create: jest.fn(),
+      clear: jest.fn(async () => true),
     },
   }
 
