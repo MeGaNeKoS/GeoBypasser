@@ -34,7 +34,7 @@ function linkOrText (link: SetAsideLink): Child {
 export function quickActions (sitesShown: boolean): HTMLElement {
   return buttonGroup(
     actionButton('Add rule', 'rules', 'addRule', { variant: 'primary' }),
-    actionButton('Add proxy', 'proxies', 'addProxy'),
+    actionButton('Add proxy', 'proxies', null),
     ...(sitesShown ? [actionButton('Add site', 'sites', 'addOverride')] : []),
     actionButton('Import', 'import-export', 'importConfigBtn'),
     actionButton('Browse community rules', 'import-export', 'openCommunityImport'),
@@ -47,8 +47,8 @@ export function getStartedCard (view: HomeView): HTMLElement {
     element('h3', { class: 'group-label' }, 'Get started'),
     element('ol', { class: 'home-steps' },
       setupStep(1, 'Add a proxy', 'A server your traffic can go through.', proxyAdded, [
-        actionButton('Add proxy', 'proxies', 'addProxy', { variant: 'primary' }),
-        actionButton('Import a file', 'proxies', 'importProxiesBtn'),
+        actionButton('Add proxy', 'proxies', null, { variant: 'primary' }),
+        actionButton('Import a file', 'proxies', null),
         actionButton('Browse community rules', 'import-export', 'openCommunityImport'),
       ]),
       setupStep(2, 'Choose what uses it', 'A rule for matching requests, one site, or everything by default.', choiceMade, [

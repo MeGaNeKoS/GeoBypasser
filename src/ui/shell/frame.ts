@@ -6,7 +6,8 @@ import type { NavCount, NavCounts } from '@utils/pageView'
 import { element, replaceContent, requireElement } from '../dom'
 import { renderHome } from '../home/home'
 import { icon, installSprite } from '../icons'
-import { HOME_SECTION_ID, hashForSection, sectionIdForHash } from './routes'
+import { renderProxySection } from '../proxies/proxySection'
+import { HOME_SECTION_ID, PROXY_SECTION_ID, hashForSection, sectionIdForHash } from './routes'
 
 export type FrameOptions = {
   onSectionShown?: (sectionId: string) => void
@@ -70,6 +71,7 @@ async function showSection (requestedId: string, nav: FrameNav, options: FrameOp
   renderMenuToggle(nav.menuToggle, labelOf(nav.buttons.find(button => sectionIdOf(button) === shownId)) ?? shownId)
   closeMenuOnCompactScreen(nav)
   if (shownId === HOME_SECTION_ID) await renderHome()
+  if (shownId === PROXY_SECTION_ID) await renderProxySection()
   if (menuWasOpen) focusSectionHeading(shownId)
   options.onSectionShown?.(shownId)
 }

@@ -44,33 +44,7 @@
       <button id="clearTabProxies">Clear Tab Proxies</button><br>
     </section>
     <section id="proxy" class="tab">
-      <h2>Proxy List</h2>
-      <p class="section-help">Manage proxies that can be used for rules or overrides.</p>
-      <div class="table-scroll" role="region" aria-label="Proxy list" tabindex="0">
-      <table id="proxyTable">
-        <thead>
-          <tr>
-            <th>Label</th>
-            <th>Type</th>
-            <th>Host</th>
-            <th>Port</th>
-            <th>User</th>
-            <th>Password <button id="togglePassColumn">Show</button></th>
-            <th>Notify if down</th>
-            <th class="select-col">Select</th>
-            <th class="action-col"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      </div>
-      <button id="addProxy">Add Proxy</button>
-      <button id="exportProxiesSelected" class="export-selected">Export Selected</button>
-      <button id="deleteProxiesSelected" class="delete-selected">Delete Selected</button>
-      <button id="exportProxiesAll">Export All</button>
-      <input type="file" id="importProxies" style="display:none">
-      <button id="importProxiesBtn">Import Proxies</button>
-
+      <div id="proxyContent"></div>
     </section>
     <section id="rules" class="tab">
       <h2>Rules</h2>
@@ -318,26 +292,6 @@
     </div>
   </div>
 
-  <div id="proxyModal" class="modal hidden">
-    <div class="modal-content">
-      <h3 id="proxyModalTitle">Add Proxy</h3>
-      <p class="modal-help">Specify proxy connection details.</p>
-      <label>Label <input type="text" id="proxyLabel"></label><br>
-      <label>Type
-        <select id="proxyType">
-          <option value="http">http</option>
-          <option value="socks">socks5</option>
-        </select>
-      </label><br>
-      <label>Host <input type="text" id="proxyHost"></label><br>
-      <label>Port <input type="number" id="proxyPort" min="1" max="65535"></label><br>
-      <label>Username <input type="text" id="proxyUser" autocomplete="off"></label><br>
-      <label>Password <input type="password" id="proxyPass" autocomplete="new-password"></label><br>
-      <label>Notify if down <input type="checkbox" id="proxyNotify"></label><br>
-      <button id="saveProxy">Save</button>
-      <button id="cancelProxy">Cancel</button>
-    </div>
-  </div>
   <script src="dashboard.js"></script>
 </body>
 </html>

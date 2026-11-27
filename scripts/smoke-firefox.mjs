@@ -6,14 +6,14 @@ import { fileURLToPath } from 'node:url'
 import { FIXTURE, POPUP_SETTLE_MS, runStep, sleep, STEP_TIMEOUT_MS, STOP_GRACE_MS, STORAGE_WAIT_MS, TAB_SETTLE_MS, UI_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
 import { connectOnce, MarionetteClient } from './smoke-marionette.mjs'
 import { checkCredentialWiring } from './smoke-credentials.mjs'
-import { checkSetAsideExports } from './smoke-set-aside.mjs'
+import { checkSetAsideEditSave, checkSetAsideExports } from './smoke-set-aside.mjs'
 import { checkMixedOverrideInDashboard, addProxyAsDefault, clickSiteClearInPopup, MIXED_HOST, MIXED_KEY, MIXED_URL, mixedRouteProxy, openPopupBesideTab, readPopupDomain, storedKeysForHost, tabLoadStatus, writeMixedOverride } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, FIREFOX_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { startRecordingListener } from './smoke-chrome-route.mjs'
 import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
 import { COMPONENT_TEST_PAGE, firefoxKeyActions, runComponentTestPage } from './smoke-component-test.mjs'
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
-import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
+import { checkLegacyRowsAfterReread, checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
@@ -281,6 +281,9 @@ async function runFirefoxSmoke (settings) {
   await checkSettingChanges(evaluate, failures)
   await checkRefusedProxySave(evaluate, failures)
   await checkCredentialWiring(evaluate, failures)
+  await checkProxyEditSurvivesRuleSave(evaluate, failures)
+  await checkLegacyRowsAfterReread(evaluate, failures)
+  await checkSetAsideEditSave(evaluate, failures, () => navigate(`${sessionOrigin}dashboard.html#proxies`))
   await checkSetAsideExports(evaluate, failures)
   await checkNetworkStatsNames(evaluate, failures, FIREFOX_NETWORK_SCENARIO)
   await checkMixedOverrideInDashboard({ run: evaluate, reopenDashboard: () => navigate(`${second.origin}dashboard.html`) }, failures)

@@ -19,6 +19,7 @@ export type SheetSpec = {
   render: (draft: Draft, faults: Fault[], close: () => void) => Node[];
   validate: (draft: Draft) => Fault[];
   save: (draft: Draft) => void;
+  closed?: () => void;
 }
 
 export function faultFor (faults: Fault[], field: string): string | undefined {
@@ -126,6 +127,7 @@ export function openSheet (spec: SheetSpec): HTMLDialogElement {
     dialog.close()
     dialog.remove()
     opener?.focus()
+    spec.closed?.()
   }
 
   dialog.append(

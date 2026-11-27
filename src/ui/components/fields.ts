@@ -22,6 +22,7 @@ export type TextFieldOptions = FieldOptions & {
   inputMode?: 'numeric' | 'text';
   placeholder?: string;
   suffix?: string;
+  autocomplete?: string;
 }
 
 export type SelectOption = {
@@ -44,6 +45,7 @@ export function textField (options: TextFieldOptions): HTMLDivElement {
     value: options.value,
     inputmode: options.inputMode,
     placeholder: options.placeholder,
+    autocomplete: options.autocomplete,
     'aria-invalid': options.fault ? 'true' : undefined,
     spellcheck: 'false',
   })
@@ -75,7 +77,7 @@ export function passwordField (options: FieldOptions & { value: string }): HTMLD
     name: options.name,
     type: 'password',
     value: options.value,
-    autocomplete: 'off',
+    autocomplete: 'new-password',
     spellcheck: 'false',
   })
   const show = element('button', { type: 'button', class: 'button', 'aria-pressed': 'false' }, 'Show')

@@ -1,4 +1,4 @@
-export function captureDownload (selector) {
+export function captureDownload (selector, label) {
   const realCreateObjectURL = URL.createObjectURL
   const realAnchorClick = HTMLAnchorElement.prototype.click
   let blob = null
@@ -8,7 +8,9 @@ export function captureDownload (selector) {
   }
   HTMLAnchorElement.prototype.click = function () {}
   try {
-    document.querySelector(selector).click()
+    const scope = document.querySelector(selector)
+    if (label === undefined) scope.click()
+    else Array.from(scope.querySelectorAll('button')).find(button => button.textContent.trim() === label).click()
   } finally {
     URL.createObjectURL = realCreateObjectURL
     HTMLAnchorElement.prototype.click = realAnchorClick
@@ -72,7 +74,7 @@ export function pressEscapeInSettingChange () {
 }
 
 export function selectProxyRowByHost (host) {
-  const row = Array.from(document.querySelectorAll('#proxyTable tbody tr')).find(tr => tr.textContent.includes(host))
+  const row = Array.from(document.querySelectorAll('#proxyContent li.row')).find(li => li.textContent.includes(host))
   const box = row.querySelector('input[type="checkbox"]')
   box.checked = true
   box.dispatchEvent(new Event('change'))
@@ -89,12 +91,73 @@ export function importFromUrl (url) {
 
 export function refuseProxySave () {
   document.querySelector('[data-tab="proxy"]').click()
-  document.getElementById('addProxy').click()
-  document.getElementById('proxyHost').value = 'a:1; PROXY x:8080'
-  document.getElementById('proxyPort').value = '8080'
-  document.getElementById('saveProxy').click()
+  Array.from(document.querySelectorAll('#proxyContent button')).find(button => button.textContent.trim() === 'Add proxy').click()
+  document.querySelector('dialog.sheet input[name="host"]').value = 'a:1; PROXY x:8080'
+  document.querySelector('dialog.sheet input[name="port"]').value = '8080'
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Save').click()
+}
+
+export function clickProxyRowAction (index, label) {
+  const row = document.querySelectorAll('#proxyContent li.row')[index]
+  if (!row) throw new Error(`no proxy row at ${index}`)
+  Array.from(row.querySelectorAll('button')).find(button => button.textContent.trim() === label).click()
+}
+
+export function saveOpenProxySheetLabel (label) {
+  document.querySelector('dialog.sheet input[name="label"]').value = label
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Save').click()
+}
+
+export function confirmInlineDelete () {
+  Array.from(document.querySelectorAll('#proxyContent .inline-confirm button')).find(button => button.textContent.trim() === 'Delete').click()
+}
+
+export function openNewProxySheet () {
+  document.querySelector('[data-tab="proxy"]').click()
+  Array.from(document.querySelectorAll('#proxyContent button')).find(button => button.textContent.trim() === 'Add proxy').click()
+}
+
+export function isProxyDuplicateSheetOpen () {
+  return document.querySelector('dialog.sheet input[name="choice"][value="replace"]') !== null
+}
+
+export function answerProxyDuplicateWithReplace () {
+  document.querySelector('dialog.sheet input[name="choice"][value="replace"]').click()
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Apply').click()
+}
+
+export function closeOpenSheet () {
+  document.querySelector('dialog.sheet button[aria-label="Close"]')?.click()
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Discard')?.click()
 }
 
 export function proxyHostMarkedInvalid () {
-  return document.getElementById('proxyHost').classList.contains('invalid')
+  return document.querySelector('dialog.sheet input[name="host"]').getAttribute('aria-invalid') === 'true'
 }
+
+export function saveOpenProxySheetAddress (host, port) {
+  document.querySelector('dialog.sheet input[name="host"]').value = host
+  document.querySelector('dialog.sheet input[name="port"]').value = String(port)
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Save').click()
+}
+
+export function clickKeepAliveActiveFor (proxyId) {
+  const row = document.querySelector(`#keepAliveTable button[data-edit="${proxyId}"]`).closest('tr')
+  row.querySelector('input[data-active]').click()
+}
+
+export function writeLocalStorage (entries) {
+  return (globalThis.browser ?? globalThis.chrome).storage.local.set(entries)
+}
+
+export function ruleSelectionState () {
+  return {
+    checked: document.querySelectorAll('#ruleTable input[data-select]:checked').length,
+    deleteShown: document.getElementById('deleteRulesSelected').style.display === 'inline-block',
+  }
+}
+
+export function countProxyRows () {
+  return document.querySelectorAll('#proxyContent li.row').length
+}
+

@@ -1,5 +1,49 @@
-import { runStep } from './smoke-fixture.mjs'
-import { captureDownload, checkEveryConfigExportItem, clickSelector } from './smoke-dashboard.mjs'
+import { canon, runStep, sleep, STORAGE_WAIT_MS, UI_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
+import { captureDownload, checkEveryConfigExportItem, clickProxyRowAction, clickSelector, countProxyRows, readLocalStorage, saveOpenProxySheetAddress, writeLocalStorage } from './smoke-dashboard.mjs'
+
+const NULL_ENTRY_SAVE = { host: 'null-entry.lan', port: 8081 }
+const TEXT_ENTRY_SAVE = { host: 'text-entry.lan', port: 8082 }
+
+function indexOfSetAside (proxyList, isSetAside) {
+  return proxyList.findIndex(isSetAside)
+}
+
+async function saveSetAsideRow (run, index, { host, port }) {
+  await run(clickSelector, ['[data-tab="proxy"]'])
+  await sleep(UI_SETTLE_MS)
+  await run(clickProxyRowAction, [index, 'Edit'])
+  await run(saveOpenProxySheetAddress, [host, port])
+  await waitFor(async () => (await run(readLocalStorage)).proxyList[index]?.host === host, STORAGE_WAIT_MS, `set aside row ${index} to be saved with ${host}`)
+}
+
+function hasCharacterKeys (entry) {
+  return Object.keys(entry).some(key => /^\d+$/.test(key))
+}
+
+export async function checkSetAsideEditSave (run, failures, reopenDashboard) {
+  const before = await run(readLocalStorage)
+  const nullIndex = indexOfSetAside(before.proxyList, entry => entry === null)
+  const textIndex = indexOfSetAside(before.proxyList, entry => typeof entry === 'string')
+  const objectIndex = indexOfSetAside(before.proxyList, entry => entry !== null && typeof entry === 'object' && !entry.id && Object.keys(entry).length === 0)
+  await saveSetAsideRow(run, nullIndex, NULL_ENTRY_SAVE)
+  await saveSetAsideRow(run, textIndex, TEXT_ENTRY_SAVE)
+  const saved = await run(readLocalStorage)
+  if (saved.proxyList.length !== before.proxyList.length) failures.push('saving a set aside row changed the number of proxies')
+  if (hasCharacterKeys(saved.proxyList[textIndex])) failures.push('the text entry was saved with the characters of its text as keys')
+  if (canon(saved.proxyList[objectIndex]) !== canon(before.proxyList[objectIndex])) failures.push('saving neighbouring set aside rows changed the empty object entry')
+
+  await run(clickSelector, ['#fallbackDirect'])
+  await waitFor(async () => (await run(readLocalStorage)).fallbackDirect === !before.fallbackDirect, STORAGE_WAIT_MS, 'the unrelated General save to reach storage.local')
+  if (canon((await run(readLocalStorage)).proxyList) !== canon(saved.proxyList)) failures.push('an unrelated General save changed the proxy list')
+
+  await reopenDashboard()
+  await waitFor(() => run(countProxyRows).then(count => count === before.proxyList.length), STORAGE_WAIT_MS, 'the dashboard to reload with every proxy row')
+  if (canon((await run(readLocalStorage)).proxyList) !== canon(saved.proxyList)) failures.push('the set aside saves did not stay in storage across a load')
+
+  await run(writeLocalStorage, [{ proxyList: before.proxyList, fallbackDirect: before.fallbackDirect }])
+  await waitFor(async () => canon((await run(readLocalStorage)).proxyList) === canon(before.proxyList), STORAGE_WAIT_MS, 'the set aside rows to be restored')
+  console.log(`set aside Edit then Save on the null row ${nullIndex} and the text row ${textIndex}: saved in place, neighbours kept, storage kept across a General save and a reload, then restored`)
+}
 
 const SET_ASIDE_EXPORT_INDEXES = [1, 2, 3]
 const SET_ASIDE_SKIPPED_INDEXES = [1, 2]

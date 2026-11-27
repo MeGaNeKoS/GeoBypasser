@@ -6,13 +6,13 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { FIXTURE, POPUP_SETTLE_MS, sleep, STEP_TIMEOUT_MS, STOP_GRACE_MS, STORAGE_WAIT_MS, TAB_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
 import { checkCredentialWiring } from './smoke-credentials.mjs'
-import { checkSetAsideExports } from './smoke-set-aside.mjs'
+import { checkSetAsideEditSave, checkSetAsideExports } from './smoke-set-aside.mjs'
 import { checkPacRoute } from './smoke-chrome-route.mjs'
 import { COMPONENT_TEST_PAGE, chromeKeyEvents, runComponentTestPage } from './smoke-component-test.mjs'
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
 import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
-import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
+import { checkLegacyRowsAfterReread, checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
@@ -265,6 +265,9 @@ async function runSmoke (options) {
 
   await checkRefusedProxySave(runOnDashboard, failures)
   await checkCredentialWiring(runOnDashboard, failures)
+  await checkProxyEditSurvivesRuleSave(runOnDashboard, failures)
+  await checkLegacyRowsAfterReread(runOnDashboard, failures)
+  await checkSetAsideEditSave(runOnDashboard, failures, () => runOnDashboard(() => location.reload()).catch(() => null))
   await checkSetAsideExports(runOnDashboard, failures)
   await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO)
   await checkMixedOverrideInPac({ evalIn, worker: findWorker() }, failures)

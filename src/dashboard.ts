@@ -14,25 +14,22 @@ import { supportsProxyOnRequest } from '@utils/env'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
-import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseProxyItems, refuseRules, withAppliedSettings, withImportedRules } from '@utils/importFiles'
+import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseRules, withAppliedSettings, withImportedRules } from '@utils/importFiles'
 import { chooseAppliedSettingChanges } from './settingChangeModal'
 import {
   KEEP_ALIVE_FORM_FIELDS,
   mergeEditedFields,
-  PROXY_FORM_FIELDS,
-  proxyFormValues,
   RULE_FORM_FIELDS,
   ruleFormValues,
 } from '@utils/editFields'
 import { exportedRules } from '@utils/ruleExport'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
-import { buildConfigExport, buildProxiesExport } from '@utils/exportFiles'
+import { buildConfigExport } from '@utils/exportFiles'
 import { isValidProxyItem } from '@utils/validity'
 import { markInvalid, markRuleFieldsInvalid } from '@utils/fieldMarks'
 import {
   isBareHostname,
   isValidPattern,
-  isValidProxyId,
   isValidStaticExtensions,
   isValidTestUrl,
   validateHostnamePattern,
@@ -41,22 +38,18 @@ import {
   canSaveDefaultProxy,
   canSaveKeepAliveRule,
   canSaveOverride,
-  canSaveProxy,
   canSaveRuleForm,
   canSaveTestUrl,
-  proxyFieldsAtFault,
 } from '@utils/saveDecisions'
 import { keepAliveRows, overrideRows, proxyOptions, proxyRows, ruleRows } from '@utils/pageView'
 import { alertUnsavedChanges } from '@utils/saveFailure'
 import { mountDashboardFrame } from '@ui/shell/frame'
+import { downloadJsonFile } from '@ui/download'
+import { openProxyEditor } from '@ui/proxies/proxySheet'
 
 let config: Awaited<ReturnType<typeof getConfig>>
-let editingProxyIndex: number | null = null
 let editingRuleIndex: number | null = null
-let revealAllPasswords = false
-const revealedPasswords = new Set<number>()
 const selectedRules = new Set<number>()
-const selectedProxies = new Set<number>()
 const selectedOverrides = new Set<string>()
 const selectedKeepAlive = new Set<string>()
 let listTargetInput: HTMLInputElement | null = null
@@ -77,11 +70,6 @@ function createOption (id: string, label: string) {
   opt.value = id
   opt.textContent = label
   return opt
-}
-
-function updatePassHeaderButton () {
-  const btn = document.getElementById('togglePassColumn') as HTMLButtonElement
-  if (btn) btn.textContent = revealAllPasswords ? 'Hide' : 'Show'
 }
 
 function attachRowHandlers (
@@ -361,201 +349,6 @@ function renderGeneral () {
   }
 }
 
-function renderProxyList () {
-  const tbody = document.querySelector('#proxyTable tbody') as HTMLElement
-  tbody.innerHTML = ''
-  proxyRows(config.proxyList, idx => revealAllPasswords || revealedPasswords.has(idx)).forEach(row => {
-    const { index: idx, entry: p, invalid } = row
-    const tr = document.createElement('tr')
-    if (invalid) tr.classList.add('invalid-proxy')
-
-    const visible = revealAllPasswords || revealedPasswords.has(idx)
-
-    const labelCell = document.createElement('td')
-    labelCell.textContent = row.label
-    tr.appendChild(labelCell)
-
-    const typeCell = document.createElement('td')
-    typeCell.textContent = row.type
-    tr.appendChild(typeCell)
-
-    const hostCell = document.createElement('td')
-    hostCell.textContent = row.host
-    tr.appendChild(hostCell)
-
-    const portCell = document.createElement('td')
-    portCell.textContent = row.port
-    tr.appendChild(portCell)
-
-    const userCell = document.createElement('td')
-    userCell.textContent = row.username
-    tr.appendChild(userCell)
-
-    const passCell = document.createElement('td')
-    passCell.className = 'password'
-    passCell.textContent = row.password
-    tr.appendChild(passCell)
-
-    const notifyCell = document.createElement('td')
-    const notifyChk = document.createElement('input')
-    notifyChk.type = 'checkbox'
-    notifyChk.dataset.notify = ''
-    notifyChk.checked = row.notifyIfDown
-    notifyCell.appendChild(notifyChk)
-    tr.appendChild(notifyCell)
-
-    const selectCell = document.createElement('td')
-    selectCell.className = 'row-select'
-    const selChk = document.createElement('input')
-    selChk.type = 'checkbox'
-    selChk.dataset.select = String(idx)
-    selectCell.appendChild(selChk)
-    tr.appendChild(selectCell)
-
-    const actionsCell = document.createElement('td')
-    actionsCell.className = 'row-actions'
-    const editBtn = document.createElement('button')
-    editBtn.dataset.edit = String(idx)
-    editBtn.textContent = 'Edit'
-    const delBtn = document.createElement('button')
-    delBtn.dataset.remove = String(idx)
-    delBtn.textContent = 'Delete'
-    actionsCell.appendChild(editBtn)
-    actionsCell.appendChild(delBtn)
-    tr.appendChild(actionsCell)
-
-    tbody.appendChild(tr)
-    // attachRowHandlers(tr, document.getElementById('proxyTable') as HTMLTableElement,
-    //   document.getElementById('exportProxiesSelected') as HTMLElement)
-
-    if (row.hasPassword) {
-      const toggle = document.createElement('button')
-      toggle.textContent = visible ? 'Hide' : 'Show'
-      toggle.dataset.index = String(idx)
-      toggle.onclick = () => {
-        if (revealedPasswords.has(idx)) {
-          revealedPasswords.delete(idx)
-        } else {
-          revealedPasswords.add(idx)
-        }
-        renderProxyList()
-        updatePassHeaderButton()
-      }
-      passCell.append(' ', toggle)
-    }
-
-    notifyChk.onchange = () => {
-      p.notifyIfDown = notifyChk.checked
-      saveConfig(config)
-    }
-    selChk.onchange = () => {
-      if (selChk.checked) selectedProxies.add(idx)
-      else selectedProxies.delete(idx)
-      updateSelectVisibility(
-        document.getElementById('proxyTable') as HTMLTableElement,
-        document.getElementById('exportProxiesSelected') as HTMLElement,
-        document.getElementById('deleteProxiesSelected') as HTMLElement,
-      )
-    }
-    editBtn.onclick = () => openProxyModal(idx)
-    delBtn.onclick = () => {
-      config.proxyList.splice(idx, 1)
-      saveConfig(config).then(renderAll)
-    }
-  })
-  updatePassHeaderButton()
-}
-
-function openProxyModal (index?: number) {
-  editingProxyIndex = typeof index === 'number' ? index : null
-  const modal = document.getElementById('proxyModal')!
-  const title = document.getElementById('proxyModalTitle')!
-  const label = document.getElementById('proxyLabel') as HTMLInputElement
-  const type = document.getElementById('proxyType') as HTMLSelectElement
-  const host = document.getElementById('proxyHost') as HTMLInputElement
-  const port = document.getElementById('proxyPort') as HTMLInputElement
-  port.min = '1'
-  port.max = '65535'
-  markInvalid(host, false)
-  markInvalid(port, false)
-  const user = document.getElementById('proxyUser') as HTMLInputElement
-  const pass = document.getElementById('proxyPass') as HTMLInputElement
-  const notify = document.getElementById('proxyNotify') as HTMLInputElement
-
-  if (editingProxyIndex !== null) {
-    const values = proxyFormValues(config.proxyList[editingProxyIndex])
-    title.textContent = 'Edit Proxy'
-    label.value = values.label
-    type.value = values.type
-    host.value = values.host
-    port.value = values.port
-    user.value = values.username
-    pass.value = values.password
-    notify.checked = values.notifyIfDown
-  } else {
-    title.textContent = 'Add Proxy'
-    label.value = ''
-    type.value = 'http'
-    host.value = ''
-    port.value = ''
-    user.value = ''
-    pass.value = ''
-    notify.checked = false
-  }
-
-  modal.classList.remove('hidden')
-}
-
-function closeProxyModal () {
-  document.getElementById('proxyModal')!.classList.add('hidden')
-}
-
-function proxyIdForSave (): string {
-  const editedId = editingProxyIndex !== null ? config.proxyList[editingProxyIndex]?.id : undefined
-  return isValidProxyId(editedId) ? editedId : crypto.randomUUID()
-}
-
-function saveProxyFromModal () {
-  const label = (document.getElementById('proxyLabel') as HTMLInputElement).value
-  const type = (document.getElementById('proxyType') as HTMLSelectElement).value as ProxyType
-  const host = (document.getElementById('proxyHost') as HTMLInputElement).value
-  const port = Number((document.getElementById('proxyPort') as HTMLInputElement).value)
-  const username = (document.getElementById('proxyUser') as HTMLInputElement).value
-  const password = (document.getElementById('proxyPass') as HTMLInputElement).value
-  const notify = (document.getElementById('proxyNotify') as HTMLInputElement).checked
-
-  const base: ProxyListItem = {
-    id: proxyIdForSave(),
-    type,
-    host,
-    port,
-    proxyDNS: true,
-  }
-  if (label) base.label = label
-  if (username) base.username = username
-  if (password) base.password = password
-  if (notify) base.notifyIfDown = true
-
-  if (!canSaveProxy(base)) {
-    const faults = proxyFieldsAtFault(base)
-    markInvalid(document.getElementById('proxyType')!, faults.type)
-    markInvalid(document.getElementById('proxyHost')!, faults.host)
-    markInvalid(document.getElementById('proxyPort')!, faults.port)
-    return
-  }
-
-  if (editingProxyIndex !== null) {
-    config.proxyList[editingProxyIndex] = mergeEditedFields(config.proxyList[editingProxyIndex], base, PROXY_FORM_FIELDS)
-  } else {
-    config.proxyList.push(base)
-  }
-
-  saveConfig(config).then(() => {
-    renderAll()
-    closeProxyModal()
-  })
-}
-
 function renderRules () {
   const tbody = document.querySelector('#ruleTable tbody') as HTMLElement
   tbody.innerHTML = ''
@@ -612,7 +405,7 @@ function renderRules () {
     // attachRowHandlers(tr, document.getElementById('ruleTable') as HTMLTableElement,
     //   document.getElementById('exportRulesSelected') as HTMLElement)
     activeChk.onchange = () => {
-      r.active = activeChk.checked
+      config.rules[idx].active = activeChk.checked
       saveConfig(config)
     }
     selChk.onchange = () => {
@@ -948,7 +741,8 @@ function renderKeepAlive () {
     // attachRowHandlers(tr, document.getElementById('keepAliveTable') as HTMLTableElement,
     //   document.getElementById('exportKeepAliveSelected') as HTMLElement)
     chk.onchange = () => {
-      rule.active = chk.checked
+      const current = config.keepAliveRules?.[proxyId]
+      if (current) current.active = chk.checked
       saveConfig(config)
     }
     selChk.onchange = () => {
@@ -1242,7 +1036,7 @@ async function confirmRemoteImport () {
 function exportRules (rules: unknown[]) {
   const sanitized = exportedRules(rules, () => false)
   const data = JSON.stringify({ rules: sanitized }, null, 2)
-  download('rules.json', data)
+  downloadJsonFile('rules.json', data)
 }
 
 function exportAllRules () {
@@ -1283,68 +1077,8 @@ function handleImportRules (files: FileList | null) {
   })
 }
 
-function exportProxies (list: ProxyListItem[]) {
-  download('proxies.json', JSON.stringify(buildProxiesExport(list), null, 2))
-}
-
-function exportAllProxies () {
-  exportProxies(config.proxyList)
-}
-
-function exportSelectedProxies () {
-  const arr = Array.from(selectedProxies).map(i => config.proxyList[i])
-  if (arr.length === 0) exportAllProxies()
-  else exportProxies(arr)
-}
-
-function deleteSelectedProxies () {
-  const idxs = Array.from(selectedProxies).sort((a, b) => b - a)
-  idxs.forEach(i => { config.proxyList.splice(i, 1) })
-  selectedProxies.clear()
-  saveConfig(config).then(renderAll)
-}
-
-function handleImportProxies (files: FileList | null) {
-  if (!files || !files[0]) return
-
-  files[0].text().then(async t => {
-    try {
-      const raw = JSON.parse(t)
-      const verdict = refuseProxyItems(raw?.proxyList)
-      alertImportMessages(verdict.messages)
-      const arr = keepStoredCredentials(verdict.accepted, config.proxyList)
-      const existing = new Map(config.proxyList.flatMap((p, idx) => isValidProxyItem(p) ? [[proxySignature(p), idx] as const] : []))
-
-      for (const p of arr) {
-        const sig = proxySignature(p)
-        if (existing.has(sig)) {
-          const idx = existing.get(sig)!
-          const choice = await showDuplicateModal(`${p.host}:${p.port}`)
-          const target = config.proxyList[idx]
-          if (choice === 'new') {
-            config.proxyList[idx] = { ...p, id: target.id }
-          } else if (choice === 'both') {
-            const np = { ...p, id: crypto.randomUUID() }
-            if (np.label) np.label += ' (copy)'
-            existing.set(proxySignature(np), config.proxyList.length)
-            config.proxyList.push(np)
-          }
-        } else {
-          existing.set(sig, config.proxyList.length)
-          config.proxyList.push(p)
-        }
-      }
-
-      saveConfig(config).then(renderAll)
-    } catch (e) {
-      console.error('Error importing proxies:', e)
-      alert('Failed to import proxies: invalid JSON')
-    }
-  })
-}
-
 function exportOverrides (obj: Record<string, string>) {
-  download('overrides.json', JSON.stringify({ perWebsiteOverride: obj }, null, 2))
+  downloadJsonFile('overrides.json', JSON.stringify({ perWebsiteOverride: obj }, null, 2))
 }
 
 function exportAllOverrides () {
@@ -1388,7 +1122,7 @@ function handleImportOverrides (files: FileList | null) {
 }
 
 function exportKeepAlive (obj: KeepAliveProxyRule) {
-  download('keepalive.json', JSON.stringify({ keepAliveRules: obj }, null, 2))
+  downloadJsonFile('keepalive.json', JSON.stringify({ keepAliveRules: obj }, null, 2))
 }
 
 function exportAllKeepAlive () {
@@ -1610,7 +1344,7 @@ function exportConfigFromModal () {
     { proxyIndexes, ruleIndexes, overrideDomains, keepAliveIds },
     leaveOut ? 'omit' : 'include',
   )
-  download('config.json', JSON.stringify(exported, null, 2))
+  downloadJsonFile('config.json', JSON.stringify(exported, null, 2))
   closeExportConfigModal()
 }
 
@@ -1700,14 +1434,6 @@ async function renderNetwork () {
   container.appendChild(buildList(stats.domains))
 }
 
-function download (filename: string, text: string) {
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(a.href)
-}
-
 function clearTabProxies () {
   saveTabProxyMap({})
 }
@@ -1723,8 +1449,6 @@ function renderAbout () {
 
 function renderAll () {
   renderGeneral()
-  renderProxyList()
-  updatePassHeaderButton()
   renderRules()
   renderKeepAlive()
   renderOverrides()
@@ -1738,6 +1462,19 @@ alertUnsavedChanges(window, alert)
 
 document.addEventListener('DOMContentLoaded', async () => {
   config = await getConfig()
+  browser.storage.onChanged.addListener(async (_changes, area) => {
+    if (area !== 'local') return
+    config = await getConfig()
+    selectedRules.clear()
+    renderRules()
+    updateSelectVisibility(
+      document.getElementById('ruleTable') as HTMLTableElement,
+      document.getElementById('exportRulesSelected') as HTMLElement,
+      document.getElementById('deleteRulesSelected') as HTMLElement,
+    )
+    renderKeepAlive()
+    renderOverrides()
+  })
   renderAll()
 
   if (!supportsProxyOnRequest) {
@@ -1757,22 +1494,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
   })
 
-  document.getElementById('addProxy')!.addEventListener('click', () => openProxyModal())
-  document.getElementById('saveProxy')!.addEventListener('click', saveProxyFromModal)
-  document.getElementById('cancelProxy')!.addEventListener('click', closeProxyModal)
-  document.getElementById('exportProxiesSelected')!.addEventListener('click', exportSelectedProxies)
-  document.getElementById('deleteProxiesSelected')!.addEventListener('click', deleteSelectedProxies)
-  document.getElementById('exportProxiesAll')!.addEventListener('click', exportAllProxies)
-  document.getElementById('importProxiesBtn')!.addEventListener('click', () =>
-    document.getElementById('importProxies')!.click())
-  document.getElementById('importProxies')!.addEventListener('change', ev =>
-    handleImportProxies((ev.target as HTMLInputElement).files))
-  document.getElementById('togglePassColumn')!.addEventListener('click', () => {
-    revealAllPasswords = !revealAllPasswords
-    revealedPasswords.clear()
-    renderProxyList()
-    updatePassHeaderButton()
-  })
   document.getElementById('addRule')!.addEventListener('click', addRule)
   document.getElementById('addOverride')?.addEventListener('click', openOverrideModal)
   document.getElementById('exportOverridesSelected')?.addEventListener('click', exportSelectedOverrides)
@@ -1859,7 +1580,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('diagEditSelected')!.addEventListener('click', () => {
     const sel = document.getElementById('diagSelectProxy') as HTMLSelectElement
     const idx = Number(sel.value)
-    if (!isNaN(idx)) openProxyModal(idx)
+    const proxy = config.proxyList[idx]
+    if (proxy) openProxyEditor({ entry: { proxy, position: idx } })
   })
   document.getElementById('diagTestCustom')!.addEventListener('click', () => {
     const proxy = getCustomProxyInput()
@@ -1868,12 +1590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('diagAddProxy')!.addEventListener('click', () => {
     const proxy = getCustomProxyInput()
     if (!proxy) return
-    openProxyModal()
-    ;(document.getElementById('proxyType') as HTMLSelectElement).value = proxy.type
-    ;(document.getElementById('proxyHost') as HTMLInputElement).value = proxy.host
-    ;(document.getElementById('proxyPort') as HTMLInputElement).value = String(proxy.port)
-    ;(document.getElementById('proxyUser') as HTMLInputElement).value = proxy.username || ''
-    ;(document.getElementById('proxyPass') as HTMLInputElement).value = proxy.password || ''
+    openProxyEditor({ prefill: proxy })
   })
   document.getElementById('openExportConfig')!.addEventListener('click', openExportConfigModal)
   document.getElementById('exportConfigConfirm')!.addEventListener('click', exportConfigFromModal)

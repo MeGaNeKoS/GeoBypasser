@@ -1,8 +1,9 @@
 export const HOME_SECTION_ID = 'home'
+export const PROXY_SECTION_ID = 'proxy'
 
 const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> = [
   [HOME_SECTION_ID, 'home'],
-  ['proxy', 'proxies'],
+  [PROXY_SECTION_ID, 'proxies'],
   ['rules', 'rules'],
   ['override', 'sites'],
   ['keepalive', 'keep-alive'],
