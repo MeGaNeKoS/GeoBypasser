@@ -1,0 +1,32 @@
+.prototype-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--hairline) dashed var(--border-strong);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.prototype-bar__note {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-caps);
+}
+
+.prototype-bar .segmented legend {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.prototype-bar .segmented__option {
+  min-height: var(--control-h);
+  font-size: var(--text-sm);
+}

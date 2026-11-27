@@ -62,6 +62,8 @@ npm run build:dev:chrome
 
 See `package.json` for production build and packaging commands.
 
+To open the UI prototype, run `npm run build:prototype` and then open `prototype/index.html` in a browser.
+
 ## Rule hierarchy
 
 Proxy selection follows these rules:

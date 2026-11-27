@@ -5,6 +5,7 @@
   "scripts": {
     "clean": "ts-node scripts/build.ts clean",
     "bundle": "ts-node scripts/build.ts bundle",
+    "build:prototype": "esbuild prototype/app.ts --bundle --format=iife --target=es2022 --outfile=prototype/js/app.js",
     "copy:firefox": "ts-node scripts/build.ts copy firefox",
     "build:dev:firefox": "ts-node scripts/build.ts build firefox",
     "build:prod:firefox": "ts-node scripts/build.ts build firefox --minify",

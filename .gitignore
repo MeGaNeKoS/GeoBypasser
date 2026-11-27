@@ -3,3 +3,4 @@ dist/
 .chrome-profile/
 .chrome-cdp-work/
 .chrome-cdp.json
+prototype/js/
