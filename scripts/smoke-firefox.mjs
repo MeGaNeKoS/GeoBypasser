@@ -10,6 +10,7 @@ import { checkSetAsideExports } from './smoke-set-aside.mjs'
 import { checkMixedOverrideInDashboard, addProxyAsDefault, clickSiteClearInPopup, MIXED_HOST, MIXED_KEY, MIXED_URL, mixedRouteProxy, openPopupBesideTab, readPopupDomain, storedKeysForHost, tabLoadStatus, writeMixedOverride } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, FIREFOX_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { startRecordingListener } from './smoke-chrome-route.mjs'
+import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
 import { COMPONENT_TEST_PAGE, firefoxKeyActions, runComponentTestPage } from './smoke-component-test.mjs'
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
@@ -265,11 +266,14 @@ async function runFirefoxSmoke (settings) {
   resetProfile()
 
   const first = await openSession(settings)
+  await navigate(`${first.origin}dashboard.html`)
+  await checkHomeCase(() => evaluate(readHomeState), FIRST_TIME_CASE, failures)
   await seedFixture(first)
   await closeSession()
 
   const second = await openSession(settings)
   await checkStartupFromStorage(second)
+  await checkHomeCase(() => evaluate(readHomeState), SET_UP_CASE, failures)
   await visitDashboardTabs()
   await removeSetAsideEntries(evaluate, failures)
   await editSetAsideEntries(evaluate)

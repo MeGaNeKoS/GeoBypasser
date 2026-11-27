@@ -6,6 +6,7 @@ const SYMBOLS = {
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   'chevron-down': '<path d="m6 9 6 6 6-6"/>',
   'chevron-up': '<path d="m6 15 6-6 6 6"/>',
+  'chevron-right': '<path d="m9 6 6 6-6 6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   unlink: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path d="M3 3l18 18"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',

@@ -1,46 +1,3 @@
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100vh;
-  font-family: sans-serif;
-  display: flex;
-  flex-direction: column;
-  background-color: #111;
-  color: #eee;
-}
-
-#navBar {
-  position: relative;
-  border-bottom: 1px solid #555;
-}
-
-#tabs {
-  padding: 0 0 0 10px;
-  margin: 0;
-  border-bottom: 1px solid #555;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  background-color: #222;
-}
-
-.nav-toggle {
-  display: none;
-  background: #222;
-  color: #eee;
-  border: 1px solid #555;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-
-.nav-toggle::after {
-  content: ' \25BC';
-}
-
-.nav-toggle.open::after {
-  content: ' \25B2';
-}
-
 #tabs button {
   background: transparent;
   color: #eee;
@@ -71,12 +28,6 @@ html, body {
 
 section { display: none; }
 section.active { display: block; }
-
-table { border-collapse: collapse; }
-th, td { border: 1px solid #555; padding: 4px; }
-tr.missing-proxy { background: #500; }
-tr.invalid-rule { background: #550; }
-tr.invalid-proxy { background: #550; }
 
 .tree ul {
   list-style: none;
@@ -129,15 +80,15 @@ input.invalid { border-color: #c44; }
   margin-bottom: 8px;
 }
 
-.help {
+.help:not(#home .help) {
   font-size: 0.9em;
   margin-left: 4px;
   cursor: help;
-  color: #0af;
+  color: var(--accent);
   text-decoration: none;
 }
 
-.help:hover {
+.help:not(#home .help):hover {
   text-decoration: underline;
 }
 
@@ -155,15 +106,6 @@ input.invalid { border-color: #c44; }
 
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 150; }
 .modal.hidden { display: none; }
-.modal-content {
-  background: #222;
-  padding: 16px;
-  border: 1px solid #555;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
 
 .import-url {
   margin-top: 8px;
@@ -181,39 +123,6 @@ input[type='number'] {
 }
 
   @media (max-width: 600px) {
-    html, body {
-      font-size: 16px;
-      padding: 0;
-      min-width: 0;
-    }
-
-    .nav-toggle {
-      display: block;
-      width: 100%;
-      text-align: left;
-      position: relative;
-    }
-
-    #tabs {
-      display: none;
-      flex-direction: column;
-      padding: 0;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background-color: #222;
-      z-index: 100;
-    }
-
-    #tabs.open {
-      display: flex;
-    }
-
-    #content {
-      padding: 5px;
-    }
-
     #tabs button,
     #tabs button.active {
       width: 100%;
@@ -231,11 +140,29 @@ input[type='number'] {
       box-sizing: border-box;
     }
 
-    #content button,
-    .modal button {
-      min-width: 100%;
-      font-size: 1em;
-      padding: 12px 0;
-      margin: 12px 0;
-    }
   }
+
+/* Interim: keeps the sections not yet rebuilt usable inside the new frame; removed as each section is rebuilt. */
+table { border-collapse: collapse; }
+th, td { border: 1px solid #555; padding: 4px; }
+tr.missing-proxy { background: var(--danger-bg); }
+tr.invalid-rule, tr.invalid-proxy { background: var(--warn-bg); }
+.table-scroll { overflow-x: auto; }
+.table-scroll > table { width: max-content; }
+.modal-content {
+  background: var(--surface);
+  padding: 16px;
+  border: 1px solid #555;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+@media (max-width: 600px) {
+  #content button:not(#home button, table button),
+  .modal button {
+    min-width: 100%;
+    font-size: 1em;
+    padding: 12px 0;
+    margin: 12px 0;
+  }
+}

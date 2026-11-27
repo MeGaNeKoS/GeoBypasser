@@ -48,6 +48,7 @@ import {
 } from '@utils/saveDecisions'
 import { keepAliveRows, overrideRows, proxyOptions, proxyRows, ruleRows } from '@utils/pageView'
 import { alertUnsavedChanges } from '@utils/saveFailure'
+import { mountDashboardFrame } from '@ui/shell/frame'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let editingProxyIndex: number | null = null
@@ -69,25 +70,6 @@ let networkAutoInterval: ReturnType<typeof setInterval> | null = null
 
 function proxySignature (p: ProxyListItem) {
   return `${p.type}-${p.host}:${p.port}-${p.username || ''}`
-}
-
-function switchTab (id: string) {
-  document.querySelectorAll('section.tab').forEach(sec => sec.classList.remove('active'))
-  document.querySelectorAll('#tabs button').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-tab') === id)
-  })
-  const el = document.getElementById(id)
-  if (el) el.classList.add('active')
-  const activeBtn = document.querySelector(`#tabs button[data-tab="${id}"]`) as HTMLButtonElement | null
-  const navToggle = document.getElementById('navToggle') as HTMLButtonElement | null
-  if (activeBtn && navToggle) navToggle.textContent = activeBtn.textContent || id
-  if (window.innerWidth <= 600) {
-    document.getElementById('tabs')?.classList.remove('open')
-    navToggle?.classList.remove('open')
-  }
-  if (id === 'network') {
-    renderNetwork()
-  }
 }
 
 function createOption (id: string, label: string) {
@@ -1769,17 +1751,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('networkHint')?.classList.remove('hidden')
   }
 
-  document.querySelectorAll('#tabs button').forEach(btn => {
-    btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')!))
+  mountDashboardFrame({
+    onSectionShown: sectionId => {
+      if (sectionId === 'network') renderNetwork()
+    },
   })
-  document.getElementById('navToggle')?.addEventListener('click', () => {
-    const tabs = document.getElementById('tabs')
-    const navToggle = document.getElementById('navToggle') as HTMLButtonElement | null
-    if (!tabs) return
-    const open = tabs.classList.toggle('open')
-    if (navToggle) navToggle.classList.toggle('open', open)
-  })
-  switchTab('general')
 
   document.getElementById('addProxy')!.addEventListener('click', () => openProxyModal())
   document.getElementById('saveProxy')!.addEventListener('click', saveProxyFromModal)

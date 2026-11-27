@@ -89,3 +89,51 @@ export function proxyOptions (list: unknown) {
 export function popupRules (list: unknown, showActive: boolean): ProxyRule[] {
   return usableRules(list).filter(rule => isRuleActive(rule) === showActive)
 }
+
+export type SetAsideSource = {
+  proxyList?: unknown
+  rules?: unknown
+  perWebsiteOverride?: unknown
+  keepAliveRules?: unknown
+}
+
+export type SetAsideCounts = {
+  proxies: number
+  rules: number
+  sites: number
+  keepAlive: number
+}
+
+export function setAsideCounts (source: SetAsideSource): SetAsideCounts {
+  return {
+    proxies: countEntries(source.proxyList) - usableProxies(source.proxyList).length,
+    rules: countEntries(source.rules) - usableRules(source.rules).length,
+    sites: countEntries(source.perWebsiteOverride) - Object.keys(usableOverrides(source.perWebsiteOverride)).length,
+    keepAlive: countEntries(source.keepAliveRules) - Object.keys(usableKeepAliveRules(source.keepAliveRules)).length,
+  }
+}
+
+export type NavCount = { count: number; needsFixing: number }
+
+export type NavCounts = {
+  proxies: NavCount
+  rules: NavCount
+  sites: NavCount
+  keepAlive: NavCount
+}
+
+export function navCounts (source: SetAsideSource): NavCounts {
+  const setAside = setAsideCounts(source)
+  return {
+    proxies: { count: usableProxies(source.proxyList).length, needsFixing: setAside.proxies },
+    rules: { count: usableRules(source.rules).length, needsFixing: setAside.rules },
+    sites: { count: Object.keys(usableOverrides(source.perWebsiteOverride)).length, needsFixing: setAside.sites },
+    keepAlive: { count: Object.keys(usableKeepAliveRules(source.keepAliveRules)).length, needsFixing: setAside.keepAlive },
+  }
+}
+
+function countEntries (value: unknown): number {
+  if (Array.isArray(value)) return value.length
+  if (typeof value === 'object' && value !== null) return Object.keys(value).length
+  return 0
+}

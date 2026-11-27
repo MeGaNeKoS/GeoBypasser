@@ -4,26 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoBypass-er Settings</title>
+  <link rel="stylesheet" href="ui/styles/tokens.css">
+  <link rel="stylesheet" href="ui/styles/base.css">
+  <link rel="stylesheet" href="ui/styles/components.css">
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="ui/styles/shell.css">
   <link rel="icon" type="image/svg+xml" href="icons/icon_light_gray_bg.svg">
   <link rel="alternate icon" type="image/png" href="icons/icon32.png">
 </head>
 <body>
   <div id="navBar">
-    <button id="navToggle" class="nav-toggle">General</button>
+    <a class="shell-brand" href="#home">GeoBypass</a>
+    <button id="navToggle" class="nav-toggle" aria-controls="tabs" aria-expanded="false"></button>
     <nav id="tabs">
-      <button data-tab="general">General</button>
-      <button data-tab="proxy">Proxy List</button>
-      <button data-tab="rules">Rules</button>
-      <button data-tab="override">Website Overrides</button>
-      <button data-tab="keepalive">Keep-Alive</button>
-      <button data-tab="network">Network</button>
-      <button data-tab="diagnostics">Diagnostics</button>
-      <button data-tab="impexp">Import/Export</button>
-      <button data-tab="about">About</button>
+      <button data-tab="home"><span class="nav-label">Home</span></button>
+      <span class="nav-group">Set up</span>
+      <button data-tab="proxy"><span class="nav-label">Proxies</span></button>
+      <button data-tab="rules"><span class="nav-label">Rules</span></button>
+      <button data-tab="override"><span class="nav-label">Sites</span></button>
+      <button data-tab="keepalive"><span class="nav-label">Keep-alive</span></button>
+      <button data-tab="general"><span class="nav-label">Defaults</span></button>
+      <span class="nav-group">Tools</span>
+      <button data-tab="diagnostics"><span class="nav-label">Test</span></button>
+      <button data-tab="network"><span class="nav-label">Network</span></button>
+      <button data-tab="impexp"><span class="nav-label">Import and export</span></button>
+      <button data-tab="about"><span class="nav-label">About</span></button>
     </nav>
   </div>
-  <div id="content">
+  <div id="content" tabindex="-1">
+    <section id="home" class="tab">
+      <div id="homeContent"></div>
+    </section>
     <section id="general" class="tab">
       <h2>General</h2>
       <p class="section-help">Configure default behavior and test URLs.</p>
@@ -35,6 +46,7 @@
     <section id="proxy" class="tab">
       <h2>Proxy List</h2>
       <p class="section-help">Manage proxies that can be used for rules or overrides.</p>
+      <div class="table-scroll" role="region" aria-label="Proxy list" tabindex="0">
       <table id="proxyTable">
         <thead>
           <tr>
@@ -51,6 +63,7 @@
         </thead>
         <tbody></tbody>
       </table>
+      </div>
       <button id="addProxy">Add Proxy</button>
       <button id="exportProxiesSelected" class="export-selected">Export Selected</button>
       <button id="deleteProxiesSelected" class="delete-selected">Delete Selected</button>
@@ -62,12 +75,14 @@
     <section id="rules" class="tab">
       <h2>Rules</h2>
       <p class="section-help">Create match rules to automatically route requests through a proxy.</p>
+      <div class="table-scroll" role="region" aria-label="Rule list" tabindex="0">
       <table id="ruleTable">
         <thead>
           <tr><th>Active</th><th>Name</th><th>Match</th><th>Proxy</th><th class="select-col">Select</th><th class="action-col"></th></tr>
         </thead>
         <tbody></tbody>
       </table>
+      </div>
       <button id="addRule">Add Rule</button>
       <button id="exportRulesSelected" class="export-selected">Export Selected</button>
       <button id="deleteRulesSelected" class="delete-selected">Delete Selected</button>
@@ -107,10 +122,12 @@
     <section id="override" class="tab">
       <h2>Website Overrides</h2>
       <p class="section-help">Force a proxy or direct connection for specific domains.</p>
+      <div class="table-scroll" role="region" aria-label="Site list" tabindex="0">
       <table id="overrideTable">
         <thead><tr><th>Domain</th><th>Proxy</th><th class="select-col">Select</th><th class="action-col"></th></tr></thead>
         <tbody></tbody>
       </table>
+      </div>
       <button id="addOverride">Add Override</button>
       <button id="exportOverridesSelected" class="export-selected">Export Selected</button>
       <button id="deleteOverridesSelected" class="delete-selected">Delete Selected</button>
@@ -131,12 +148,14 @@
     <section id="keepalive" class="tab">
       <h2>Keep-Alive Rules</h2>
       <p class="section-help">Ping URLs periodically to keep proxies active.</p>
+      <div class="table-scroll" role="region" aria-label="Keep-alive rule list" tabindex="0">
       <table id="keepAliveTable">
         <thead>
           <tr><th>Active</th><th>Proxy</th><th>List of URLs</th><th>Test URL</th><th class="select-col">Select</th><th class="action-col"></th></tr>
         </thead>
         <tbody></tbody>
       </table>
+      </div>
       <button id="addKeepAliveRule">Add Rule</button>
       <button id="exportKeepAliveSelected" class="export-selected">Export Selected</button>
       <button id="deleteKeepAliveSelected" class="delete-selected">Delete Selected</button>

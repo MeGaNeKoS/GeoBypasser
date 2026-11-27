@@ -15,6 +15,7 @@ import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
+import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = join(ROOT, 'dist')
@@ -234,6 +235,8 @@ async function runSmoke (options) {
   await launch(true, options.chromePath)
   const seed = await waitFor(() => findWorker(), STEP_TIMEOUT_MS, 'the service worker to start')
   await waitFor(() => evalIn(seed, 'typeof chrome !== "undefined"'), STEP_TIMEOUT_MS, 'the service worker global')
+  const seedDashboard = await openTab('dashboard.html')
+  await checkHomeCase(() => evalIn(seedDashboard, `(${readHomeState.toString()})()`), FIRST_TIME_CASE, failures)
   await evalIn(seed,`chrome.storage.local.set(${JSON.stringify(FIXTURE)}).then(() => true)`)
   console.log('fixture written to storage.local')
   await closeChrome()
@@ -246,6 +249,7 @@ async function runSmoke (options) {
   console.log('service worker started with the stored config')
 
   await waitFor(() => evalIn(dashboard, 'document.querySelector(\'[data-tab="override"]\') === null'), STORAGE_WAIT_MS, 'the Chrome dashboard to drop the website overrides tab')
+  await checkHomeCase(() => runOnDashboard(readHomeState), SET_UP_CASE, failures)
   const tabs = await evalIn(dashboard, '[...document.querySelectorAll("[data-tab]")].map(b => b.dataset.tab)')
   for (const tab of tabs) {
     await runOnDashboard(clickSelector, [`[data-tab="${tab}"]`])
