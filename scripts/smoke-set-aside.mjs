@@ -1,5 +1,5 @@
 import { canon, runStep, sleep, STORAGE_WAIT_MS, UI_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
-import { captureDownload, checkEveryConfigExportItem, clickProxyRowAction, clickSelector, countProxyRows, readLocalStorage, saveOpenProxySheetAddress, writeLocalStorage } from './smoke-dashboard.mjs'
+import { captureDownload, checkEveryConfigExportItem, clickProxyRowAction, clickSelector, countProxyRows, readLocalStorage, saveOpenProxySheetAddress, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
 
 const NULL_ENTRY_SAVE = { host: 'null-entry.lan', port: 8081 }
 const TEXT_ENTRY_SAVE = { host: 'text-entry.lan', port: 8082 }
@@ -62,8 +62,11 @@ function parseExport (label, text, failures) {
 }
 
 async function checkRowExportsSetAside (run, failures) {
+  await run(clickSelector, ['[data-tab="rules"]'])
+  await sleep(UI_SETTLE_MS)
   for (const index of SET_ASIDE_EXPORT_INDEXES) {
-    const text = await run(captureDownload, [`#ruleTable button[data-export="${index}"]`])
+    await run(selectOnlyRuleRowAt, [index])
+    const text = await run(captureDownload, ['#rulesContent', 'Export selected'])
     const parsed = parseExport(`Export on set aside rule row ${index}`, text, failures)
     if (parsed && !Array.isArray(parsed.rules)) failures.push(`Export on set aside rule row ${index} lacks a rule list`)
     if (parsed && SET_ASIDE_SKIPPED_INDEXES.includes(index) && parsed.rules?.length !== 0) {

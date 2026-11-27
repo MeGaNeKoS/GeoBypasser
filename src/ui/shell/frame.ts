@@ -7,7 +7,9 @@ import { element, replaceContent, requireElement } from '../dom'
 import { renderHome } from '../home/home'
 import { icon, installSprite } from '../icons'
 import { renderProxySection } from '../proxies/proxySection'
-import { HOME_SECTION_ID, PROXY_SECTION_ID, hashForSection, sectionIdForHash } from './routes'
+import { renderRuleSection } from '../rules/ruleSection'
+import { clearSelections } from '../components/list-section'
+import { HOME_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, hashForSection, sectionIdForHash } from './routes'
 
 export type FrameOptions = {
   onSectionShown?: (sectionId: string) => void
@@ -22,7 +24,7 @@ type FrameNav = {
 const COMPACT_MENU_QUERY = '(max-width: 719.98px)'
 const COUNTED_SECTIONS: Partial<Record<string, keyof NavCounts>> = {
   proxy: 'proxies',
-  rules: 'rules',
+  [RULES_SECTION_ID]: 'rules',
   override: 'sites',
   keepalive: 'keepAlive',
 }
@@ -43,7 +45,7 @@ export function mountDashboardFrame (options: FrameOptions = {}): void {
   nav.menuToggle.addEventListener('click', () => toggleMenu(nav))
   document.addEventListener('keydown', event => closeMenuOnEscape(event, nav))
   window.addEventListener('hashchange', showCurrentHash)
-  browser.storage.onChanged.addListener(() => { void refreshNavCounts(nav) })
+  browser.storage.onChanged.addListener(() => onStorageChanged(nav))
   showCurrentHash()
   void refreshNavCounts(nav)
 }
@@ -72,6 +74,7 @@ async function showSection (requestedId: string, nav: FrameNav, options: FrameOp
   closeMenuOnCompactScreen(nav)
   if (shownId === HOME_SECTION_ID) await renderHome()
   if (shownId === PROXY_SECTION_ID) await renderProxySection()
+  if (shownId === RULES_SECTION_ID) await renderRuleSection()
   if (menuWasOpen) focusSectionHeading(shownId)
   options.onSectionShown?.(shownId)
 }
@@ -82,6 +85,13 @@ function focusSectionHeading (sectionId: string): void {
   if (!section?.classList.contains('active') || !heading) return
   heading.tabIndex = -1
   heading.focus()
+}
+
+function onStorageChanged (nav: FrameNav): void {
+  void refreshNavCounts(nav)
+  if (sectionIdForHash(location.hash) !== RULES_SECTION_ID) return
+  clearSelections()
+  void renderRuleSection()
 }
 
 async function refreshNavCounts (nav: FrameNav): Promise<void> {

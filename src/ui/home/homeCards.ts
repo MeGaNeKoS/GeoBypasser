@@ -33,7 +33,7 @@ function linkOrText (link: SetAsideLink): Child {
 
 export function quickActions (sitesShown: boolean): HTMLElement {
   return buttonGroup(
-    actionButton('Add rule', 'rules', 'addRule', { variant: 'primary' }),
+    actionButton('Add rule', 'rules', null, { variant: 'primary' }),
     actionButton('Add proxy', 'proxies', null),
     ...(sitesShown ? [actionButton('Add site', 'sites', 'addOverride')] : []),
     actionButton('Import', 'import-export', 'importConfigBtn'),
@@ -52,7 +52,7 @@ export function getStartedCard (view: HomeView): HTMLElement {
         actionButton('Browse community rules', 'import-export', 'openCommunityImport'),
       ]),
       setupStep(2, 'Choose what uses it', 'A rule for matching requests, one site, or everything by default.', choiceMade, [
-        actionButton('Add a rule', 'rules', 'addRule', { disabled: !proxyAdded }),
+        actionButton('Add a rule', 'rules', null, { disabled: !proxyAdded }),
         ...(view.sitesShown ? [actionButton('Add a site', 'sites', 'addOverride', { disabled: !proxyAdded })] : []),
         actionButton('Set a default', 'defaults', null, { disabled: !proxyAdded }),
       ], proxyAdded ? undefined : 'Add a proxy first.'),

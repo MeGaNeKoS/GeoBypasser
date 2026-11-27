@@ -1,4 +1,3 @@
-import { isRuleActive } from '@utils/usable'
 import type { KeepAliveProxyRule, ProxyListItem, ProxyRule } from '@customTypes/proxy'
 
 function isRecord (value: unknown): value is Record<string, unknown> {
@@ -7,10 +6,6 @@ function isRecord (value: unknown): value is Record<string, unknown> {
 
 function textOf (value: unknown): string {
   return typeof value === 'string' ? value : ''
-}
-
-function listText (value: unknown): string {
-  return Array.isArray(value) ? value.filter(item => typeof item === 'string').join(', ') : ''
 }
 
 function portText (value: unknown): string {
@@ -30,24 +25,9 @@ export function proxyFormValues (entry: unknown) {
   }
 }
 
-export function ruleFormValues (entry: unknown) {
-  const rule = isRecord(entry) ? entry : {}
-  return {
-    name: textOf(rule.name),
-    match: listText(rule.match),
-    proxyId: textOf(rule.proxyId),
-    bypassUrlPatterns: listText(rule.bypassUrlPatterns),
-    bypassResourceTypes: listText(rule.bypassResourceTypes),
-    staticExtensions: textOf(rule.staticExtensions),
-    forceProxyUrlPatterns: listText(rule.forceProxyUrlPatterns),
-    fallbackDirect: rule.fallbackDirect === true,
-    active: isRuleActive({ active: rule.active }),
-  }
-}
-
 export const RULE_FORM_FIELDS: readonly (keyof ProxyRule)[] = [
   'name', 'match', 'proxyId', 'active', 'bypassUrlPatterns', 'bypassResourceTypes',
-  'staticExtensions', 'forceProxyUrlPatterns', 'fallbackDirect',
+  'proxyOnlyResourceTypes', 'proxyOnlyPageHostnames', 'staticExtensions', 'forceProxyUrlPatterns', 'fallbackDirect',
 ]
 
 export const PROXY_FORM_FIELDS: readonly (keyof ProxyListItem)[] = [

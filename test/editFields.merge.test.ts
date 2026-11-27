@@ -9,8 +9,6 @@ describe('an edited rule over its stored entry', () => {
       proxyId: 'p1',
       active: true,
       bypassUrlPatterns: ['https://a.example/skip/*'],
-      proxyOnlyResourceTypes: ['image'],
-      proxyOnlyPageHostnames: ['site.example'],
       fieldFromNewerVersion: 'kept',
     } as unknown as ProxyRule
     const edited = {
@@ -27,8 +25,6 @@ describe('an edited rule over its stored entry', () => {
       match: ['https://a.example/*'],
       proxyId: 'p1',
       active: false,
-      proxyOnlyResourceTypes: ['image'],
-      proxyOnlyPageHostnames: ['site.example'],
       fieldFromNewerVersion: 'kept',
     })
   })

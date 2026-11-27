@@ -3,7 +3,6 @@ import {
   canSaveKeepAliveRule,
   canSaveOverride,
   canSaveProxy,
-  canSaveRuleForm,
   canSaveTestUrl,
   canToggleRule,
   proxyFieldsAtFault,
@@ -47,28 +46,6 @@ describe('proxy form', () => {
 describe('diagnostics add proxy path', () => {
   it('refuses a diagnostics proxy whose host is not valid', () => {
     expect(canSaveProxy({ id: 'generated-id', type: 'http', proxyDNS: true, host: 'a b.lan', port: 3128 })).toBe(false)
-  })
-})
-
-describe('rule form', () => {
-  it('refuses a rule whose match pattern is not valid', () => {
-    expect(canSaveRuleForm({ ...rule, match: ['not a pattern'] })).toBe(false)
-  })
-
-  it('refuses a rule with no name', () => {
-    expect(canSaveRuleForm({ ...rule, name: '' })).toBe(false)
-  })
-
-  it('refuses a rule with no proxy', () => {
-    expect(canSaveRuleForm({ ...rule, proxyId: '' })).toBe(false)
-  })
-
-  it('refuses a rule whose staticExtensions value compiles but repeats a flag', () => {
-    expect(canSaveRuleForm({ ...rule, staticExtensions: '/x/gg' })).toBe(false)
-  })
-
-  it('refuses a rule whose staticExtensions value does not compile', () => {
-    expect(canSaveRuleForm({ ...rule, staticExtensions: '/(/' })).toBe(false)
   })
 })
 

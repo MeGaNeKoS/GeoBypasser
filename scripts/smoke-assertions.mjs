@@ -1,5 +1,5 @@
 import { canon, FIXTURE, serveImportFile, SET_ASIDE_EDIT_INDEXES, SET_ASIDE_PROXY, SET_ASIDE_RULE, sleep, STORAGE_WAIT_MS, UI_SETTLE_MS, URL_IMPORT_FILE, waitFor } from './smoke-fixture.mjs'
-import { clickKeepAliveActiveFor, clickProxyRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, importFromUrl, proxyHostMarkedInvalid, readLocalStorage, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, writeLocalStorage } from './smoke-dashboard.mjs'
+import { clickKeepAliveActiveFor, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, confirmRuleInlineDelete, fillAndSaveOpenRuleSheet, importFromUrl, openNewRuleSheet, proxyHostMarkedInvalid, readLocalStorage, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
 
 const PROXY_LABEL_AFTER_EDIT = 'edited in proxies'
 
@@ -18,10 +18,10 @@ export async function checkProxyEditSurvivesRuleSave (run, failures) {
   await run(clickSelector, ['[data-tab="rules"]'])
   await sleep(UI_SETTLE_MS)
   const ruleActiveBefore = (await run(readLocalStorage)).rules[0].active
-  await run(clickSelector, ['#ruleTable input[data-active]'])
+  await run(clickRuleActiveSwitch, [0])
   await waitFor(async () => (await run(readLocalStorage)).rules[0].active !== ruleActiveBefore, STORAGE_WAIT_MS, 'the rule save to reach storage.local')
   if ((await run(readLocalStorage)).proxyList[0]?.label !== PROXY_LABEL_AFTER_EDIT) failures.push('a proxy edit in the proxies section was reverted by a later rule save')
-  await run(clickSelector, ['#ruleTable input[data-active]'])
+  await run(clickRuleActiveSwitch, [0])
   await waitFor(async () => (await run(readLocalStorage)).rules[0].active === ruleActiveBefore, STORAGE_WAIT_MS, 'the rule to be restored')
   await setFirstProxyLabel(run, originalLabel)
   if (failures.length === failuresBefore) {
@@ -29,7 +29,7 @@ export async function checkProxyEditSurvivesRuleSave (run, failures) {
   }
 }
 
-export async function checkLegacyRowsAfterReread (run, failures) {
+export async function checkRuleRowsAfterReread (run, failures) {
   const originalLabel = FIXTURE.proxyList[0].label
   await setFirstProxyLabel(run, PROXY_LABEL_AFTER_EDIT)
   const before = await run(readLocalStorage)
@@ -43,26 +43,53 @@ export async function checkLegacyRowsAfterReread (run, failures) {
 
   await run(clickSelector, ['[data-tab="rules"]'])
   await sleep(UI_SETTLE_MS)
-  await run(clickSelector, ['#ruleTable input[data-select="0"]'])
+  await run(selectOnlyRuleRowAt, [0])
+  await sleep(UI_SETTLE_MS)
+  if (!(await run(ruleSelectionState)).deleteShown) failures.push('selecting a rule did not show Delete selected')
   await run(writeLocalStorage, [{ fallbackDirect: !before.fallbackDirect }])
   await waitFor(async () => (await run(readLocalStorage)).fallbackDirect === !before.fallbackDirect, STORAGE_WAIT_MS, 'the outside save to reach storage.local')
   await sleep(UI_SETTLE_MS)
   const selection = await run(ruleSelectionState)
   if (selection.checked > 0 || selection.deleteShown) failures.push('an outside save left a rule selected')
-  await run(clickSelector, ['#deleteRulesSelected'])
-  await sleep(UI_SETTLE_MS)
-  if (canon((await run(readLocalStorage)).rules) !== canon(before.rules)) failures.push('Delete selected after an outside save deleted a rule')
+  if (canon((await run(readLocalStorage)).rules) !== canon(before.rules)) failures.push('an outside save changed the stored rules')
   await run(writeLocalStorage, [{ fallbackDirect: before.fallbackDirect }])
   await waitFor(async () => (await run(readLocalStorage)).fallbackDirect === before.fallbackDirect, STORAGE_WAIT_MS, 'the outside save to be restored')
 
-  await run(clickSelector, ['#ruleTable button[data-remove="0"]'])
-  await waitFor(async () => canon((await run(readLocalStorage)).rules) === canon(before.rules.slice(1)), STORAGE_WAIT_MS, 'the legacy rule delete to reach storage.local')
-  if ((await run(readLocalStorage)).proxyList[0]?.label !== PROXY_LABEL_AFTER_EDIT) failures.push('a legacy rule delete reverted the proxy edit made in the proxies section')
+  await run(clickRuleRowAction, [0, 'Delete'])
+  await run(confirmRuleInlineDelete)
+  await waitFor(async () => canon((await run(readLocalStorage)).rules) === canon(before.rules.slice(1)), STORAGE_WAIT_MS, 'the rule delete to reach storage.local')
+  if ((await run(readLocalStorage)).proxyList[0]?.label !== PROXY_LABEL_AFTER_EDIT) failures.push('a rule delete reverted the proxy edit made in the proxies section')
 
   await run(writeLocalStorage, [{ rules: before.rules }])
   await waitFor(async () => canon((await run(readLocalStorage)).rules) === canon(before.rules), STORAGE_WAIT_MS, 'the deleted rule to be restored')
   await setFirstProxyLabel(run, originalLabel)
-  console.log('legacy keep-alive toggle, rule selection cleared by an outside save, and rule delete after a proxy edit and storage re-read: all held, the proxy edit survived, then restored')
+  console.log('keep-alive toggle, rule selection cleared by an outside save, and rule delete after a proxy edit and storage re-read: all held, the proxy edit survived, then restored')
+}
+
+const SMOKE_RULE_NAME = 'smoke rule'
+const SMOKE_RULE_RENAMED = 'smoke rule renamed'
+const SMOKE_RULE_MATCH = '*://smoke.example/*'
+const SMOKE_RULE_PROXY = 'proxy-good'
+
+export async function checkRuleAddEditDelete (run, failures) {
+  const before = await run(readLocalStorage)
+  await run(openNewRuleSheet)
+  await run(fillAndSaveOpenRuleSheet, [SMOKE_RULE_NAME, SMOKE_RULE_MATCH, SMOKE_RULE_PROXY])
+  await waitFor(async () => (await run(readLocalStorage)).rules.length === before.rules.length + 1, STORAGE_WAIT_MS, 'the added rule to reach storage.local')
+  const added = (await run(readLocalStorage)).rules.at(-1)
+  if (added?.name !== SMOKE_RULE_NAME || added?.proxyId !== SMOKE_RULE_PROXY) failures.push('a rule added in the rules section was not stored with its name and proxy')
+  await sleep(UI_SETTLE_MS)
+
+  const addedIndex = before.rules.length
+  await run(clickRuleRowAction, [addedIndex, 'Edit'])
+  await run(fillAndSaveOpenRuleSheet, [SMOKE_RULE_RENAMED, SMOKE_RULE_MATCH, SMOKE_RULE_PROXY])
+  await waitFor(async () => (await run(readLocalStorage)).rules.at(-1)?.name === SMOKE_RULE_RENAMED, STORAGE_WAIT_MS, 'the edited rule to reach storage.local')
+  await sleep(UI_SETTLE_MS)
+
+  await run(clickRuleRowAction, [addedIndex, 'Delete'])
+  await run(confirmRuleInlineDelete)
+  await waitFor(async () => canon((await run(readLocalStorage)).rules) === canon(before.rules), STORAGE_WAIT_MS, 'the deleted smoke rule to leave storage.local')
+  console.log('rule added, edited, and deleted through the rules section; storage matches the starting list')
 }
 
 function expectedAfterRemoval () {
@@ -80,14 +107,18 @@ export async function editSetAsideEntries (run) {
     await run(clickProxyRowAction, [index, 'Edit'])
     await run(closeOpenSheet)
     await run(clickSelector, ['[data-tab="rules"]'])
-    await run(clickSelector, [`#ruleTable button[data-edit="${index}"]`])
+    await sleep(UI_SETTLE_MS)
+    await run(clickRuleRowAction, [index, 'Edit'])
+    await run(closeOpenSheet)
   }
   console.log(`clicked Edit on set aside rows ${SET_ASIDE_EDIT_INDEXES.join(', ')} of both tables`)
 }
 
 export async function removeSetAsideEntries (run, failures) {
   await run(clickSelector, ['[data-tab="rules"]'])
-  await run(clickSelector, [`#ruleTable button[data-remove="${SET_ASIDE_RULE}"]`])
+  await sleep(UI_SETTLE_MS)
+  await run(clickRuleRowAction, [SET_ASIDE_RULE, 'Delete'])
+  await run(confirmRuleInlineDelete)
   await run(clickSelector, ['[data-tab="proxy"]'])
   await sleep(UI_SETTLE_MS)
   await run(clickProxyRowAction, [SET_ASIDE_PROXY, 'Delete'])

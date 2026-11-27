@@ -1,36 +1,29 @@
 import {
-  compileRules,
   getConfig,
   saveConfig,
   saveTabProxyMap,
   updateConfig,
 } from '@utils/storage'
-import { WEB_REQUEST_RESOURCE_TYPES, WebRequestResourceType } from '@constant/requestTypes'
 import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from '@customTypes/proxy'
-import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import browser from 'webextension-polyfill'
 import { supportsProxyOnRequest } from '@utils/env'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
-import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseRules, withAppliedSettings, withImportedRules } from '@utils/importFiles'
+import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, refuseOverrides, withAppliedSettings } from '@utils/importFiles'
 import { chooseAppliedSettingChanges } from './settingChangeModal'
 import {
   KEEP_ALIVE_FORM_FIELDS,
   mergeEditedFields,
-  RULE_FORM_FIELDS,
-  ruleFormValues,
 } from '@utils/editFields'
 import { exportedRules } from '@utils/ruleExport'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
 import { buildConfigExport } from '@utils/exportFiles'
 import { isValidProxyItem } from '@utils/validity'
-import { markInvalid, markRuleFieldsInvalid } from '@utils/fieldMarks'
+import { markInvalid } from '@utils/fieldMarks'
 import {
   isBareHostname,
-  isValidPattern,
-  isValidStaticExtensions,
   isValidTestUrl,
   validateHostnamePattern,
 } from '@utils/validity'
@@ -38,7 +31,6 @@ import {
   canSaveDefaultProxy,
   canSaveKeepAliveRule,
   canSaveOverride,
-  canSaveRuleForm,
   canSaveTestUrl,
 } from '@utils/saveDecisions'
 import { keepAliveRows, overrideRows, proxyOptions, proxyRows, ruleRows } from '@utils/pageView'
@@ -48,13 +40,10 @@ import { downloadJsonFile } from '@ui/download'
 import { openProxyEditor } from '@ui/proxies/proxySheet'
 
 let config: Awaited<ReturnType<typeof getConfig>>
-let editingRuleIndex: number | null = null
-const selectedRules = new Set<number>()
 const selectedOverrides = new Set<string>()
 const selectedKeepAlive = new Set<string>()
 let listTargetInput: HTMLInputElement | null = null
 let currentListValidator: (val: string) => boolean = () => true
-let typeTargetInput: HTMLInputElement | null = null
 let editingKeepAliveId: string | null = null
 const activeRows = new WeakMap<HTMLTableElement, HTMLTableRowElement | null>()
 let networkAutoInterval: ReturnType<typeof setInterval> | null = null
@@ -173,15 +162,6 @@ function setValidation (el: HTMLInputElement, validate: (val: string) => boolean
   run()
 }
 
-function validatePatternList (val: string) {
-  return val.split(/\s*,\s*/).filter(Boolean).every(isValidPattern)
-}
-
-function validateResourceTypes (val: string) {
-  return val.split(/\s*,\s*/).filter(Boolean).every(
-    v => WEB_REQUEST_RESOURCE_TYPES.includes(v as WebRequestResourceType))
-}
-
 function updateListDisplay (input: HTMLInputElement) {
   const span = document.getElementById(input.id + 'Display')
   if (span) {
@@ -256,44 +236,6 @@ function saveListModal () {
   closeListModal()
 }
 
-function openTypeModal (inputId: string) {
-  typeTargetInput = document.getElementById(inputId) as HTMLInputElement
-  const modal = document.getElementById('typeModal')!
-  const container = document.getElementById('typeModalItems')!
-  container.innerHTML = ''
-  const selected = new Set(typeTargetInput.value.split(/\s*,\s*/).filter(Boolean))
-  WEB_REQUEST_RESOURCE_TYPES.forEach(t => {
-    const label = document.createElement('label')
-    const chk = document.createElement('input')
-    chk.type = 'checkbox'
-    chk.value = t
-    chk.checked = selected.has(t)
-    label.appendChild(chk)
-    label.append(' ', t)
-    container.appendChild(label)
-    container.appendChild(document.createElement('br'))
-  })
-  modal.classList.remove('hidden')
-}
-
-function closeTypeModal () {
-  document.getElementById('typeModal')!.classList.add('hidden')
-  typeTargetInput = null
-}
-
-function saveTypeModal () {
-  if (!typeTargetInput) return
-  const container = document.getElementById('typeModalItems')!
-  const vals: string[] = []
-  container.querySelectorAll('input[type="checkbox"]').forEach(inp => {
-    const el = inp as HTMLInputElement
-    if (el.checked) vals.push(el.value)
-  })
-  typeTargetInput.value = vals.join(', ')
-  updateListDisplay(typeTargetInput)
-  closeTypeModal()
-}
-
 function showDuplicateModal (name: string): Promise<'old' | 'new' | 'both'> {
   const modal = document.getElementById('duplicateModal')!
   const msg = document.getElementById('duplicateMessage')!
@@ -347,195 +289,6 @@ function renderGeneral () {
     markInvalid(testUrl, !valid)
     if (valid) updateConfig({ testProxyUrl: testUrl.value })
   }
-}
-
-function renderRules () {
-  const tbody = document.querySelector('#ruleTable tbody') as HTMLElement
-  tbody.innerHTML = ''
-  ruleRows(config.rules, config.proxyList).forEach(row => {
-    const { index: idx, rule: r, invalid } = row
-    const tr = document.createElement('tr')
-
-    const activeCell = document.createElement('td')
-    const activeChk = document.createElement('input')
-    activeChk.type = 'checkbox'
-    activeChk.dataset.active = ''
-    activeChk.checked = row.active
-    activeCell.appendChild(activeChk)
-    tr.appendChild(activeCell)
-
-    const nameCell = document.createElement('td')
-    nameCell.textContent = row.name
-    tr.appendChild(nameCell)
-
-    const matchCell = document.createElement('td')
-    matchCell.textContent = row.match
-    tr.appendChild(matchCell)
-
-    const proxyCell = document.createElement('td')
-    proxyCell.textContent = row.proxyLabel
-    tr.appendChild(proxyCell)
-
-    const selectCell = document.createElement('td')
-    selectCell.className = 'row-select'
-    const selChk = document.createElement('input')
-    selChk.type = 'checkbox'
-    selChk.dataset.select = String(idx)
-    selectCell.appendChild(selChk)
-    tr.appendChild(selectCell)
-
-    const actionsCell = document.createElement('td')
-    actionsCell.className = 'row-actions'
-    const editBtn = document.createElement('button')
-    editBtn.dataset.edit = String(idx)
-    editBtn.textContent = 'Edit'
-    const delBtn = document.createElement('button')
-    delBtn.dataset.remove = String(idx)
-    delBtn.textContent = 'Delete'
-    const expBtn = document.createElement('button')
-    expBtn.dataset.export = String(idx)
-    expBtn.textContent = 'Export'
-    actionsCell.appendChild(editBtn)
-    actionsCell.appendChild(delBtn)
-    actionsCell.appendChild(expBtn)
-    tr.appendChild(actionsCell)
-    if (row.missingProxy) tr.classList.add('missing-proxy')
-    if (invalid) tr.classList.add('invalid-rule')
-    tbody.appendChild(tr)
-    // attachRowHandlers(tr, document.getElementById('ruleTable') as HTMLTableElement,
-    //   document.getElementById('exportRulesSelected') as HTMLElement)
-    activeChk.onchange = () => {
-      config.rules[idx].active = activeChk.checked
-      saveConfig(config)
-    }
-    selChk.onchange = () => {
-      if (selChk.checked) selectedRules.add(idx)
-      else selectedRules.delete(idx)
-      updateSelectVisibility(
-        document.getElementById('ruleTable') as HTMLTableElement,
-        document.getElementById('exportRulesSelected') as HTMLElement,
-        document.getElementById('deleteRulesSelected') as HTMLElement,
-      )
-    }
-    editBtn.onclick = () => openRuleModal(idx)
-    delBtn.onclick = () => {
-      config.rules.splice(idx, 1)
-      saveConfig(config).then(renderAll)
-    }
-    expBtn.onclick = () => exportRules([config.rules[idx]])
-  })
-}
-
-function addRule () {
-  openRuleModal()
-}
-
-function openRuleModal (index?: number) {
-  editingRuleIndex = typeof index === 'number' ? index : null
-  const modal = document.getElementById('ruleModal')!
-  const title = document.getElementById('ruleModalTitle')!
-  const name = document.getElementById('ruleName') as HTMLInputElement
-  const match = document.getElementById('ruleMatch') as HTMLInputElement
-  const proxy = document.getElementById('ruleProxy') as HTMLSelectElement
-  const bypassUrls = document.getElementById('ruleBypassUrls') as HTMLInputElement
-  const bypassTypes = document.getElementById('ruleBypassTypes') as HTMLInputElement
-  const staticExt = document.getElementById('ruleStaticExt') as HTMLInputElement
-  const forceUrls = document.getElementById('ruleForceUrls') as HTMLInputElement
-  const fbDirect = document.getElementById('ruleFallbackDirect') as HTMLInputElement
-  const active = document.getElementById('ruleActive') as HTMLInputElement
-
-  proxy.innerHTML = ''
-  proxy.appendChild(createOption(DIRECT_PROXY_ID, 'Direct'))
-  proxyOptions(config.proxyList).forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
-  const kaExists = editingKeepAliveId ? proxyOptions(config.proxyList).some(p => p.id === editingKeepAliveId) : false
-  if (editingKeepAliveId && !kaExists) {
-    proxy.appendChild(createOption(editingKeepAliveId, `Missing Proxy (${editingKeepAliveId})`))
-  }
-
-  if (editingRuleIndex !== null) {
-    const values = ruleFormValues(config.rules[editingRuleIndex])
-    title.textContent = 'Edit Rule'
-    name.value = values.name
-    match.value = values.match
-    proxy.value = values.proxyId
-    bypassUrls.value = values.bypassUrlPatterns
-    bypassTypes.value = values.bypassResourceTypes
-    staticExt.value = values.staticExtensions
-    forceUrls.value = values.forceProxyUrlPatterns
-    fbDirect.checked = values.fallbackDirect
-    active.checked = values.active
-  } else {
-    title.textContent = 'Add Rule'
-    name.value = ''
-    match.value = ''
-    proxy.value = proxyOptions(config.proxyList)[0]?.id || ''
-    bypassUrls.value = ''
-    bypassTypes.value = ''
-    staticExt.value = ''
-    forceUrls.value = ''
-    fbDirect.checked = true
-    active.checked = true
-  }
-
-  setValidation(match, validatePatternList)
-  setValidation(bypassUrls, validatePatternList)
-  setValidation(bypassTypes, validateResourceTypes)
-  setValidation(staticExt, isValidStaticExtensions)
-  setValidation(forceUrls, validatePatternList)
-  markInvalid(name, false)
-  markInvalid(proxy, false)
-  updateListDisplay(match)
-  updateListDisplay(bypassUrls)
-  updateListDisplay(bypassTypes)
-  updateListDisplay(forceUrls)
-
-  modal.classList.remove('hidden')
-}
-
-function closeRuleModal () {
-  document.getElementById('ruleModal')!.classList.add('hidden')
-}
-
-function saveRuleFromModal () {
-  const name = (document.getElementById('ruleName') as HTMLInputElement).value.trim()
-  const match = (document.getElementById('ruleMatch') as HTMLInputElement).value
-  const proxyId = (document.getElementById('ruleProxy') as HTMLSelectElement).value
-  const bypassUrls = (document.getElementById('ruleBypassUrls') as HTMLInputElement).value
-  const bypassTypes = (document.getElementById('ruleBypassTypes') as HTMLInputElement).value
-  const staticExt = (document.getElementById('ruleStaticExt') as HTMLInputElement).value
-  const forceUrls = (document.getElementById('ruleForceUrls') as HTMLInputElement).value
-  const fbDirect = (document.getElementById('ruleFallbackDirect') as HTMLInputElement).checked
-  const active = (document.getElementById('ruleActive') as HTMLInputElement).checked
-
-  const rule: ProxyRule = {
-    name,
-    match: match.split(/\s*,\s*/).filter(Boolean),
-    proxyId,
-    active,
-  }
-  if (bypassUrls.trim()) rule.bypassUrlPatterns = bypassUrls.split(/\s*,\s*/).filter(Boolean)
-  if (bypassTypes.trim()) rule.bypassResourceTypes = bypassTypes.split(/\s*,\s*/).filter(Boolean)
-  if (staticExt.trim()) rule.staticExtensions = staticExt.trim()
-  if (forceUrls.trim()) rule.forceProxyUrlPatterns = forceUrls.split(/\s*,\s*/).filter(Boolean)
-  if (fbDirect) rule.fallbackDirect = true
-
-  if (!canSaveRuleForm(rule)) {
-    markRuleFieldsInvalid(rule)
-    return
-  }
-
-  const storedRule = editingRuleIndex !== null ? config.rules[editingRuleIndex] : undefined
-  const compiled = compileRules([mergeEditedFields(storedRule, rule, RULE_FORM_FIELDS)])[0]
-  if (editingRuleIndex !== null) {
-    config.rules[editingRuleIndex] = compiled
-  } else {
-    config.rules.push(compiled)
-  }
-
-  saveConfig(config).then(() => {
-    renderAll()
-    closeRuleModal()
-  })
 }
 
 function renderOverrides () {
@@ -1033,50 +786,6 @@ async function confirmRemoteImport () {
   closeRemoteImportModal()
 }
 
-function exportRules (rules: unknown[]) {
-  const sanitized = exportedRules(rules, () => false)
-  const data = JSON.stringify({ rules: sanitized }, null, 2)
-  downloadJsonFile('rules.json', data)
-}
-
-function exportAllRules () {
-  exportRules(config.rules)
-}
-
-function exportSelectedRules () {
-  const arr = Array.from(selectedRules).map(i => config.rules[i])
-  if (arr.length === 0) {
-    exportAllRules()
-  } else {
-    exportRules(arr)
-  }
-}
-
-function deleteSelectedRules () {
-  const idxs = Array.from(selectedRules).sort((a, b) => b - a)
-  idxs.forEach(i => { config.rules.splice(i, 1) })
-  selectedRules.clear()
-  saveConfig(config).then(renderAll)
-}
-
-function handleImportRules (files: FileList | null) {
-  if (!files || !files[0]) return
-
-  files[0].text().then(t => {
-    try {
-      const raw = JSON.parse(t)
-      const verdict = refuseRules(raw?.rules)
-      alertImportMessages(verdict.messages)
-      config = withImportedRules(config, verdict.accepted)
-      saveConfig(config).then(renderAll)
-
-    } catch (e) {
-      console.error('Error importing proxy rules:', e)
-      alert('Failed to import rules: invalid JSON')
-    }
-  })
-}
-
 function exportOverrides (obj: Record<string, string>) {
   downloadJsonFile('overrides.json', JSON.stringify({ perWebsiteOverride: obj }, null, 2))
 }
@@ -1449,7 +1158,6 @@ function renderAbout () {
 
 function renderAll () {
   renderGeneral()
-  renderRules()
   renderKeepAlive()
   renderOverrides()
   renderDiagnostics()
@@ -1465,13 +1173,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   browser.storage.onChanged.addListener(async (_changes, area) => {
     if (area !== 'local') return
     config = await getConfig()
-    selectedRules.clear()
-    renderRules()
-    updateSelectVisibility(
-      document.getElementById('ruleTable') as HTMLTableElement,
-      document.getElementById('exportRulesSelected') as HTMLElement,
-      document.getElementById('deleteRulesSelected') as HTMLElement,
-    )
     renderKeepAlive()
     renderOverrides()
   })
@@ -1494,7 +1195,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
   })
 
-  document.getElementById('addRule')!.addEventListener('click', addRule)
   document.getElementById('addOverride')?.addEventListener('click', openOverrideModal)
   document.getElementById('exportOverridesSelected')?.addEventListener('click', exportSelectedOverrides)
   document.getElementById('deleteOverridesSelected')?.addEventListener('click', deleteSelectedOverrides)
@@ -1511,54 +1211,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('importKeepAlive')!.click())
   document.getElementById('importKeepAlive')!.addEventListener('change', ev =>
     handleImportKeepAlive((ev.target as HTMLInputElement).files))
-  document.getElementById('exportRulesSelected')!.addEventListener('click', exportSelectedRules)
-  document.getElementById('deleteRulesSelected')!.addEventListener('click', deleteSelectedRules)
-  document.getElementById('exportRulesAll')!.addEventListener('click', exportAllRules)
-  document.getElementById('importRulesBtn')!.addEventListener('click', () =>
-    document.getElementById('importRules')!.click())
-  document.getElementById('importRules')!.addEventListener('change', ev =>
-    handleImportRules((ev.target as HTMLInputElement).files))
-  document.getElementById('saveRule')!.addEventListener('click', saveRuleFromModal)
-  document.getElementById('cancelRule')!.addEventListener('click', closeRuleModal)
-  document.getElementById('editRuleMatch')!.addEventListener('click',
-    () => openListModal(
-      'ruleMatch',
-      'Match Patterns',
-      isValidPattern,
-      {
-        href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
-        title: 'Uses WebExtension match patterns',
-      },
-    ))
-  document.getElementById('editRuleBypassUrls')!.addEventListener('click',
-    () => openListModal(
-      'ruleBypassUrls',
-      'Bypass URL Patterns',
-      isValidPattern,
-      {
-        href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
-        title: 'Uses WebExtension match patterns',
-      },
-    ))
-  document.getElementById('editRuleForceUrls')!.addEventListener('click',
-    () => openListModal(
-      'ruleForceUrls',
-      'Force Proxy URL Patterns',
-      isValidPattern,
-      {
-        href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
-        title: 'Uses WebExtension match patterns',
-      },
-    ))
-  document.getElementById('editRuleBypassTypes')!.addEventListener('click', () => openTypeModal('ruleBypassTypes'))
   document.getElementById('addListItem')!.addEventListener('click', () => {
     const container = document.getElementById('listModalItems')!
     addListItem(container)
   })
   document.getElementById('saveList')!.addEventListener('click', saveListModal)
   document.getElementById('cancelList')!.addEventListener('click', closeListModal)
-  document.getElementById('saveTypes')!.addEventListener('click', saveTypeModal)
-  document.getElementById('cancelTypes')!.addEventListener('click', closeTypeModal)
   document.getElementById('saveOverride')?.addEventListener('click', saveOverrideFromModal)
   document.getElementById('cancelOverride')?.addEventListener('click', closeOverrideModal)
   document.getElementById('saveKeepAlive')!.addEventListener('click', saveKeepAliveFromModal)

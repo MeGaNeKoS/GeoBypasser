@@ -3,7 +3,6 @@ import {
   canSaveKeepAliveRule,
   canSaveOverride,
   canSaveProxy,
-  canSaveRuleForm,
   canSaveTestUrl,
   canToggleRule,
 } from '@utils/saveDecisions'
@@ -24,20 +23,6 @@ describe('proxy form', () => {
 describe('diagnostics add proxy path', () => {
   it('saves a proxy built from the diagnostics inputs once the modal gives it an id', () => {
     expect(canSaveProxy({ ...proxy, id: 'generated-id', host: 'diag.lan', port: 3128 })).toBe(true)
-  })
-})
-
-describe('rule form', () => {
-  it('saves a rule with a valid match pattern and proxy', () => {
-    expect(canSaveRuleForm(rule)).toBe(true)
-  })
-
-  it('saves a rule whose staticExtensions value is valid', () => {
-    expect(canSaveRuleForm({ ...rule, staticExtensions: '/\\.(png|css)$/i' })).toBe(true)
-  })
-
-  it('saves a rule with no staticExtensions value', () => {
-    expect(canSaveRuleForm({ ...rule, staticExtensions: undefined })).toBe(true)
   })
 })
 

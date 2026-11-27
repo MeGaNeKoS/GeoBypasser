@@ -13,7 +13,7 @@ import { startRecordingListener } from './smoke-chrome-route.mjs'
 import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
 import { COMPONENT_TEST_PAGE, firefoxKeyActions, runComponentTestPage } from './smoke-component-test.mjs'
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
-import { checkLegacyRowsAfterReread, checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
+import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkRuleRowsAfterReread, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
@@ -282,7 +282,8 @@ async function runFirefoxSmoke (settings) {
   await checkRefusedProxySave(evaluate, failures)
   await checkCredentialWiring(evaluate, failures)
   await checkProxyEditSurvivesRuleSave(evaluate, failures)
-  await checkLegacyRowsAfterReread(evaluate, failures)
+  await checkRuleRowsAfterReread(evaluate, failures)
+  await checkRuleAddEditDelete(evaluate, failures)
   await checkSetAsideEditSave(evaluate, failures, () => navigate(`${sessionOrigin}dashboard.html#proxies`))
   await checkSetAsideExports(evaluate, failures)
   await checkNetworkStatsNames(evaluate, failures, FIREFOX_NETWORK_SCENARIO)

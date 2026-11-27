@@ -7,7 +7,6 @@ import {
   isValidProxyPort,
   isValidProxyType,
   isValidRule,
-  isValidStaticExtensions,
   isValidTestUrl,
 } from '@utils/validity'
 
@@ -21,10 +20,6 @@ export function proxyFieldsAtFault (proxy: Record<'type' | 'host' | 'port', unkn
     host: !isValidProxyHost(proxy.host),
     port: !isValidProxyPort(proxy.port),
   }
-}
-
-export function canSaveRuleForm (rule: unknown): boolean {
-  return isValidRule(rule) && isValidStaticExtensions((rule as { staticExtensions?: unknown }).staticExtensions)
 }
 
 export function canToggleRule (rule: unknown): boolean {

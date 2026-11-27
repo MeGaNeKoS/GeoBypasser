@@ -12,7 +12,7 @@ import { COMPONENT_TEST_PAGE, chromeKeyEvents, runComponentTestPage } from './sm
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
 import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
-import { checkLegacyRowsAfterReread, checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
+import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkRuleRowsAfterReread, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
@@ -266,7 +266,8 @@ async function runSmoke (options) {
   await checkRefusedProxySave(runOnDashboard, failures)
   await checkCredentialWiring(runOnDashboard, failures)
   await checkProxyEditSurvivesRuleSave(runOnDashboard, failures)
-  await checkLegacyRowsAfterReread(runOnDashboard, failures)
+  await checkRuleRowsAfterReread(runOnDashboard, failures)
+  await checkRuleAddEditDelete(runOnDashboard, failures)
   await checkSetAsideEditSave(runOnDashboard, failures, () => runOnDashboard(() => location.reload()).catch(() => null))
   await checkSetAsideExports(runOnDashboard, failures)
   await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO)

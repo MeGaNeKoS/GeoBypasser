@@ -152,9 +152,50 @@ export function writeLocalStorage (entries) {
 
 export function ruleSelectionState () {
   return {
-    checked: document.querySelectorAll('#ruleTable input[data-select]:checked').length,
-    deleteShown: document.getElementById('deleteRulesSelected').style.display === 'inline-block',
+    checked: document.querySelectorAll('#rulesContent li.row input[type="checkbox"]:checked').length,
+    deleteShown: Array.from(document.querySelectorAll('#rulesContent button')).some(button => button.textContent.trim() === 'Delete selected'),
   }
+}
+
+export function selectOnlyRuleRowAt (index) {
+  document.querySelectorAll('#rulesContent li.row input[type="checkbox"]').forEach((box, position) => {
+    const wanted = position === index
+    if (box.checked === wanted) return
+    box.checked = wanted
+    box.dispatchEvent(new Event('change'))
+  })
+}
+
+export function clickRuleRowAction (index, label) {
+  const row = document.querySelectorAll('#rulesContent li.row')[index]
+  if (!row) throw new Error(`no rule row at ${index}`)
+  Array.from(row.querySelectorAll('button')).find(button => button.textContent.trim() === label).click()
+}
+
+export function clickRuleToolbarButton (label) {
+  Array.from(document.querySelectorAll('#rulesContent button')).find(button => button.textContent.trim() === label).click()
+}
+
+export function clickRuleActiveSwitch (index) {
+  const row = document.querySelectorAll('#rulesContent li.row')[index]
+  if (!row) throw new Error(`no rule row at ${index}`)
+  row.querySelector('[role="switch"]').click()
+}
+
+export function confirmRuleInlineDelete () {
+  Array.from(document.querySelectorAll('#rulesContent .inline-confirm button')).find(button => button.textContent.trim() === 'Delete').click()
+}
+
+export function openNewRuleSheet () {
+  document.querySelector('[data-tab="rules"]').click()
+  Array.from(document.querySelectorAll('#rulesContent button')).find(button => button.textContent.trim() === 'Add rule').click()
+}
+
+export function fillAndSaveOpenRuleSheet (name, match, proxyId) {
+  document.querySelector('dialog.sheet input[name="name"]').value = name
+  document.querySelector('dialog.sheet input[name="match"]').value = match
+  document.querySelector('dialog.sheet select[name="proxyId"]').value = proxyId
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Save').click()
 }
 
 export function countProxyRows () {
