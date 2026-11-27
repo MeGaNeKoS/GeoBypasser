@@ -7,6 +7,7 @@ module.exports = {
   moduleNameMapper: {
     '^@utils/(.*)$': '<rootDir>/src/utils/$1',
     '^@core/(.*)$': '<rootDir>/src/core/$1',
+    '^@adapters/(.*)$': '<rootDir>/src/adapters/$1',
     '^@customTypes/(.*)$': '<rootDir>/src/types/$1',
     '^@constant/(.*)$': '<rootDir>/src/constant/$1',
     '^@schemas/(.*)$': '<rootDir>/src/schemas/$1',

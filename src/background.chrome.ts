@@ -7,7 +7,8 @@ import { generatePacScript } from '@utils/pac'
 import { APP_NAME } from '@constant/defaults'
 import { createProxyAuthListener } from '@core/proxyAuth'
 import { isNetworkMessage, isProxyControlMessage } from '@utils/messages'
-import { addNetworkData, networkStats, resetNetworkStats } from '@utils/network'
+import { createNetworkMonitor } from '@core/networkMonitor'
+import { registerChromeNetworkMonitor } from '@adapters/chrome'
 import { canApplyPac, proxyControlStateFor } from '@utils/proxyControl'
 
 function registerProxyAuthListener (currentConfig: () => GeoBypassRuntimeSettings) {
@@ -72,58 +73,15 @@ function answerProxyControlRequests () {
     }
   })
 
-  const monitoredTabs = new Set<number>()
-  const requestSizes = new Map<string | number, number>()
-
-  browser.webRequest.onBeforeSendHeaders.addListener(
-    details => {
-      if (!monitoredTabs.has(details.tabId)) return
-      const header = details.requestHeaders?.find(h => h.name.toLowerCase() === 'content-length')
-      if (!header) return
-      const size = parseInt(header.value || '0', 10)
-      if (!isNaN(size)) requestSizes.set(details.requestId, size)
-    },
-    { urls: ['<all_urls>'] },
-    ['requestHeaders']
-  )
-
-  browser.webRequest.onCompleted.addListener(
-    details => {
-      if (!monitoredTabs.has(details.tabId)) {
-        requestSizes.delete(details.requestId)
-        return
-      }
-      const sent = requestSizes.get(details.requestId) || 0
-      requestSizes.delete(details.requestId)
-      const received = (details as any).encodedDataLength || 0
-      addNetworkData(details.url, sent, received)
-    },
-    { urls: ['<all_urls>'] }
-  )
-
-  browser.webRequest.onErrorOccurred.addListener(
-    details => {
-      if (monitoredTabs.has(details.tabId)) requestSizes.delete(details.requestId)
-    },
-    { urls: ['<all_urls>'] }
-  )
+  const networkMonitor = createNetworkMonitor()
+  registerChromeNetworkMonitor(networkMonitor)
 
   browser.runtime.onMessage.addListener(async (message: unknown) => {
-    if (!isNetworkMessage(message)) return
-    if (message.type === 'getNetworkStats') return networkStats
-    if (message.type === 'clearNetworkStats') { resetNetworkStats(); return }
-    if (message.type === 'monitorTabNetwork') { monitoredTabs.add(message.tabId); return }
-    if (message.type === 'unmonitorTabNetwork') { monitoredTabs.delete(message.tabId); return }
-    if (message.type === 'isTabNetworkMonitored') return monitoredTabs.has(message.tabId)
-    if (message.type === 'devtoolsNetworkData') {
-      if (monitoredTabs.has(message.tabId)) {
-        addNetworkData(message.url, message.sentSize, message.receivedSize)
-      }
-    }
+    if (isNetworkMessage(message)) return networkMonitor.answerNetworkMessage(message)
   })
 
   browser.tabs.onRemoved.addListener(tabId => {
-    monitoredTabs.delete(tabId)
+    networkMonitor.forgetTab(tabId)
   })
 })()
 

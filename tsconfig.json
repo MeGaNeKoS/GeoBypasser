@@ -34,6 +34,9 @@
       "@core/*": [
         "src/core/*"
       ],
+      "@adapters/*": [
+        "src/adapters/*"
+      ],
       "@constant/*": [
         "src/constant/*"
       ],
