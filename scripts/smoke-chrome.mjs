@@ -8,6 +8,7 @@ import { FIXTURE, POPUP_SETTLE_MS, sleep, STEP_TIMEOUT_MS, STOP_GRACE_MS, STORAG
 import { checkCredentialWiring } from './smoke-credentials.mjs'
 import { checkSetAsideExports } from './smoke-set-aside.mjs'
 import { checkPacRoute } from './smoke-chrome-route.mjs'
+import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
@@ -240,6 +241,7 @@ async function runSmoke (options) {
   await checkRefusedProxySave(runOnDashboard, failures)
   await checkCredentialWiring(runOnDashboard, failures)
   await checkSetAsideExports(runOnDashboard, failures)
+  await checkMixedOverrideInPac({ evalIn, worker: findWorker() }, failures)
   await checkPacRoute({ evalIn, worker: findWorker(), dashboard }, failures)
 
   const popup = await openTab('popup.html')

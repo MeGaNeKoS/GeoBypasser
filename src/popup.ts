@@ -1,7 +1,7 @@
 import browser from 'webextension-polyfill'
 import { getConfig, getTabProxyMap, updateConfig } from '@utils/storage'
 import { popupRules, proxyOptions } from '@utils/pageView'
-import { isRuleActive, usableOverrides } from '@utils/usable'
+import { isRuleActive, overrideForHost, overridesWithHost, overridesWithoutHost } from '@utils/usable'
 import { canSaveOverride, canToggleRule } from '@utils/saveDecisions'
 import { resolveProxy } from '@utils/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateCurrentDisplay () {
     const tabIdProxy = tab?.id !== undefined ? tabMap[tab.id] : undefined
-    const domainProxy = host ? usableOverrides(config.perWebsiteOverride)[host] : undefined
+    const domainProxy = host ? overrideForHost(config.perWebsiteOverride, host) : undefined
     const applied = tabIdProxy ?? domainProxy
     currentProxy.textContent = getLabel(applied)
     select.value = applied || config.defaultProxy || DIRECT_PROXY_ID
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tab.id !== undefined) tabMap[tab.id] = proxyId
     } else if (scopeSelect.value === 'site') {
       if (!host || !canSaveOverride(host, proxyId)) return
-      config.perWebsiteOverride[host] = proxyId
+      config.perWebsiteOverride = overridesWithHost(config.perWebsiteOverride, host, proxyId)
       await updateConfig({ perWebsiteOverride: config.perWebsiteOverride })
     }
     updateCurrentDisplay()
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tab.id !== undefined) delete tabMap[tab.id]
     } else if (scopeSelect.value === 'site') {
       if (!host) return
-      delete config.perWebsiteOverride[host]
+      config.perWebsiteOverride = overridesWithoutHost(config.perWebsiteOverride, host)
       await updateConfig({ perWebsiteOverride: config.perWebsiteOverride })
     }
     updateCurrentDisplay()

@@ -49,7 +49,7 @@ export function makeTabProxyHandler (
 
 function overrideProxyIdForHost (overrides: unknown, hostname: string): string | undefined {
   return overridesMostSpecificFirst(usableOverrides(overrides))
-    .find(([domain]) => isHostOrSubdomain(hostname, domain))?.[1]
+    .find(([domain]) => isHostOrSubdomain(hostname, domain.toLowerCase()))?.[1]
 }
 
 export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings) {

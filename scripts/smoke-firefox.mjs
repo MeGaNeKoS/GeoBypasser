@@ -3,10 +3,12 @@ import { cpSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFil
 import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { FIXTURE, sleep, STEP_TIMEOUT_MS, STOP_GRACE_MS, STORAGE_WAIT_MS, TAB_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
+import { FIXTURE, POPUP_SETTLE_MS, runStep, sleep, STEP_TIMEOUT_MS, STOP_GRACE_MS, STORAGE_WAIT_MS, TAB_SETTLE_MS, UI_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
 import { connectOnce, MarionetteClient } from './smoke-marionette.mjs'
 import { checkCredentialWiring } from './smoke-credentials.mjs'
 import { checkSetAsideExports } from './smoke-set-aside.mjs'
+import { checkMixedOverrideInDashboard, addProxyAsDefault, clickSiteClearInPopup, MIXED_HOST, MIXED_KEY, MIXED_URL, mixedRouteProxy, openPopupBesideTab, readPopupDomain, storedKeysForHost, tabLoadStatus, writeMixedOverride } from './smoke-override-spelling.mjs'
+import { startRecordingListener } from './smoke-chrome-route.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
@@ -193,6 +195,55 @@ async function visitDashboardTabs () {
   console.log(`dashboard tabs visited: ${tabs.join(', ')}`)
 }
 
+async function openMixedTabInOwnWindow (listenerPort) {
+  const route = mixedRouteProxy(listenerPort)
+  await evaluate(addProxyAsDefault, [route])
+  await evaluate(writeMixedOverride, [MIXED_KEY, route.id])
+  await sleep(UI_SETTLE_MS)
+  await takeDialogs()
+  recording = false
+  const { handle } = await marionette.send('WebDriver:NewWindow', { type: 'window' })
+  await marionette.send('WebDriver:SwitchToWindow', { handle, focus: true })
+  await navigate(MIXED_URL)
+}
+
+async function openPopupBesideMixedTab (session, dashboardHandle) {
+  await takeDialogs()
+  recording = false
+  await marionette.send('WebDriver:SwitchToWindow', { handle: dashboardHandle, focus: true })
+  const before = await marionette.send('WebDriver:GetWindowHandles')
+  const popupTabId = await evaluate(openPopupBesideTab, [MIXED_URL, `${session.origin}popup.html`])
+  await waitFor(() => evaluate(tabLoadStatus, [popupTabId]).then(status => status === 'complete'), STEP_TIMEOUT_MS, 'the popup tab to load beside the mixed tab')
+  await sleep(POPUP_SETTLE_MS)
+  const after = await marionette.send('WebDriver:GetWindowHandles')
+  const popupHandle = after.find(handle => !before.includes(handle))
+  if (!popupHandle) throw new Error('no new window handle after opening the popup beside the mixed tab')
+  await marionette.send('WebDriver:SwitchToWindow', { handle: popupHandle, focus: true })
+  await waitFor(() => evaluate(popupProxyListReady), STEP_TIMEOUT_MS, 'the popup opened beside the mixed tab')
+}
+
+async function clearMixedOverrideFromPopup () {
+  const domain = await evaluate(readPopupDomain)
+  if (domain !== MIXED_HOST) throw new Error(`the popup reads the domain ${domain}, not ${MIXED_HOST}`)
+  await evaluate(clickSiteClearInPopup)
+  await waitFor(async () => (await evaluate(storedKeysForHost, [MIXED_HOST])).length === 0, STORAGE_WAIT_MS, 'the popup clear to reach storage.local')
+}
+
+async function checkPopupClearOnMixedTab (session) {
+  const listener = await startRecordingListener()
+  try {
+    const dashboardHandle = (await marionette.send('WebDriver:GetWindowHandle')).value
+    await openMixedTabInOwnWindow(listener.port)
+    await openPopupBesideMixedTab(session, dashboardHandle)
+    await clearMixedOverrideFromPopup()
+    await marionette.send('WebDriver:SwitchToWindow', { handle: dashboardHandle, focus: true })
+    console.log(`popup beside ${MIXED_URL} cleared "${MIXED_KEY}" with site scope; storage holds no case variant of ${MIXED_HOST}`)
+  } finally {
+    listener.server.closeAllConnections()
+    await new Promise(done => listener.server.close(done))
+  }
+}
+
 async function setTabProxyFromPopup (session) {
   await takeDialogs()
   recording = false
@@ -222,6 +273,8 @@ async function runFirefoxSmoke (settings) {
   await checkRefusedProxySave(evaluate, failures)
   await checkCredentialWiring(evaluate, failures)
   await checkSetAsideExports(evaluate, failures)
+  await checkMixedOverrideInDashboard({ run: evaluate, reopenDashboard: () => navigate(`${second.origin}dashboard.html`) }, failures)
+  await runStep('popup clears a mixed case override for the tab it is opened beside', () => checkPopupClearOnMixedTab(second), failures)
   await setTabProxyFromPopup(second)
 }
 

@@ -19,9 +19,25 @@ export function usableOverrides (map: unknown): Record<string, string> {
   const result: Record<string, string> = {}
   if (typeof map !== 'object' || map === null) return result
   for (const [domain, proxyId] of Object.entries(map)) {
-    if (isValidOverrideEntry(domain, proxyId)) result[domain.toLowerCase()] = proxyId as string
+    if (isValidOverrideEntry(domain, proxyId)) result[domain] = proxyId as string
   }
   return result
+}
+
+export function overrideForHost (map: unknown, host: string): string | undefined {
+  return Object.entries(usableOverrides(map)).find(([domain]) => isOverrideKeyForHost(domain, host))?.[1]
+}
+
+export function overridesWithoutHost (map: Record<string, string>, host: string): Record<string, string> {
+  return Object.fromEntries(Object.entries(map).filter(([domain]) => !isOverrideKeyForHost(domain, host)))
+}
+
+export function overridesWithHost (map: Record<string, string>, host: string, proxyId: string): Record<string, string> {
+  return { ...overridesWithoutHost(map, host), [host]: proxyId }
+}
+
+function isOverrideKeyForHost (domain: string, host: string): boolean {
+  return domain.toLowerCase() === host
 }
 
 export function overridesMostSpecificFirst (overrides: Record<string, string>): Array<[string, string]> {

@@ -15,7 +15,7 @@ function routeConfig (port) {
   }
 }
 
-function startRecordingListener () {
+export function startRecordingListener () {
   const requests = []
   const server = createServer((request, response) => {
     requests.push(request.url)
