@@ -99,7 +99,7 @@ Flat and quiet: hairline borders, no gradients, shadows only on overlays. One te
 | --- | --- |
 | Button | `primary` (one per view), `secondary`, `quiet`, `danger` (fill only inside a confirm). States: hover, focus-visible, disabled (55% opacity plus `disabled`), busy ("Saving…", `aria-busy`). |
 | Switch | `<button role="switch" aria-checked>`, 36 by 20 track, followed by the word "On" or "Off". |
-| Segmented | Radio group drawn as joined buttons: popup scope, proxy type, popup rule filter, duplicate choice, imported setting choice. One option can be `disabled`, with a short reason beside or below it. |
+| Segmented | Radio group drawn as joined buttons: popup scope, proxy type, popup rule filter, duplicate choice, imported setting choice. One option can be `disabled`; it shows its own reason line only when no adjacent note explains it. |
 | Field | Label, control, help, error. Error is icon plus text in `--danger`, `aria-describedby`; control gets `aria-invalid` and a 2 px danger border. A number field can carry a unit suffix ("seconds") inside its right edge. |
 | Select, Checkbox | Native, styled with tokens. |
 | Badge | Pill with icon and text: `invalid` "Not used", `ignored` "Setting ignored", `unavailable` "Proxy unavailable", `firefox` "Firefox only", `limited` "Limited on Chrome", `count`. |
@@ -132,7 +132,7 @@ Test: Test URL prefilled from Defaults. "Saved proxy" card: select, Test, Edit. 
 
 Network: Refresh, Clear (inline confirm), "Auto refresh" switch (5 s). Tree rows with Sent and Received right aligned; below 720 px they drop under the name. Empty "No traffic recorded yet. Turn on Monitor for a tab from the popup." Loading: 4 skeleton rows. Error "Could not read usage from the extension. [Retry]".
 
-Import and export: the Export card opens the Export sheet (four groups with per group Select all, "Select entire config", "Include proxy usernames and passwords" off by default). Import card: From a file, From a URL, Community rules; every row ends in the Review step.
+Import and export: the Export card opens the Export sheet (four groups with per group Select all, "Select entire config", "Leave out usernames and passwords" off by default, for a file meant to be shared). Import card: From a file, From a URL, Community rules; every row ends in the Review step.
 
 About: name and version, description, rule priority, features, licence, links. On Chrome, priority tier 1 (tab) carries "Firefox only" and tier 2 (site) carries "Limited on Chrome" with "On Chrome this covers requests to the site and its subdomains only." The features list item "Domain-based overrides" carries the same badge.
 
@@ -247,7 +247,7 @@ Dashboard frame, 720 px and wider:
 +------------------+------------------------------------------------------+
 ```
 
-Selected nav item: 3 px accent bar, sunken background, 600 weight, `aria-current="page"`. "/!\2" has the accessible name "2 need fixing". On Chrome the nav shows a small info icon after "Sites" ("Limited on Chrome") and after "Keep-alive" ("Firefox only"); the full badge text sits in each section's banner.
+Selected nav item: 3 px accent bar, sunken background, 600 weight, `aria-current="page"`. "/!\2" has the accessible name "2 need fixing". On Chrome the browser badge sits beside each section's title and in its banner, not in the nav; the nav's trailing slot shows only the warning count.
 
 Dashboard frame, 360 px:
 
@@ -610,7 +610,7 @@ The prototype has a bar above each page, marked as not part of the product, with
 | About: name, version, rule priority, features, licence, links | About |
 | Import refusal messages and the save failure message | Review step "Needs your attention"; error Banner |
 | Help links for static extensions and pattern lists | Field help line |
-| Section export of proxies always omits credentials | Toolbar help: "Exports here leave out usernames and passwords. Use Import and export to include them." |
+| Exports include credentials so an import can use them | Every export; the Export sheet has "Leave out usernames and passwords", off by default, for a file meant to be shared |
 | Devtools panel status line | Single status line with three states |
 
 ## How the E04 decisions are met
@@ -634,3 +634,79 @@ Routing ladder: the dashboard's main page is the priority order (Tab, Site, Rule
 Workbench: dense list on the left, always open editor on the right, 28 px rows. Fastest for dozens of rules, but breaks at 360 px and makes first run look harder.
 
 Dropped for breaking a constraint: an overview home page, undo after delete, an in-app theme switch, "apply to all" on import, any backup proxy affordance, an icon or web font, and a dismissible Chrome banner (it would need a new stored setting).
+
+## Other proxy extensions (E05/S02)
+
+### Chrome: "not in control" warning
+
+Shown when the level of control is `controlled_by_other_extensions` or `not_controllable`. It uses existing components: the error Banner in the dashboard, the error line block in the popup. No Dismiss control: it clears by itself when the cause is gone. Nothing is shown before the first check resolves, so there is no flash on load.
+
+Dashboard placement: the first item in the banner slot of the page frame, above any save failure or section banner, on every section. `role="alert"` when it appears. At 360 px it sits between the top bar and the section title, full width.
+
+Popup placement: directly under the header, above "This tab", full width, `role="alert"`.
+
+Copy, level `controlled_by_other_extensions`:
+
+- Dashboard title: "GeoBypass is not routing your traffic"
+- Dashboard body: "Another extension controls this browser's proxy settings, so your proxies, rules and site proxies are not in effect. Turn off or remove the other proxy extension on the extensions page (chrome://extensions). This message clears by itself once GeoBypass is back in control."
+- Dashboard action: secondary Button "Open extensions page"
+- Popup: "GeoBypass is not routing. Another extension controls proxy settings. Turn it off or remove it." followed by the quiet Button "Open extensions page"
+
+Copy, level `not_controllable`:
+
+- Dashboard title: "GeoBypass is not routing your traffic"
+- Dashboard body: "A browser policy controls this browser's proxy settings, so your proxies, rules and site proxies are not in effect. This is usually set by your organisation or by other software on this device. GeoBypass cannot change it. Ask whoever manages this browser, or check the policy page (chrome://policy)."
+- Dashboard action: none
+- Popup: "GeoBypass is not routing. A browser policy controls proxy settings. GeoBypass cannot change it."
+
+Whether an extension page may open `chrome://extensions` with `tabs.create` is unverified; if it is refused, the button is dropped and the copy carries the instruction alone.
+
+While the warning is shown:
+
+- Every control stays usable. Changes are saved and take effect when GeoBypass is back in control.
+- The popup's "Using" line changes its prefix from "Using:" to "Saved, not in effect:". With no site proxy it still reads "No site proxy".
+- In Test, both Test buttons are `disabled` and the result panel reads "Tests cannot run while GeoBypass does not control proxy settings.", since the Chrome test works by writing the PAC script.
+
+Live behaviour: the warning is added and removed on every change of the level of control, with no reload. When it is removed, the status line in the dashboard and the popup reads "GeoBypass is routing again." If the level moves between the two causes, the copy is swapped in place. State is carried by the warning icon and the words, with `--danger` and `--danger-bg` as reinforcement only.
+
+```
++------------------+------------------------------------------------------+
+| GeoBypass        | /!\ GeoBypass is not routing your traffic            |
+|                  |     Another extension controls this browser's proxy  |
+| SET UP           |     settings, so your proxies, rules and site        |
+| | Proxies      4 |     proxies are not in effect. Turn off or remove    |
+|   Rules   12 /!\2|     the other proxy extension on the extensions page |
+|   Sites        3 |     (chrome://extensions). This message clears by    |
+|   Keep-alive   1 |     itself once GeoBypass is back in control.        |
+|   Defaults       |     [ Open extensions page ]                         |
+|                  +------------------------------------------------------+
+| TOOLS            | Proxies                               [ + Add proxy ]|
+|   ...            | [save failure / needs fixing / browser banners]      |
+
++------------------------------------------+
+| GeoBypass             [Dashboard]   [x]  |
++------------------------------------------+
+| /!\ GeoBypass is not routing. Another    |
+|     extension controls proxy settings.   |
+|     Turn it off or remove it.            |
+|     [ Open extensions page ]             |
++------------------------------------------+
+| THIS TAB                                 |
+| video.example.com                        |
+| Saved, not in effect: Tokyo SOCKS        |
+|   (set for this site)                    |
+| ...                                      |
+```
+
+### Firefox: standing note
+
+An info note block (`role="note"`, info circle icon, `--surface-sunken` background, `--text-sm`). Not a Banner, always present on Firefox, no Dismiss control, not rendered on Chrome.
+
+Placement: in Defaults, below the card as the last element of the section; in About, directly under the rule priority list.
+
+Copy in Defaults:
+
+- Heading: "Other proxy extensions"
+- Body: "Another proxy extension can change where your requests go. Firefox does not let GeoBypass detect this. For predictable routing, run one proxy extension at a time."
+
+Copy in About: the same heading and body, plus "Requests that no tab proxy, site proxy, rule or default proxy applies to are left untouched, so another extension may route them."

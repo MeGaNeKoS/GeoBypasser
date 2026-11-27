@@ -10,3 +10,4 @@ A short proxy hiccup does not look like an outage. The user is told a proxy is d
 - A proxy counts as down after several consecutive failed checks, not one.
 - A rule names one proxy. Fallback to a direct connection is the only second route. There are no backup proxies, which keeps configuration simple.
 - Proxy checks run only on Firefox, where keep-alive runs.
+- The browser lets one extension control proxy settings at a time. GeoBypass cannot share control; it tells the user when it does not have it, where the browser lets it know, and says so plainly where it does not.
