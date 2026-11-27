@@ -8,6 +8,7 @@ import { connectOnce, MarionetteClient } from './smoke-marionette.mjs'
 import { checkCredentialWiring } from './smoke-credentials.mjs'
 import { checkSetAsideExports } from './smoke-set-aside.mjs'
 import { checkMixedOverrideInDashboard, addProxyAsDefault, clickSiteClearInPopup, MIXED_HOST, MIXED_KEY, MIXED_URL, mixedRouteProxy, openPopupBesideTab, readPopupDomain, storedKeysForHost, tabLoadStatus, writeMixedOverride } from './smoke-override-spelling.mjs'
+import { checkNetworkStatsNames, FIREFOX_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { startRecordingListener } from './smoke-chrome-route.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
@@ -273,6 +274,7 @@ async function runFirefoxSmoke (settings) {
   await checkRefusedProxySave(evaluate, failures)
   await checkCredentialWiring(evaluate, failures)
   await checkSetAsideExports(evaluate, failures)
+  await checkNetworkStatsNames(evaluate, failures, FIREFOX_NETWORK_SCENARIO)
   await checkMixedOverrideInDashboard({ run: evaluate, reopenDashboard: () => navigate(`${second.origin}dashboard.html`) }, failures)
   await runStep('popup clears a mixed case override for the tab it is opened beside', () => checkPopupClearOnMixedTab(second), failures)
   await setTabProxyFromPopup(second)

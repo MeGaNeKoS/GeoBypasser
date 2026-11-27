@@ -9,6 +9,7 @@ import { checkCredentialWiring } from './smoke-credentials.mjs'
 import { checkSetAsideExports } from './smoke-set-aside.mjs'
 import { checkPacRoute } from './smoke-chrome-route.mjs'
 import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
+import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
@@ -241,6 +242,7 @@ async function runSmoke (options) {
   await checkRefusedProxySave(runOnDashboard, failures)
   await checkCredentialWiring(runOnDashboard, failures)
   await checkSetAsideExports(runOnDashboard, failures)
+  await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO)
   await checkMixedOverrideInPac({ evalIn, worker: findWorker() }, failures)
   await checkPacRoute({ evalIn, worker: findWorker(), dashboard }, failures)
 

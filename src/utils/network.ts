@@ -10,8 +10,8 @@ export type NetworkStats = {
 }
 
 export const networkStats: NetworkStats = {
-  total: { sent: 0, received: 0, children: {} },
-  domains: {}
+  total: { sent: 0, received: 0, children: Object.create(null) },
+  domains: Object.create(null)
 }
 
 export function formatBytes (bytes: number): string {
@@ -27,7 +27,7 @@ export function formatBytes (bytes: number): string {
 }
 
 function ensureChild(parent: Record<string, NetworkStatsNode>, key: string): NetworkStatsNode {
-  if (!parent[key]) parent[key] = { sent: 0, received: 0, children: {} }
+  if (!parent[key]) parent[key] = { sent: 0, received: 0, children: Object.create(null) }
   return parent[key]
 }
 
