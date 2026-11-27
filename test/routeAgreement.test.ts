@@ -98,7 +98,7 @@ type FirefoxRoute = { type: string; host?: string; port?: number }
 function toPacRoute (routes: FirefoxRoute[]): string {
   return routes.map(route => {
     if (route.type === 'direct') return DIRECT
-    const scheme = route.type === 'socks' ? 'SOCKS' : 'PROXY'
+    const scheme = route.type === 'socks' ? 'SOCKS5' : 'PROXY'
     return `${scheme} ${route.host}:${route.port}`
   }).join('; ')
 }

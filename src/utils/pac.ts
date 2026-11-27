@@ -14,7 +14,7 @@ const LINE_SEPARATOR = String.fromCharCode(0x2028)
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029)
 
 function proxyToPac (proxy: ProxyListItem, fallbackDirect: boolean): string {
-  const scheme = proxy.type === 'socks' ? 'SOCKS' : 'PROXY'
+  const scheme = proxy.type === 'socks' ? 'SOCKS5' : 'PROXY'
   return fallbackDirect
     ? `${scheme} ${proxy.host}:${proxy.port}; DIRECT`
     : `${scheme} ${proxy.host}:${proxy.port}`
