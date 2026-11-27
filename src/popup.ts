@@ -1,5 +1,8 @@
 import browser from 'webextension-polyfill'
 import { getConfig, getTabProxyMap, updateConfig } from '@utils/storage'
+import { popupRules, proxyOptions } from '@utils/pageView'
+import { isRuleActive, usableOverrides } from '@utils/usable'
+import { canSaveOverride, canToggleRule } from '@utils/saveDecisions'
 import { resolveProxy } from '@utils/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import type { SetTabProxyMessage, ClearTabProxyMessage } from '@customTypes/messages'
@@ -53,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateCurrentDisplay () {
     const tabIdProxy = tab?.id !== undefined ? tabMap[tab.id] : undefined
-    const domainProxy = host ? config.perWebsiteOverride[host] : undefined
+    const domainProxy = host ? usableOverrides(config.perWebsiteOverride)[host] : undefined
     const applied = tabIdProxy ?? domainProxy
     currentProxy.textContent = getLabel(applied)
     select.value = applied || config.defaultProxy || DIRECT_PROXY_ID
@@ -65,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   directOpt.textContent = 'Direct'
   select.appendChild(directOpt)
 
-  for (const proxy of config.proxyList) {
+  for (const proxy of proxyOptions(config.proxyList)) {
     const opt = document.createElement('option')
     opt.value = proxy.id
     opt.textContent = proxy.label || `${proxy.host}:${proxy.port}`
@@ -81,7 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await browser.runtime.sendMessage(msg).catch(() => {})
       if (tab.id !== undefined) tabMap[tab.id] = proxyId
     } else if (scopeSelect.value === 'site') {
-      if (!host) return
+      if (!host || !canSaveOverride(host, proxyId)) return
       config.perWebsiteOverride[host] = proxyId
       await updateConfig({ perWebsiteOverride: config.perWebsiteOverride })
     }
@@ -156,30 +159,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     '#ruleHeader button[data-list]'
   )
 
-  function toPlainRules () {
-    return config.rules.map(r => ({
-      active: r.active,
-      name: r.name,
-      match: r.match,
-      bypassUrlPatterns: r.bypassUrlPatterns,
-      bypassResourceTypes: r.bypassResourceTypes,
-      staticExtensions: r.staticExtensions,
-      forceProxyUrlPatterns: r.forceProxyUrlPatterns,
-      fallbackDirect: r.fallbackDirect,
-      proxyId: r.proxyId,
-    }))
-  }
-
   async function saveRules () {
-    await updateConfig({ rules: toPlainRules() })
+    await updateConfig({ rules: config.rules })
   }
 
   function renderRuleList (showActive: boolean) {
     if (!ruleList) return
     ruleList.innerHTML = ''
-    const rules = config.rules
-      .filter(r => (showActive ? r.active : !r.active))
-      .slice(0, 5)
+    const rules = popupRules(config.rules, showActive).slice(0, 5)
     if (rules.length === 0) {
       const li = document.createElement('li')
       li.textContent = 'No rules'
@@ -191,8 +178,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const toggle = document.createElement('input')
       toggle.type = 'checkbox'
-      toggle.checked = r.active
+      toggle.checked = isRuleActive(r)
       toggle.addEventListener('change', async () => {
+        if (!canToggleRule({ ...r, active: toggle.checked })) {
+          toggle.checked = isRuleActive(r)
+          return
+        }
         r.active = toggle.checked
         await saveRules()
         renderRuleList(currentList === 'active')

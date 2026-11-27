@@ -9,16 +9,33 @@ import { WEB_REQUEST_RESOURCE_TYPES, WebRequestResourceType } from '@constant/re
 import { KeepAliveProxyRule, ProxyListItem, ProxyRule, RuntimeProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
-import { matchPattern } from 'browser-extension-url-match'
 import browser from 'webextension-polyfill'
 import { supportsProxyOnRequest } from '@utils/env'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
-import { KeepAliveProxyRuleSchema, ProxyListItemSchema, ProxyRuleSchema } from '@schemas/proxy'
-import { GeoBypassSettingsSchema } from '@schemas/settings'
-import { z } from 'zod'
-import { ProxyIdSchema } from '@schemas/generic'
+import { refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseProxyItems, refuseRules, withImportedRules } from '@utils/importFiles'
+import { isRuleActive } from '@utils/usable'
+import { markInvalid, markRuleFieldsInvalid } from '@utils/fieldMarks'
+import {
+  isValidDomain,
+  isValidPattern,
+  isValidProxyHost,
+  isValidProxyPort,
+  isValidStaticExtensions,
+  isValidTestUrl,
+  validateDomain,
+  validateHostnamePattern,
+} from '@utils/validity'
+import {
+  canSaveDefaultProxy,
+  canSaveKeepAliveRule,
+  canSaveOverride,
+  canSaveProxy,
+  canSaveRuleForm,
+  canSaveTestUrl,
+} from '@utils/saveDecisions'
+import { keepAliveRows, overrideRows, proxyOptions, proxyRows, ruleRows } from '@utils/pageView'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let editingProxyIndex: number | null = null
@@ -175,70 +192,12 @@ function setValidation (el: HTMLInputElement, validate: (val: string) => boolean
 }
 
 function validatePatternList (val: string) {
-  try {
-    return val.split(/\s*,\s*/).filter(Boolean).every(p => {
-      matchPattern(p, { strict: false }).assertValid()
-      return true
-    })
-  } catch {
-    return false
-  }
-}
-
-function validatePattern (val: string) {
-  try {
-    matchPattern(val, { strict: false }).assertValid()
-    return true
-  } catch {
-    return false
-  }
+  return val.split(/\s*,\s*/).filter(Boolean).every(isValidPattern)
 }
 
 function validateResourceTypes (val: string) {
   return val.split(/\s*,\s*/).filter(Boolean).every(
     v => WEB_REQUEST_RESOURCE_TYPES.includes(v as WebRequestResourceType))
-}
-
-function validateRegExp (val: string) {
-  if (!val.trim()) return true
-  const m = val.match(/^\/(.*)\/([gimsuy]*)$/)
-  if (!m) return false
-  try { new RegExp(m[1], m[2]) } catch { return false }
-  return true
-}
-
-function validateDomain (val: string) {
-  let urlString = val.trim()
-
-  // If there's no protocol, add one
-  if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(urlString)) {
-    urlString = 'https://' + urlString
-  }
-
-  try {
-    new URL(urlString)
-    return true
-  } catch (e) {
-    console.error('Invalid URL:', e)
-    return false
-  }
-}
-
-function validateHostnamePattern (val: string) {
-  const trimmed = val.trim()
-  if (trimmed.startsWith('*.')) {
-    const domain = trimmed.slice(2)
-    return /^[a-zA-Z0-9.-]+$/.test(domain)
-  }
-  return /^[a-zA-Z0-9.-]+$/.test(trimmed)
-}
-
-function isRuleInvalid (r: RuntimeProxyRule) {
-  if (!r.compiledMatch) return true
-  if (r.bypassUrlPatterns && r.bypassUrlPatterns.length && !r.compiledBypassUrlPatterns) return true
-  if (r.forceProxyUrlPatterns && r.forceProxyUrlPatterns.length && !r.compiledForceProxyUrlPatterns) return true
-  if (r.staticExtensions && r.staticExtensions.trim() && !r.compiledStaticExtensions) return true
-  return false
 }
 
 function updateListDisplay (input: HTMLInputElement) {
@@ -387,7 +346,7 @@ function showDuplicateModal (name: string): Promise<'old' | 'new' | 'both'> {
 function renderGeneral () {
   const select = document.getElementById('defaultProxy') as HTMLSelectElement
   select.innerHTML = '<option value="">None</option>'
-  config.proxyList.forEach(p => select.appendChild(createOption(p.id, p.label || p.host)))
+  proxyOptions(config.proxyList).forEach(p => select.appendChild(createOption(p.id, p.label || p.host)))
   select.value = config.defaultProxy || ''
 
   const fallback = document.getElementById('fallbackDirect') as HTMLInputElement
@@ -395,56 +354,65 @@ function renderGeneral () {
 
   const testUrl = document.getElementById('testProxyUrl') as HTMLInputElement
   testUrl.value = config.testProxyUrl
+  markInvalid(testUrl, false)
 
   // const mode = document.getElementById('storageMode') as HTMLSelectElement
   // browser.storage.local.get('storageMode').then(res => {
   //   mode.value = res.storageMode === 'cloud' ? 'cloud' : 'local'
   // })
 
-  select.onchange = () => updateConfig({ defaultProxy: select.value || undefined })
+  select.onchange = () => {
+    if (canSaveDefaultProxy(select.value, config.proxyList)) updateConfig({ defaultProxy: select.value || undefined })
+  }
   fallback.onchange = () => updateConfig({ fallbackDirect: fallback.checked })
-  testUrl.onchange = () => updateConfig({ testProxyUrl: testUrl.value })
+  testUrl.onchange = () => {
+    const valid = canSaveTestUrl(testUrl.value)
+    markInvalid(testUrl, !valid)
+    if (valid) updateConfig({ testProxyUrl: testUrl.value })
+  }
   // mode.onchange = () => browser.storage.local.set({ storageMode: mode.value })
 }
 
 function renderProxyList () {
   const tbody = document.querySelector('#proxyTable tbody') as HTMLElement
   tbody.innerHTML = ''
-  config.proxyList.forEach((p, idx) => {
+  proxyRows(config.proxyList, idx => revealAllPasswords || revealedPasswords.has(idx)).forEach(row => {
+    const { index: idx, entry: p, invalid } = row
     const tr = document.createElement('tr')
+    if (invalid) tr.classList.add('invalid-proxy')
 
     const visible = revealAllPasswords || revealedPasswords.has(idx)
 
     const labelCell = document.createElement('td')
-    labelCell.textContent = p.label || p.host
+    labelCell.textContent = row.label
     tr.appendChild(labelCell)
 
     const typeCell = document.createElement('td')
-    typeCell.textContent = p.type === 'socks' ? 'socks5' : p.type
+    typeCell.textContent = row.type
     tr.appendChild(typeCell)
 
     const hostCell = document.createElement('td')
-    hostCell.textContent = p.host
+    hostCell.textContent = row.host
     tr.appendChild(hostCell)
 
     const portCell = document.createElement('td')
-    portCell.textContent = String(p.port)
+    portCell.textContent = row.port
     tr.appendChild(portCell)
 
     const userCell = document.createElement('td')
-    userCell.textContent = p.username || ''
+    userCell.textContent = row.username
     tr.appendChild(userCell)
 
     const passCell = document.createElement('td')
     passCell.className = 'password'
-    passCell.textContent = p.password ? (visible ? p.password : '******') : ''
+    passCell.textContent = row.password
     tr.appendChild(passCell)
 
     const notifyCell = document.createElement('td')
     const notifyChk = document.createElement('input')
     notifyChk.type = 'checkbox'
     notifyChk.dataset.notify = ''
-    notifyChk.checked = !!p.notifyIfDown
+    notifyChk.checked = row.notifyIfDown
     notifyCell.appendChild(notifyChk)
     tr.appendChild(notifyCell)
 
@@ -472,7 +440,7 @@ function renderProxyList () {
     // attachRowHandlers(tr, document.getElementById('proxyTable') as HTMLTableElement,
     //   document.getElementById('exportProxiesSelected') as HTMLElement)
 
-    if (p.password) {
+    if (row.hasPassword) {
       const toggle = document.createElement('button')
       toggle.textContent = visible ? 'Hide' : 'Show'
       toggle.dataset.index = String(idx)
@@ -520,6 +488,8 @@ function openProxyModal (index?: number) {
   const port = document.getElementById('proxyPort') as HTMLInputElement
   port.min = '1'
   port.max = '65535'
+  markInvalid(host, false)
+  markInvalid(port, false)
   const user = document.getElementById('proxyUser') as HTMLInputElement
   const pass = document.getElementById('proxyPass') as HTMLInputElement
   const notify = document.getElementById('proxyNotify') as HTMLInputElement
@@ -561,8 +531,6 @@ function saveProxyFromModal () {
   const password = (document.getElementById('proxyPass') as HTMLInputElement).value
   const notify = (document.getElementById('proxyNotify') as HTMLInputElement).checked
 
-  if (!host || !port || port < 1 || port > 65535) return
-
   const base: ProxyListItem = {
     id: editingProxyIndex !== null ? config.proxyList[editingProxyIndex].id : crypto.randomUUID(),
     type,
@@ -574,6 +542,12 @@ function saveProxyFromModal () {
   if (username) base.username = username
   if (password) base.password = password
   if (notify) base.notifyIfDown = true
+
+  if (!canSaveProxy(base)) {
+    markInvalid(document.getElementById('proxyHost')!, !isValidProxyHost(host))
+    markInvalid(document.getElementById('proxyPort')!, !isValidProxyPort(port))
+    return
+  }
 
   if (editingProxyIndex !== null) {
     config.proxyList[editingProxyIndex] = base
@@ -590,33 +564,28 @@ function saveProxyFromModal () {
 function renderRules () {
   const tbody = document.querySelector('#ruleTable tbody') as HTMLElement
   tbody.innerHTML = ''
-  config.rules.forEach((r, idx) => {
+  ruleRows(config.rules, config.proxyList).forEach(row => {
+    const { index: idx, rule: r, invalid } = row
     const tr = document.createElement('tr')
-    const proxy = config.proxyList.find(p => p.id === r.proxyId)
-    const proxyLabel = r.proxyId === DIRECT_PROXY_ID
-      ? 'Direct'
-      : proxy
-        ? (proxy.label || proxy.host)
-        : r.proxyId
 
     const activeCell = document.createElement('td')
     const activeChk = document.createElement('input')
     activeChk.type = 'checkbox'
     activeChk.dataset.active = ''
-    activeChk.checked = !!r.active
+    activeChk.checked = row.active
     activeCell.appendChild(activeChk)
     tr.appendChild(activeCell)
 
     const nameCell = document.createElement('td')
-    nameCell.textContent = r.name
+    nameCell.textContent = row.name
     tr.appendChild(nameCell)
 
     const matchCell = document.createElement('td')
-    matchCell.textContent = r.match.join(', ')
+    matchCell.textContent = row.match
     tr.appendChild(matchCell)
 
     const proxyCell = document.createElement('td')
-    proxyCell.textContent = proxyLabel
+    proxyCell.textContent = row.proxyLabel
     tr.appendChild(proxyCell)
 
     const selectCell = document.createElement('td')
@@ -642,8 +611,8 @@ function renderRules () {
     actionsCell.appendChild(delBtn)
     actionsCell.appendChild(expBtn)
     tr.appendChild(actionsCell)
-    if (!proxy) tr.classList.add('missing-proxy')
-    if (isRuleInvalid(r)) tr.classList.add('invalid-rule')
+    if (row.missingProxy) tr.classList.add('missing-proxy')
+    if (invalid) tr.classList.add('invalid-rule')
     tbody.appendChild(tr)
     // attachRowHandlers(tr, document.getElementById('ruleTable') as HTMLTableElement,
     //   document.getElementById('exportRulesSelected') as HTMLElement)
@@ -665,7 +634,7 @@ function renderRules () {
       config.rules.splice(idx, 1)
       saveConfig(config).then(renderAll)
     }
-    expBtn.onclick = () => exportRules([r])
+    expBtn.onclick = () => exportRules([r as ProxyRule])
   })
 }
 
@@ -689,8 +658,8 @@ function openRuleModal (index?: number) {
 
   proxy.innerHTML = ''
   proxy.appendChild(createOption(DIRECT_PROXY_ID, 'Direct'))
-  config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
-  const kaExists = editingKeepAliveId ? config.proxyList.some(p => p.id === editingKeepAliveId) : false
+  proxyOptions(config.proxyList).forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
+  const kaExists = editingKeepAliveId ? proxyOptions(config.proxyList).some(p => p.id === editingKeepAliveId) : false
   if (editingKeepAliveId && !kaExists) {
     proxy.appendChild(createOption(editingKeepAliveId, `Missing Proxy (${editingKeepAliveId})`))
   }
@@ -706,12 +675,12 @@ function openRuleModal (index?: number) {
     staticExt.value = r.staticExtensions || ''
     forceUrls.value = (r.forceProxyUrlPatterns || []).join(', ')
     fbDirect.checked = !!r.fallbackDirect
-    active.checked = !!r.active
+    active.checked = isRuleActive(r)
   } else {
     title.textContent = 'Add Rule'
     name.value = ''
     match.value = ''
-    proxy.value = config.proxyList[0]?.id || ''
+    proxy.value = proxyOptions(config.proxyList)[0]?.id || ''
     bypassUrls.value = ''
     bypassTypes.value = ''
     staticExt.value = ''
@@ -723,8 +692,10 @@ function openRuleModal (index?: number) {
   setValidation(match, validatePatternList)
   setValidation(bypassUrls, validatePatternList)
   setValidation(bypassTypes, validateResourceTypes)
-  setValidation(staticExt, validateRegExp)
+  setValidation(staticExt, isValidStaticExtensions)
   setValidation(forceUrls, validatePatternList)
+  markInvalid(name, false)
+  markInvalid(proxy, false)
   updateListDisplay(match)
   updateListDisplay(bypassUrls)
   updateListDisplay(bypassTypes)
@@ -748,8 +719,6 @@ function saveRuleFromModal () {
   const fbDirect = (document.getElementById('ruleFallbackDirect') as HTMLInputElement).checked
   const active = (document.getElementById('ruleActive') as HTMLInputElement).checked
 
-  if (!name || !match || !proxyId) return
-
   const rule: ProxyRule = {
     name,
     match: match.split(/\s*,\s*/).filter(Boolean),
@@ -761,6 +730,11 @@ function saveRuleFromModal () {
   if (staticExt.trim()) rule.staticExtensions = staticExt.trim()
   if (forceUrls.trim()) rule.forceProxyUrlPatterns = forceUrls.split(/\s*,\s*/).filter(Boolean)
   if (fbDirect) rule.fallbackDirect = true
+
+  if (!canSaveRuleForm(rule)) {
+    markRuleFieldsInvalid(rule)
+    return
+  }
 
   const compiled = compileRules([rule])[0]
   if (editingRuleIndex !== null) {
@@ -776,11 +750,10 @@ function saveRuleFromModal () {
 }
 
 function renderOverrides () {
-  const tbody = document.querySelector('#overrideTable tbody') as HTMLElement
+  const tbody = document.querySelector('#overrideTable tbody') as HTMLElement | null
+  if (!tbody) return
   tbody.innerHTML = ''
-  for (const [domain, proxyId] of Object.entries(config.perWebsiteOverride)) {
-    const proxy = config.proxyList.find(p => p.id === proxyId)
-    const proxyLabel = proxy ? (proxy.label || proxy.host) : proxyId
+  for (const { domain, proxyLabel } of overrideRows(config.perWebsiteOverride, config.proxyList)) {
     const tr = document.createElement('tr')
     const domainCell = document.createElement('td')
     domainCell.textContent = domain
@@ -831,8 +804,9 @@ function openOverrideModal () {
   const proxy = document.getElementById('overrideProxy') as HTMLSelectElement
   domain.value = ''
   proxy.innerHTML = ''
-  config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
-  proxy.value = config.proxyList[0]?.id || ''
+  proxyOptions(config.proxyList).forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
+  proxy.value = proxyOptions(config.proxyList)[0]?.id || ''
+  markInvalid(proxy, false)
   setValidation(domain, validateDomain)
   modal.classList.remove('hidden')
 }
@@ -842,9 +816,15 @@ function closeOverrideModal () {
 }
 
 function saveOverrideFromModal () {
-  const domain = (document.getElementById('overrideDomain') as HTMLInputElement).value.trim()
-  const proxyId = (document.getElementById('overrideProxy') as HTMLSelectElement).value
-  if (!validateDomain(domain) || !proxyId) return
+  const domainField = document.getElementById('overrideDomain') as HTMLInputElement
+  const proxyField = document.getElementById('overrideProxy') as HTMLSelectElement
+  const domain = domainField.value.trim()
+  const proxyId = proxyField.value
+  if (!canSaveOverride(domain, proxyId)) {
+    markInvalid(domainField, !isValidDomain(domain))
+    markInvalid(proxyField, !proxyId)
+    return
+  }
   config.perWebsiteOverride[domain] = proxyId
   saveConfig(config).then(() => {
     renderAll()
@@ -862,8 +842,8 @@ function openKeepAliveModal (id?: string) {
   const active = document.getElementById('keepAliveActive') as HTMLInputElement
 
   proxy.innerHTML = ''
-  config.proxyList.forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
-  const kaExists = editingKeepAliveId ? config.proxyList.some(p => p.id === editingKeepAliveId) : false
+  proxyOptions(config.proxyList).forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
+  const kaExists = editingKeepAliveId ? proxyOptions(config.proxyList).some(p => p.id === editingKeepAliveId) : false
   if (editingKeepAliveId && !kaExists) {
     proxy.appendChild(createOption(editingKeepAliveId, `Missing Proxy (${editingKeepAliveId})`))
   }
@@ -877,11 +857,13 @@ function openKeepAliveModal (id?: string) {
     active.checked = !!rule?.active
   } else {
     title.textContent = 'Add Keep-Alive Rule'
-    proxy.value = config.proxyList[0]?.id || ''
+    proxy.value = proxyOptions(config.proxyList)[0]?.id || ''
     patterns.value = ''
     testUrl.value = ''
     active.checked = true
   }
+  markInvalid(proxy, false)
+  markInvalid(testUrl, false)
   updateListDisplay(patterns)
   setValidation(patterns, validateHostnamePattern)
   modal.classList.remove('hidden')
@@ -892,15 +874,22 @@ function closeKeepAliveModal () {
 }
 
 function saveKeepAliveFromModal () {
-  const proxyId = (document.getElementById('keepAliveProxy') as HTMLSelectElement).value
-  const patterns = (document.getElementById('keepAlivePatterns') as HTMLInputElement).value.split(/\s*,\s*/).filter(
-    Boolean)
-  const testUrl = (document.getElementById('keepAliveTestUrl') as HTMLInputElement).value.trim()
+  const proxyField = document.getElementById('keepAliveProxy') as HTMLSelectElement
+  const patternsField = document.getElementById('keepAlivePatterns') as HTMLInputElement
+  const testUrlField = document.getElementById('keepAliveTestUrl') as HTMLInputElement
+  const proxyId = proxyField.value
+  const patterns = patternsField.value.split(/\s*,\s*/).filter(Boolean)
+  const testUrl = testUrlField.value.trim()
   const active = (document.getElementById('keepAliveActive') as HTMLInputElement).checked
-  if (!proxyId || patterns.length === 0) return
-  if (!config.keepAliveRules) config.keepAliveRules = {}
   const rule: { active: boolean; tabUrls: string[]; testProxyUrl?: string } = { active, tabUrls: patterns }
   if (testUrl) rule.testProxyUrl = testUrl
+  if (!proxyId || !canSaveKeepAliveRule(rule)) {
+    markInvalid(proxyField, !proxyId)
+    markInvalid(patternsField, patterns.length === 0 || !patterns.every(validateHostnamePattern))
+    markInvalid(testUrlField, !!testUrl && !isValidTestUrl(testUrl))
+    return
+  }
+  if (!config.keepAliveRules) config.keepAliveRules = {}
   if (editingKeepAliveId && editingKeepAliveId !== proxyId) {
     delete config.keepAliveRules[editingKeepAliveId]
   }
@@ -914,16 +903,14 @@ function saveKeepAliveFromModal () {
 function renderKeepAlive () {
   const tbody = document.querySelector('#keepAliveTable tbody') as HTMLElement
   tbody.innerHTML = ''
-  for (const [proxyId, rule] of Object.entries(config.keepAliveRules || {})) {
+  for (const { proxyId, raw: rule, proxyLabel, active, tabUrls, testProxyUrl, missingProxy } of keepAliveRows(config.keepAliveRules, config.proxyList)) {
     const tr = document.createElement('tr')
-    const proxy = config.proxyList.find(p => p.id === proxyId)
-    const proxyLabel = proxy ? (proxy.label || proxy.host) : proxyId
 
     const activeCell = document.createElement('td')
     const chk = document.createElement('input')
     chk.type = 'checkbox'
     chk.dataset.active = ''
-    chk.checked = rule.active
+    chk.checked = active
     activeCell.appendChild(chk)
     tr.appendChild(activeCell)
 
@@ -932,11 +919,11 @@ function renderKeepAlive () {
     tr.appendChild(proxyCell)
 
     const urlsCell = document.createElement('td')
-    urlsCell.textContent = rule.tabUrls.join(', ')
+    urlsCell.textContent = tabUrls
     tr.appendChild(urlsCell)
 
     const testCell = document.createElement('td')
-    testCell.textContent = rule.testProxyUrl || ''
+    testCell.textContent = testProxyUrl
     tr.appendChild(testCell)
 
     const selectCell = document.createElement('td')
@@ -959,7 +946,7 @@ function renderKeepAlive () {
     actionsCell.appendChild(delBtn)
     tr.appendChild(actionsCell)
 
-    if (!proxy) tr.classList.add('missing-proxy')
+    if (missingProxy) tr.classList.add('missing-proxy')
     tbody.appendChild(tr)
     // attachRowHandlers(tr, document.getElementById('keepAliveTable') as HTMLTableElement,
     //   document.getElementById('exportKeepAliveSelected') as HTMLElement)
@@ -1011,7 +998,15 @@ function getExportableConfig () {
 }
 
 async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
-  const base = getExportableConfig()
+  const base = {
+    proxyList: config.proxyList,
+    defaultProxy: config.defaultProxy,
+    fallbackDirect: config.fallbackDirect,
+    rules: config.rules,
+    keepAliveRules: config.keepAliveRules,
+    testProxyUrl: config.testProxyUrl,
+    perWebsiteOverride: config.perWebsiteOverride,
+  }
   const updated: GeoBypassSettings = {
     proxyList: [...base.proxyList],
     defaultProxy: cfg.defaultProxy ?? base.defaultProxy,
@@ -1083,15 +1078,14 @@ async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
   renderAll()
 }
 
-async function importConfigObject (obj: unknown) {
-  const parsed = GeoBypassSettingsSchema.partial().safeParse(obj)
-  if (!parsed.success) {
-    console.error('Invalid config data:', parsed.error)
-    alert('Invalid config file: schema validation failed.')
-    return
-  }
+function alertImportMessages (messages: string[]) {
+  if (messages.length > 0) alert(messages.join('\n'))
+}
 
-  await mergeConfigData(parsed.data)
+async function importConfigObject (obj: unknown) {
+  const verdict = refuseConfigFile(obj)
+  alertImportMessages(verdict.messages)
+  await mergeConfigData(verdict.accepted)
 }
 
 async function importConfigFromUrl (url: string) {
@@ -1291,18 +1285,9 @@ function handleImportRules (files: FileList | null) {
   files[0].text().then(t => {
     try {
       const raw = JSON.parse(t)
-      const arr = raw?.rules
-
-      const result = z.array(ProxyRuleSchema).safeParse(arr)
-
-      if (!result.success) {
-        console.error('Invalid proxy rules:', result.error)
-        alert('Invalid rule file: schema validation failed.')
-        return
-      }
-
-      const compiled = compileRules(result.data)
-      config.rules.push(...compiled)
+      const verdict = refuseRules(raw?.rules)
+      alertImportMessages(verdict.messages)
+      config = withImportedRules(config, verdict.accepted)
       saveConfig(config).then(renderAll)
 
     } catch (e) {
@@ -1339,17 +1324,9 @@ function handleImportProxies (files: FileList | null) {
   files[0].text().then(async t => {
     try {
       const raw = JSON.parse(t)
-      const list = raw?.proxyList
-
-      const result = z.array(ProxyListItemSchema).safeParse(list)
-
-      if (!result.success) {
-        console.error('Invalid proxy list items:', result.error)
-        alert('Invalid proxy file: schema validation failed.')
-        return
-      }
-
-      const arr = result.data
+      const verdict = refuseProxyItems(raw?.proxyList)
+      alertImportMessages(verdict.messages)
+      const arr = verdict.accepted
       const existing = new Map(config.proxyList.map((p, idx) => [proxySignature(p), idx]))
 
       for (const p of arr) {
@@ -1412,17 +1389,9 @@ function handleImportOverrides (files: FileList | null) {
   files[0].text().then(t => {
     try {
       const parsed = JSON.parse(t)
-      const obj = parsed?.perWebsiteOverride
-
-      const result = z.record(ProxyIdSchema).safeParse(obj)
-
-      if (!result.success) {
-        console.error('Invalid override map:', result.error)
-        alert('Invalid override file: expected a record of string → ProxyId.')
-        return
-      }
-
-      Object.assign(config.perWebsiteOverride, result.data)
+      const verdict = refuseOverrides(parsed?.perWebsiteOverride)
+      alertImportMessages(verdict.messages)
+      Object.assign(config.perWebsiteOverride, verdict.accepted)
       saveConfig(config).then(renderAll)
 
     } catch (e) {
@@ -1464,19 +1433,11 @@ function handleImportKeepAlive (files: FileList | null) {
   files[0].text().then(t => {
     try {
       const parsed = JSON.parse(t)
-      const obj = parsed?.keepAliveRules
-
-      const result = KeepAliveProxyRuleSchema.safeParse(obj)
-
-      if (!result.success) {
-        console.error('Invalid keep-alive rules:', result.error)
-        alert('Invalid keep-alive file: schema validation failed.')
-        return
-      }
-
+      const verdict = refuseKeepAliveRules(parsed?.keepAliveRules)
+      alertImportMessages(verdict.messages)
       if (!config.keepAliveRules) config.keepAliveRules = {}
 
-      Object.assign(config.keepAliveRules, result.data)
+      Object.assign(config.keepAliveRules, verdict.accepted)
       saveConfig(config).then(renderAll)
 
     } catch (e) {
@@ -1499,7 +1460,7 @@ function openExportConfigModal () {
   proxyToggle.textContent = 'Select All'
   container.appendChild(proxyToggle)
   container.appendChild(document.createElement('br'))
-  config.proxyList.forEach((p, idx) => {
+  proxyRows(config.proxyList).forEach(({ index: idx, label: text }) => {
     const label = document.createElement('label')
     const chk = document.createElement('input')
     chk.type = 'checkbox'
@@ -1511,7 +1472,7 @@ function openExportConfigModal () {
       updateExportSelectAllLabel()
     })
     label.appendChild(chk)
-    label.append(' ', p.label || p.host)
+    label.append(' ', text)
     container.appendChild(label)
     container.appendChild(document.createElement('br'))
   })
@@ -1525,7 +1486,7 @@ function openExportConfigModal () {
   ruleToggle.textContent = 'Select All'
   container.appendChild(ruleToggle)
   container.appendChild(document.createElement('br'))
-  config.rules.forEach((r, idx) => {
+  ruleRows(config.rules, config.proxyList).forEach(({ index: idx, name: text }) => {
     const label = document.createElement('label')
     const chk = document.createElement('input')
     chk.type = 'checkbox'
@@ -1537,7 +1498,7 @@ function openExportConfigModal () {
       updateExportSelectAllLabel()
     })
     label.appendChild(chk)
-    label.append(' ', r.name)
+    label.append(' ', text)
     container.appendChild(label)
     container.appendChild(document.createElement('br'))
   })
@@ -1551,7 +1512,7 @@ function openExportConfigModal () {
   ovToggle.textContent = 'Select All'
   container.appendChild(ovToggle)
   container.appendChild(document.createElement('br'))
-  for (const domain of Object.keys(config.perWebsiteOverride)) {
+  for (const { domain } of overrideRows(config.perWebsiteOverride, config.proxyList)) {
     const label = document.createElement('label')
     const chk = document.createElement('input')
     chk.type = 'checkbox'
@@ -1577,9 +1538,7 @@ function openExportConfigModal () {
   kaToggle.textContent = 'Select All'
   container.appendChild(kaToggle)
   container.appendChild(document.createElement('br'))
-  for (const proxyId of Object.keys(config.keepAliveRules || {})) {
-    const proxy = config.proxyList.find(p => p.id === proxyId)
-    const display = proxy ? (proxy.label || proxy.host) : proxyId
+  for (const { proxyId, proxyLabel: display } of keepAliveRows(config.keepAliveRules, config.proxyList)) {
     const label = document.createElement('label')
     const chk = document.createElement('input')
     chk.type = 'checkbox'
@@ -1728,8 +1687,8 @@ function renderDiagnostics () {
   const select = document.getElementById('diagSelectProxy') as HTMLSelectElement
   const testUrl = document.getElementById('diagTestUrl') as HTMLInputElement
   select.innerHTML = ''
-  config.proxyList.forEach((p, idx) => {
-    const opt = createOption(String(idx), p.label || p.host)
+  proxyRows(config.proxyList).filter(row => !row.invalid).forEach(({ index: idx, label: text }) => {
+    const opt = createOption(String(idx), text)
     select.appendChild(opt)
   })
   testUrl.value = config.testProxyUrl
@@ -1869,7 +1828,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     () => openListModal(
       'ruleMatch',
       'Match Patterns',
-      validatePattern,
+      isValidPattern,
       {
         href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
         title: 'Uses WebExtension match patterns',
@@ -1879,7 +1838,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     () => openListModal(
       'ruleBypassUrls',
       'Bypass URL Patterns',
-      validatePattern,
+      isValidPattern,
       {
         href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
         title: 'Uses WebExtension match patterns',
@@ -1889,7 +1848,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     () => openListModal(
       'ruleForceUrls',
       'Force Proxy URL Patterns',
-      validatePattern,
+      isValidPattern,
       {
         href: 'https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns',
         title: 'Uses WebExtension match patterns',
