@@ -12,5 +12,6 @@ Setting up proxies, rules, website overrides, and keep-alive is quick and clear 
 - The design direction comes from the `ideator` agent (Fable), at the owner's request. The implementer builds the prototype and pages from its design.
 - UI code is split by page and by section. No file holds more than one section's behaviour, and none exceeds 1000 lines.
 - Polish is part of done, not a later pass. Every page has a designed empty state, loading state, and error state. Light and dark themes follow the system setting. Every control is reachable by keyboard and shows a visible focus state. Text meets WCAG AA contrast. Spacing, type sizes, and colours come from one shared set of values.
+- The rebuilt pages run a proxy test through the background, so the proxy test's browser calls move behind an adapter port (see `E03/S01` criterion 11).
 - The rebuilt pages read stored config only through the usable views; no page code treats a raw stored entry as a typed one.
 - Every page is checked in a real browser, Firefox and Chrome, before its story closes.
