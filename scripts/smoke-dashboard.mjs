@@ -26,6 +26,10 @@ export function isCheckedSelector (selector) {
   return document.querySelector(selector).checked
 }
 
+export function readAttributeSelector (selector, attribute) {
+  return document.querySelector(selector).getAttribute(attribute)
+}
+
 export function checkEveryConfigExportItem () {
   for (const box of document.querySelectorAll('#exportConfigItems input[type="checkbox"]')) box.checked = true
 }

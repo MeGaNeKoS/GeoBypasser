@@ -195,8 +195,8 @@
         </label>
         <label>Host <input type="text" id="diagHost"></label>
         <label>Port <input type="number" id="diagPort" min="1" max="65535"></label>
-        <label>User <input type="text" id="diagUser"></label>
-        <label>Password <input type="text" id="diagPass"></label>
+        <label>User <input type="text" id="diagUser" autocomplete="off"></label>
+        <label>Password <input type="password" id="diagPass" autocomplete="new-password"></label>
         <button id="diagTestCustom">Test</button>
         <button id="diagAddProxy">Add to List</button>
       </div>
@@ -306,8 +306,8 @@
       </label><br>
       <label>Host <input type="text" id="proxyHost"></label><br>
       <label>Port <input type="number" id="proxyPort" min="1" max="65535"></label><br>
-      <label>Username <input type="text" id="proxyUser"></label><br>
-      <label>Password <input type="text" id="proxyPass"></label><br>
+      <label>Username <input type="text" id="proxyUser" autocomplete="off"></label><br>
+      <label>Password <input type="password" id="proxyPass" autocomplete="new-password"></label><br>
       <label>Notify if down <input type="checkbox" id="proxyNotify"></label><br>
       <button id="saveProxy">Save</button>
       <button id="cancelProxy">Cancel</button>

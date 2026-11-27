@@ -4,8 +4,6 @@
   "version": "1.2.2",
   "description": "Manage a list of proxies and route browser traffic through them by tab, by site, or by request rule.",
   "permissions": [
-    "activeTab",
-    "cookies",
     "notifications",
     "storage",
     "<all_urls>",
