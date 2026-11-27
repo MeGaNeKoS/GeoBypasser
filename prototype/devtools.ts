@@ -1,6 +1,6 @@
-import { element, replaceContent } from './dom'
-import { icon } from './icons'
-import { statusLine } from './components/feedback'
+import { element, replaceContent } from '@ui/dom'
+import { icon } from '@ui/icons'
+import { statusLine } from '@ui/components/feedback'
 import type { ListState, PrototypeState } from './model'
 import type { Store } from './store'
 

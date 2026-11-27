@@ -1,5 +1,5 @@
-import { element } from './dom'
-import { segmented, type SegmentOption } from './components/controls'
+import { element } from '@ui/dom'
+import { segmented, type SegmentOption } from '@ui/components/controls'
 import type { Browser, ListState, PrototypeState, ProxyControl, ThemeChoice } from './model'
 import type { Store } from './store'
 

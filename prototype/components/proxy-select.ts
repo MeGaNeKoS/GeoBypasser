@@ -1,6 +1,6 @@
 import { DIRECT_ID } from '../model'
 import { findProxy, proxyAddress, usableProxies } from '../proxy-lookup'
-import { selectField, type SelectOption } from './fields'
+import { selectField, type SelectOption } from '@ui/components/fields'
 
 export type ProxySelectOptions = {
   name: string;

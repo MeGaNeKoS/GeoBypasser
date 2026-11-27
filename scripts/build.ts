@@ -23,9 +23,22 @@ const PUBLIC: string[] = [
   'assets/icons/',
 ]
 
+const SHARED_STYLES_DIR = path.resolve('src/ui/styles')
+const SHARED_STYLES_DEST = path.join(DIST_DIR, 'ui', 'styles')
+const COMPONENT_TEST_PAGE = 'assets/component-test.html'
+const COMPONENT_TEST_ENTRY = 'src/ui/test-page/component-test.ts'
+
 // Parse command-line arguments
 const args = process.argv.slice(2)
 const minify = args.includes('--minify')
+
+function devOnlyPages (): string[] {
+  return minify ? [] : [COMPONENT_TEST_PAGE]
+}
+
+function devOnlyEntryPoints (): Record<string, string> {
+  return minify ? {} : { componentTest: COMPONENT_TEST_ENTRY }
+}
 
 async function cleanDist () {
   console.log('Cleaning dist directory...')
@@ -41,10 +54,11 @@ async function copyFiles (browser: string) {
 
   console.log(`Copying files for ${browser}...`)
   await fs.copy(manifestPath, path.join(DIST_DIR, 'manifest.json'))
-  for (const asset of PUBLIC) {
+  for (const asset of [...PUBLIC, ...devOnlyPages()]) {
     const destination = path.join(DIST_DIR, path.basename(asset))
     await fs.copy(asset, destination)
   }
+  await fs.copy(SHARED_STYLES_DIR, SHARED_STYLES_DEST)
   console.log(`Files copied for ${browser}.`)
 }
 
@@ -68,6 +82,7 @@ async function bundleScripts (browser: string) {
       devtools: 'src/devtools.ts',
       dashboard: 'src/dashboard.ts',
       popup: 'src/popup.ts',
+      ...devOnlyEntryPoints(),
     },
     outdir: DIST_DIR,
     bundle: true,

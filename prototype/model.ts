@@ -1,6 +1,8 @@
 export type Browser = 'firefox' | 'chrome'
 
-export type ListState = 'populated' | 'empty' | 'loading' | 'error'
+import type { ListState } from '@ui/components/state-body'
+
+export type { ListState }
 
 export type ThemeChoice = 'system' | 'light' | 'dark'
 

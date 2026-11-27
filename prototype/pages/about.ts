@@ -1,5 +1,5 @@
-import { element } from '../dom'
-import { badge, type BadgeKind } from '../components/feedback'
+import { element } from '@ui/dom'
+import { badge, type BadgeKind } from '@ui/components/feedback'
 import { otherExtensionsNote } from '../components/other-extensions-note'
 import { aboutVersion } from '../sample-data'
 import type { Browser } from '../model'

@@ -1,7 +1,7 @@
 import { element, replaceContent } from '../dom'
-import type { ListState } from '../model'
 import { button } from './button'
 import { banner, skeletonRows, stateBlock, statusLine } from './feedback'
+import type { ListState } from './state-body'
 
 export function setAsideBanner (count: number, noun: string, nounPlural: string, action?: Node): HTMLDivElement {
   const subject = count === 1 ? `1 ${noun} is` : `${count} ${nounPlural} are`

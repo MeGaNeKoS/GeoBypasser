@@ -1,5 +1,5 @@
-import { element } from '../dom'
-import { icon } from '../icons'
+import { element } from '@ui/dom'
+import { icon } from '@ui/icons'
 import type { Browser } from '../model'
 
 const HEADING = 'Other proxy extensions'

@@ -1,14 +1,20 @@
 import { element } from '../dom'
 import { icon } from '../icons'
-import type { NetworkNode } from '../model'
 
-export function usageTree (nodes: NetworkNode[]): HTMLDivElement {
+export type TreeNode = {
+  name: string;
+  sent: string;
+  received: string;
+  children: TreeNode[];
+}
+
+export function usageTree (nodes: TreeNode[]): HTMLDivElement {
   return element('div', { class: 'tree', role: 'tree', 'aria-label': 'Network usage' },
     ...nodes.map(node => treeNode(node)),
   )
 }
 
-function treeNode (node: NetworkNode): HTMLElement {
+function treeNode (node: TreeNode): HTMLElement {
   const summary = element('summary', {},
     treeName(node),
     figure('Sent', node.sent),
@@ -23,7 +29,7 @@ function treeNode (node: NetworkNode): HTMLElement {
   )
 }
 
-function treeName (node: NetworkNode): HTMLElement {
+function treeName (node: TreeNode): HTMLElement {
   const marker = node.children.length > 0
     ? icon('chevron-down')
     : element('span', { class: 'tree__spacer', 'aria-hidden': 'true' })

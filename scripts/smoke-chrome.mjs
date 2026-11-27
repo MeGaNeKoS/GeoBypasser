@@ -8,6 +8,8 @@ import { FIXTURE, POPUP_SETTLE_MS, sleep, STEP_TIMEOUT_MS, STOP_GRACE_MS, STORAG
 import { checkCredentialWiring } from './smoke-credentials.mjs'
 import { checkSetAsideExports } from './smoke-set-aside.mjs'
 import { checkPacRoute } from './smoke-chrome-route.mjs'
+import { COMPONENT_TEST_PAGE, chromeKeyEvents, runComponentTestPage } from './smoke-component-test.mjs'
+import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
 import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
@@ -146,16 +148,32 @@ function findWorker () {
   return [...sessions].find(([, s]) => s.ready && s.type === 'service_worker' && s.url.startsWith(`chrome-extension://${extId}/`))?.[0]
 }
 
-async function openTab (path) {
-  const url = `chrome-extension://${extId}/${path}`
+async function openUrl (url) {
   const { targetId } = await cdp.send('Target.createTarget', { url })
-  await waitFor(async () => (await cdp.send('Target.getTargets')).targetInfos.find(t => t.targetId === targetId && t.url === url), STEP_TIMEOUT_MS,`${path} tab`)
+  await waitFor(async () => (await cdp.send('Target.getTargets')).targetInfos.find(t => t.targetId === targetId && t.url === url), STEP_TIMEOUT_MS, `${url} tab`)
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true })
   await attach(sessionId, 'page')
-  await waitFor(() => evalIn(sessionId, 'document.readyState === "complete"'), STEP_TIMEOUT_MS,`${path} to load`)
+  await waitFor(() => evalIn(sessionId, 'document.readyState === "complete"'), STEP_TIMEOUT_MS, `${url} to load`)
   const reached = await evalIn(sessionId, 'location.href')
   if (reached !== url) throw new Error(`opened ${url} but the tab shows ${reached}`)
   return sessionId
+}
+
+function openTab (path) {
+  return openUrl(`chrome-extension://${extId}/${path}`)
+}
+
+function componentDriver (sessionId) {
+  return {
+    read: readFn => evalIn(sessionId, `(${readFn})()`),
+    write: (writeFn, args) => evalIn(sessionId, `(${writeFn})(${args.map(arg => JSON.stringify(arg)).join(', ')})`),
+    press: async step => {
+      await cdp.send('Page.bringToFront', {}, sessionId)
+      for (const event of chromeKeyEvents(step)) await cdp.send('Input.dispatchKeyEvent', event, sessionId)
+    },
+    setScheme: scheme => cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] }, sessionId),
+    reload: () => cdp.send('Page.reload', {}, sessionId),
+  }
 }
 
 async function launch (fresh, chromePath) {
@@ -247,6 +265,18 @@ async function runSmoke (options) {
   await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO)
   await checkMixedOverrideInPac({ evalIn, worker: findWorker() }, failures)
   await checkPacRoute({ evalIn, worker: findWorker(), dashboard }, failures)
+
+  const componentTest = await openTab(COMPONENT_TEST_PAGE)
+  const componentFailures = await runComponentTestPage(componentDriver(componentTest))
+  failures.push(...componentFailures.map(message => `component test: ${message}`))
+  console.log(`component test page: ${componentFailures.length} failure(s)`)
+
+  for (const page of PROTOTYPE_PAGES) {
+    const prototype = await openUrl(prototypeUrl(page))
+    const state = await evalIn(prototype, `(${readPrototypeState})()`)
+    failures.push(...prototypeProblems(page, state, missingStylesheets(page)))
+    console.log(`prototype ${page}: ${JSON.stringify(state)}`)
+  }
 
   const popup = await openTab('popup.html')
   await sleep(POPUP_SETTLE_MS)

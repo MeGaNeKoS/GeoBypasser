@@ -1,7 +1,7 @@
-import { element } from '../dom'
-import { icon } from '../icons'
+import { element } from '@ui/dom'
+import { icon } from '@ui/icons'
 import type { Browser, ProxyControl } from '../model'
-import { banner } from './feedback'
+import { banner } from '@ui/components/feedback'
 
 const TITLE = 'GeoBypass is not routing your traffic'
 const OTHER_EXTENSION_BODY = "Another extension controls this browser's proxy settings, so your proxies, rules and site proxies are not in effect. Turn off or remove the other proxy extension on the extensions page (chrome://extensions). This message clears by itself once GeoBypass is back in control."

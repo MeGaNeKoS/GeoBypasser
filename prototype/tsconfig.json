@@ -9,7 +9,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "skipLibCheck": true,
-    "types": []
+    "types": [],
+    "paths": {
+      "@ui/*": ["../src/ui/*"]
+    }
   },
   "include": ["**/*.ts"]
 }

@@ -1,4 +1,4 @@
-import { segmented, type SegmentOption } from './controls'
+import { segmented, type SegmentOption } from '@ui/components/controls'
 import type { ProxyType } from '../model'
 
 const TYPE_OPTIONS: SegmentOption<ProxyType>[] = [

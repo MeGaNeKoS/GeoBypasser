@@ -25,7 +25,10 @@ export function patternList (options: PatternListOptions): HTMLDivElement {
   )
 }
 
+let errorSequence = 0
+
 function patternRow (options: PatternListOptions, pattern: string, fault: string | undefined, focus = false): HTMLDivElement {
+  const errorId = fault ? `pattern-error-${errorSequence += 1}` : undefined
   const input = element('input', {
     type: 'text',
     name: options.field,
@@ -34,11 +37,12 @@ function patternRow (options: PatternListOptions, pattern: string, fault: string
     placeholder: options.placeholder,
     'aria-label': options.label,
     'aria-invalid': fault ? 'true' : undefined,
+    'aria-describedby': errorId,
   })
   const remove = button('Remove', { onClick: () => row.remove() })
   const row = element('div', { class: 'stack stack--tight' },
     element('div', { class: 'pattern-list__row' }, input, remove),
-    fault ? element('p', { class: 'field__error' }, icon('alert'), fault) : null,
+    fault ? element('p', { class: 'field__error', id: errorId }, icon('alert'), fault) : null,
   )
   if (focus) queueMicrotask(() => input.focus())
   return row

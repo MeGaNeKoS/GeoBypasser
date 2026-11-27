@@ -1,7 +1,7 @@
 import type { PrototypeState } from '../model'
 import type { Store } from '../store'
-import { button } from './button'
-import { banner } from './feedback'
+import { button } from '@ui/components/button'
+import { banner } from '@ui/components/feedback'
 
 export const SAVE_FAILED_TEXT = 'Your changes were not saved. Try again.'
 

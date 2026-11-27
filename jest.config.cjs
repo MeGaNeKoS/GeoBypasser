@@ -11,6 +11,7 @@ module.exports = {
     '^@customTypes/(.*)$': '<rootDir>/src/types/$1',
     '^@constant/(.*)$': '<rootDir>/src/constant/$1',
     '^@schemas/(.*)$': '<rootDir>/src/schemas/$1',
+    '^@ui/(.*)$': '<rootDir>/src/ui/$1',
   },
   transform: {
     '^.+\\.tsx?$': [

@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "lib": [
       "DOM",
+      "DOM.Iterable",
       "ES2020"
     ],
     "outDir": "./dist",
@@ -39,6 +40,9 @@
       ],
       "@constant/*": [
         "src/constant/*"
+      ],
+      "@ui/*": [
+        "src/ui/*"
       ],
       "@assets/*": [
         "src/assets/*"

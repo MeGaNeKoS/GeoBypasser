@@ -1,7 +1,8 @@
 import { element, replaceContent } from '../dom'
 import { button } from './button'
 import { skeletonRows, stateBlock } from './feedback'
-import type { ListState } from '../model'
+
+export type ListState = 'populated' | 'empty' | 'loading' | 'error'
 
 export type StateCopy = {
   emptyTitle: string;

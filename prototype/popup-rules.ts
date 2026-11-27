@@ -1,6 +1,6 @@
-import { element } from './dom'
-import { icon } from './icons'
-import { segmented, switchControl, type SegmentOption } from './components/controls'
+import { element } from '@ui/dom'
+import { icon } from '@ui/icons'
+import { segmented, switchControl, type SegmentOption } from '@ui/components/controls'
 import { rules } from './sample-data'
 import type { ListState, RuleEntry } from './model'
 

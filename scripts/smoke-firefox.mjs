@@ -10,6 +10,8 @@ import { checkSetAsideExports } from './smoke-set-aside.mjs'
 import { checkMixedOverrideInDashboard, addProxyAsDefault, clickSiteClearInPopup, MIXED_HOST, MIXED_KEY, MIXED_URL, mixedRouteProxy, openPopupBesideTab, readPopupDomain, storedKeysForHost, tabLoadStatus, writeMixedOverride } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, FIREFOX_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { startRecordingListener } from './smoke-chrome-route.mjs'
+import { COMPONENT_TEST_PAGE, firefoxKeyActions, runComponentTestPage } from './smoke-component-test.mjs'
+import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
 import { checkRefusedProxySave, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
@@ -102,7 +104,7 @@ function writePrefs (port) {
 function launchFirefox (port, settings) {
   writePrefs(port)
   const log = openSync(join(PROFILE, 'firefox.log'), 'a')
-  firefox = spawn(settings.firefoxPath, ['-no-remote', '-profile', PROFILE, '--marionette', '--headless', 'about:blank'], {
+  firefox = spawn(settings.firefoxPath, ['-no-remote', '-profile', PROFILE, '--marionette', 'about:blank'], {
     stdio: ['ignore', log, log],
     env: settings.env
   })
@@ -280,6 +282,51 @@ async function runFirefoxSmoke (settings) {
   await checkMixedOverrideInDashboard({ run: evaluate, reopenDashboard: () => navigate(`${second.origin}dashboard.html`) }, failures)
   await runStep('popup clears a mixed case override for the tab it is opened beside', () => checkPopupClearOnMixedTab(second), failures)
   await setTabProxyFromPopup(second)
+  await checkComponentTestPage(second)
+  await checkPrototypePages()
+}
+
+async function checkComponentTestPage (session) {
+  await navigate(`${session.origin}${COMPONENT_TEST_PAGE}`)
+  const componentFailures = await runComponentTestPage(componentDriver())
+  failures.push(...componentFailures.map(message => `component test: ${message}`))
+  console.log(`component test page: ${componentFailures.length} failure(s)`)
+}
+
+async function checkPrototypePages () {
+  for (const page of PROTOTYPE_PAGES) {
+    await navigate(prototypeUrl(page))
+    const state = await evaluate(readPrototypeState)
+    failures.push(...prototypeProblems(page, state, missingStylesheets(page)))
+    console.log(`prototype ${page}: ${JSON.stringify(state)}`)
+  }
+}
+
+function componentDriver () {
+  return {
+    read: fn => evaluate(fn),
+    write: (fn, args) => evaluate(fn, args),
+    press: async step => {
+      await marionette.send('Marionette:SetContext', { value: 'content' })
+      const handle = (await marionette.send('WebDriver:GetWindowHandle')).value
+      await marionette.send('WebDriver:SwitchToWindow', { handle, focus: true })
+      await marionette.send('WebDriver:PerformActions', { actions: [{ type: 'key', id: 'keyboard', actions: firefoxKeyActions(step) }] })
+      await marionette.send('WebDriver:ReleaseActions', {})
+    },
+    setScheme: scheme => evaluate(setContentScheme, [CONTENT_SCHEME_OVERRIDE[scheme]], 'chrome'),
+    reload: async () => {
+      await marionette.send('Marionette:SetContext', { value: 'content' })
+      await marionette.send('WebDriver:Refresh', {})
+      await evaluate(recordDialogs)
+    },
+  }
+}
+
+const CONTENT_SCHEME_OVERRIDE = { dark: 0, light: 1 }
+
+function setContentScheme (override) {
+  Services.prefs.setIntPref('layout.css.prefers-color-scheme.content-override', override)
+  return true
 }
 
 function policyHost (addonId) {
@@ -296,7 +343,7 @@ function listenForErrors () {
       } catch {
         return
       }
-      if (message.flags === 0 && message.sourceName.startsWith('moz-extension://')) {
+      if (message.flags === 0 && (message.sourceName.startsWith('moz-extension://') || message.sourceName.startsWith('file://'))) {
         globalThis.smokeErrors.push(`${message.sourceName}:${message.lineNumber}: ${message.errorMessage}`)
       }
     }
@@ -307,7 +354,7 @@ function listenForErrors () {
 
 function collectErrors (origin) {
   Services.console.unregisterListener(globalThis.smokeListener)
-  return globalThis.smokeErrors.filter(error => error.startsWith(origin))
+  return globalThis.smokeErrors.filter(error => error.startsWith(origin) || error.startsWith('file://'))
 }
 
 function recordDialogs () {

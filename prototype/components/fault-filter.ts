@@ -1,5 +1,5 @@
-import { button } from './button'
-import { setAsideBanner, type EmptyState } from './list-section'
+import { button } from '@ui/components/button'
+import { setAsideBanner, type EmptyState } from '@ui/components/list-section'
 
 export type FaultNoun = {
   noun: string;
