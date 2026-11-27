@@ -24,6 +24,10 @@ const rules = [
   { name: 'force', match: ['*://*.example.org/*'], proxyId: 'good', bypassUrlPatterns: ['*://*.example.org/*'], forceProxyUrlPatterns: ['*://forced.example.org/*'] },
   { name: 'static', match: ['*://static.example.net/*'], proxyId: 'good', staticExtensions: '/\\.(png|js)$/i' },
   { name: 'path', match: ['*://pathy.example.io/a/*'], proxyId: 'good' },
+  { name: 'typed', match: ['*://typed.scope.invalid/*'], proxyId: 'good', proxyOnlyResourceTypes: ['image'] },
+  { name: 'untyped', match: ['*://untyped.scope.invalid/*'], proxyId: 'good', proxyOnlyResourceTypes: [] },
+  { name: 'paged', match: ['*://paged.scope.invalid/*'], proxyId: 'good', proxyOnlyPageHostnames: ['site.example'] },
+  { name: 'typed force', match: ['*://*.typed-force.scope.invalid/*'], proxyId: 'good', proxyOnlyResourceTypes: ['image'], forceProxyUrlPatterns: ['*://forced.typed-force.scope.invalid/*'] },
   { name: 'missing proxy', match: ['*://*.gone.example.net/*'], proxyId: 'gone' },
   { name: 'set-aside proxy', match: ['*://*.broken.example.net/*'], proxyId: 'broken' },
 ] as ProxyRule[]
@@ -51,6 +55,9 @@ type Row = {
   url: string;
   expected: string;
   noDefaultProxy?: boolean;
+  type?: string;
+  documentUrl?: string;
+  firefoxOnly?: boolean;
 }
 
 function configFor (row: Row): GeoBypassRuntimeSettings {
@@ -66,8 +73,9 @@ const rows: Row[] = [
   { name: 'a force pattern over a bypass', url: 'https://forced.example.org/x', expected: GOOD },
   { name: 'a bypass pattern with a default proxy set', url: 'https://plain.example.org/x', expected: DIRECT },
   { name: 'a bypass url pattern with a default proxy set', url: 'https://bypass.test/x', expected: DIRECT },
-  { name: 'a static extension with a default proxy set', url: 'https://static.example.net/a.png', expected: DIRECT },
-  { name: 'a static extension with a query', url: 'https://static.example.net/a.png?v=2', expected: DIRECT },
+  { name: 'a static extension on http', url: 'http://static.example.net/a.png', expected: DIRECT },
+  { name: 'a static extension on https, which Chrome cannot match', url: 'https://static.example.net/a.png', expected: DIRECT, firefoxOnly: true },
+  { name: 'a static extension with a query on https', url: 'https://static.example.net/a.png?v=2', expected: DIRECT, firefoxOnly: true },
   { name: 'a non-static path on the static host', url: 'https://static.example.net/page', expected: GOOD },
   { name: 'an override on the tab host beats a rule', url: 'https://override.test/x', expected: OTHER },
   { name: 'an override matches its domain exactly', url: 'https://example.com/', expected: GOOD },
@@ -80,11 +88,29 @@ const rows: Row[] = [
   { name: 'an override with a bracketed IPv6 key', url: 'http://[::1]:8080/x', expected: GOOD },
   { name: 'an override with a trailing dot in its key', url: 'https://dot.example.net./x', expected: GOOD },
   { name: 'an override with an uppercase key on a lowercase host', url: 'https://mixed.example.net/x', expected: GOOD },
+  { name: 'a resource type the rule does not list', url: 'https://typed.scope.invalid/x', type: 'script', expected: DIRECT, firefoxOnly: true },
+  { name: 'a resource type the rule lists', url: 'https://typed.scope.invalid/logo.png', type: 'image', expected: GOOD, firefoxOnly: true },
+  { name: 'an empty resource type list', url: 'https://untyped.scope.invalid/x', type: 'script', expected: GOOD, firefoxOnly: true },
+  { name: 'a page off the listed hosts', url: 'https://paged.scope.invalid/x', documentUrl: 'https://elsewhere.example/', expected: DIRECT, firefoxOnly: true },
+  { name: 'a page on a subdomain of a listed host', url: 'https://paged.scope.invalid/x', documentUrl: 'https://news.site.example/', expected: GOOD, firefoxOnly: true },
+  { name: 'a request with no page', url: 'https://paged.scope.invalid/x', expected: DIRECT, firefoxOnly: true },
+  { name: 'a force pattern over a resource type limit', url: 'https://forced.typed-force.scope.invalid/x', type: 'script', expected: GOOD, firefoxOnly: true },
+  { name: 'a resource type limit on a host outside the force pattern', url: 'https://plain.typed-force.scope.invalid/x', type: 'script', expected: DIRECT, firefoxOnly: true },
 ]
+
+function chromePacUrl (url: string): string {
+  const parsed = new URL(url)
+  return parsed.protocol === 'https:' ? `${parsed.origin}/` : url
+}
 
 async function firefoxRoute (row: Row): Promise<string> {
   browser.tabs.get.mockResolvedValue({ id: 1, url: row.url })
-  const requestInfo = { url: row.url, type: 'main_frame', tabId: 1 } as Proxy.OnRequestDetailsType
+  const requestInfo = {
+    url: row.url,
+    type: row.type ?? 'main_frame',
+    tabId: 1,
+    documentUrl: row.documentUrl,
+  } as Proxy.OnRequestDetailsType
   const runtimeConfig = configFor(row)
   const handlers = [makeDomainProxyHandler(runtimeConfig, browser.tabs.get),makeProxyHandler(runtimeConfig), makeDefaultProxyHandler(runtimeConfig)]
   for (const handler of handlers) {
@@ -116,8 +142,18 @@ describe('a route table run through the Firefox handlers and the Chrome PAC scri
     jest.clearAllMocks()
   })
 
-  it.each(rows)('routes $name the same way on both browsers', async row => {
+  it.each(rows.filter(row => !row.firefoxOnly))('routes $name the same way on both browsers', async row => {
     expect(await firefoxRoute(row)).toBe(row.expected)
-    expect(evaluatePac(generatePacScript(configFor(row)), row.url)).toBe(row.expected)
+    expect(evaluatePac(generatePacScript(configFor(row)), chromePacUrl(row.url))).toBe(row.expected)
+  })
+
+  it.each(rows.filter(row => row.firefoxOnly))('routes $name on Firefox, where the rule option applies', async row => {
+    expect(await firefoxRoute(row)).toBe(row.expected)
+  })
+
+  it('leaves an https static extension to the proxy on Chrome, because the PAC never sees its path', () => {
+    const pac = generatePacScript(config)
+    expect(evaluatePac(pac, 'https://static.example.net/a.png')).toBe(GOOD)
+    expect(evaluatePac(pac, 'http://static.example.net/a.png')).toBe(DIRECT)
   })
 })

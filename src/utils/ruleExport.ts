@@ -15,6 +15,8 @@ export function exportedRule (entry: unknown, keepProxyId: boolean): Record<stri
     match: entry.match,
     bypassUrlPatterns: entry.bypassUrlPatterns,
     bypassResourceTypes: entry.bypassResourceTypes,
+    proxyOnlyResourceTypes: entry.proxyOnlyResourceTypes,
+    proxyOnlyPageHostnames: entry.proxyOnlyPageHostnames,
     staticExtensions: entry.staticExtensions,
     forceProxyUrlPatterns: entry.forceProxyUrlPatterns,
     fallbackDirect: entry.fallbackDirect,

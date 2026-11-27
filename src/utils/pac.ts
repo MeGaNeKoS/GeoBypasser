@@ -11,6 +11,8 @@ import browser from 'webextension-polyfill'
 const PAC_HEADER = 'function FindProxyForURL(url, host) {'
 const DIRECT_ROUTE = 'DIRECT'
 const PAC_PATH_EXPRESSION = 'url.replace(/^[a-z]+:\\/\\/[^\\/]*/i, "").replace(/[?#].*$/, "")'
+// Chrome gives the PAC script only scheme://host:port/ for https addresses, so a path check can only see http.
+const PAC_HTTP_PREFIX = 'http://'
 const LINE_SEPARATOR = String.fromCharCode(0x2028)
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029)
 
@@ -75,8 +77,8 @@ function staticExtensionLines (staticExtensions: string | undefined): string[] {
   const extensions = compileStaticExtensions(staticExtensions)
   if (!extensions) return []
   return [
-    `    if (new RegExp(${pacString(extensions.source)}, ${pacString(extensions.flags)})` +
-    `.test(${PAC_PATH_EXPRESSION})) return ${pacString(DIRECT_ROUTE)};`,
+    `    if (url.indexOf(${pacString(PAC_HTTP_PREFIX)}) == 0 && new RegExp(${pacString(extensions.source)}, ` +
+    `${pacString(extensions.flags)}).test(${PAC_PATH_EXPRESSION})) return ${pacString(DIRECT_ROUTE)};`,
   ]
 }
 

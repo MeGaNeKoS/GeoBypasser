@@ -3,6 +3,7 @@ import { exportedRule, exportedRules } from '@utils/ruleExport'
 const rule = {
   active: false, name: 'Example', match: ['*://a.example/*'], proxyId: 'p1',
   bypassUrlPatterns: ['*://skip.example/*'], bypassResourceTypes: ['script'],
+  proxyOnlyResourceTypes: ['image'], proxyOnlyPageHostnames: ['site.example'],
   staticExtensions: '/\\.png$/', forceProxyUrlPatterns: [], fallbackDirect: true,
   compiledMatch: 'compiled',
 }
@@ -12,6 +13,7 @@ describe('an exported rule keeps the stored fields', () => {
     expect(exportedRule(rule, true)).toEqual({
       active: false, proxyId: 'p1', name: 'Example', match: ['*://a.example/*'],
       bypassUrlPatterns: ['*://skip.example/*'], bypassResourceTypes: ['script'],
+      proxyOnlyResourceTypes: ['image'], proxyOnlyPageHostnames: ['site.example'],
       staticExtensions: '/\\.png$/', forceProxyUrlPatterns: [], fallbackDirect: true,
     })
   })

@@ -17,6 +17,22 @@ describe('rules import refuses bypassResourceTypes that are not known names', ()
   })
 })
 
+describe('rules import refuses proxyOnlyResourceTypes and proxyOnlyPageHostnames that are not valid', () => {
+  it.each([
+    ['an unknown resource type', { proxyOnlyResourceTypes: ['not-a-type'] }, 'only-proxy resource types'],
+    ['a page hostname with a path', { proxyOnlyPageHostnames: ['site.example/path'] }, 'only-on-page hostnames'],
+  ])('refuses the rule with %s and keeps the valid rule', (_, fields, reason) => {
+    const bad = { ...rule, name: 'Bad scope', ...fields }
+
+    const verdict = refuseRules([bad, rule])
+
+    expect(verdict.accepted).toEqual([rule])
+    expect(verdict.messages).toHaveLength(1)
+    expect(verdict.messages[0]).toContain('"Bad scope"')
+    expect(verdict.messages[0]).toContain(reason)
+  })
+})
+
 describe('a refusal message names the entry by its name or label, or else by its position', () => {
   it('names a rule by its name when the name is not empty', () => {
     const verdict = refuseRules([{ ...rule, name: 'Bad rule', match: ['not a pattern'] }])

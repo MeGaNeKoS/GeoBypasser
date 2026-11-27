@@ -16,7 +16,14 @@ import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
 import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseProxyItems, refuseRules, withAppliedSettings, withImportedRules } from '@utils/importFiles'
 import { chooseAppliedSettingChanges } from './settingChangeModal'
-import { proxyFormValues, ruleFormValues } from '@utils/editFields'
+import {
+  KEEP_ALIVE_FORM_FIELDS,
+  mergeEditedFields,
+  PROXY_FORM_FIELDS,
+  proxyFormValues,
+  RULE_FORM_FIELDS,
+  ruleFormValues,
+} from '@utils/editFields'
 import { exportedRules } from '@utils/ruleExport'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
 import { buildConfigExport, buildProxiesExport } from '@utils/exportFiles'
@@ -556,7 +563,7 @@ function saveProxyFromModal () {
   }
 
   if (editingProxyIndex !== null) {
-    config.proxyList[editingProxyIndex] = base
+    config.proxyList[editingProxyIndex] = mergeEditedFields(config.proxyList[editingProxyIndex], base, PROXY_FORM_FIELDS)
   } else {
     config.proxyList.push(base)
   }
@@ -742,7 +749,8 @@ function saveRuleFromModal () {
     return
   }
 
-  const compiled = compileRules([rule])[0]
+  const storedRule = editingRuleIndex !== null ? config.rules[editingRuleIndex] : undefined
+  const compiled = compileRules([mergeEditedFields(storedRule, rule, RULE_FORM_FIELDS)])[0]
   if (editingRuleIndex !== null) {
     config.rules[editingRuleIndex] = compiled
   } else {
@@ -896,10 +904,11 @@ function saveKeepAliveFromModal () {
     return
   }
   if (!config.keepAliveRules) config.keepAliveRules = {}
+  const storedKeepAliveRule = editingKeepAliveId ? config.keepAliveRules[editingKeepAliveId] : undefined
   if (editingKeepAliveId && editingKeepAliveId !== proxyId) {
     delete config.keepAliveRules[editingKeepAliveId]
   }
-  config.keepAliveRules[proxyId] = rule
+  config.keepAliveRules[proxyId] = mergeEditedFields(storedKeepAliveRule, rule, KEEP_ALIVE_FORM_FIELDS)
   saveConfig(config).then(() => {
     renderAll()
     closeKeepAliveModal()

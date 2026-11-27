@@ -3,6 +3,7 @@ import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/s
 import { ProxyId } from '@customTypes/generic'
 import browser, { Proxy, Tabs, WebRequest } from 'webextension-polyfill'
 import { fetchWithTimeout, getHostname, isHostOrSubdomain, matchPatternList } from '@utils/generic'
+import { isInRuleScope } from '@utils/ruleScope'
 import { APP_NAME } from '@constant/defaults'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { supportsProxyOnRequest } from '@utils/env'
@@ -124,6 +125,11 @@ export function makeProxyHandler (
           console.warn(`[${APP_NAME}Proxy] Force proxy: No proxy found for rule "${ruleName}"`)
         }
         return
+      }
+
+      if (!isInRuleScope(requestInfo, rule)) {
+        console.info(`[${APP_NAME}Proxy] Outside the scope of rule "${ruleName}", direct connection for ${url}`)
+        return [{ type: 'direct' }]
       }
 
       // --- Bypass by URL ---

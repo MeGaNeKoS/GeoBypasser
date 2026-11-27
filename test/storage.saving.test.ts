@@ -28,3 +28,18 @@ describe('a stored rule field named like a compiled field', () => {
     expect(writtenValue(STORAGE_KEYS.rules)[0]).toHaveProperty('compiledNote', 'kept')
   })
 })
+
+describe('stored proxy scope fields on a rule that is not edited', () => {
+  it('are written back exactly as stored when another rule is saved', async () => {
+    const scoped = {
+      active: true, name: 'scoped', match: ['https://example.com/*'], proxyId: 'p1',
+      proxyOnlyResourceTypes: ['image'], proxyOnlyPageHostnames: ['site.example'],
+    }
+    const other = { active: true, name: 'other', match: ['https://other.example/*'], proxyId: 'p1' }
+    loadStored({ [STORAGE_KEYS.rules]: [scoped, other] })
+    const config = await getConfig()
+    config.rules[1].active = false
+    await saveConfig(config)
+    expect(writtenValue(STORAGE_KEYS.rules)[0]).toEqual(scoped)
+  })
+})

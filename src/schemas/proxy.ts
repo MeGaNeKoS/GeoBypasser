@@ -29,6 +29,8 @@ export const ProxyRuleSchema = z.object({
   match: z.array(z.string()),
   bypassUrlPatterns: z.array(z.string()).optional(),
   bypassResourceTypes: z.array(z.string()).optional(),
+  proxyOnlyResourceTypes: z.array(z.string()).optional(),
+  proxyOnlyPageHostnames: z.array(z.string()).optional(),
   staticExtensions: z.string().optional(),
   forceProxyUrlPatterns: z.array(z.string()).optional(),
   fallbackDirect: z.boolean().optional(),

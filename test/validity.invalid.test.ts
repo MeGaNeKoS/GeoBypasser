@@ -121,6 +121,19 @@ describe('isValidRule with bypassResourceTypes that are not known names', () => 
   })
 })
 
+describe('isValidRule with proxyOnlyResourceTypes or proxyOnlyPageHostnames that are not valid', () => {
+  it.each([
+    ['an unknown resource type name', { proxyOnlyResourceTypes: ['not-a-type'] }],
+    ['a value that is not a list', { proxyOnlyResourceTypes: 'image' }],
+    ['a page hostname with a path', { proxyOnlyPageHostnames: ['site.example/path'] }],
+    ['an empty page hostname', { proxyOnlyPageHostnames: [''] }],
+    ['a page hostname that is not a string', { proxyOnlyPageHostnames: [42] }],
+    ['a page value that is not a list', { proxyOnlyPageHostnames: 'site.example' }],
+  ])('rejects %s', (_, fields) => {
+    expect(isValidRule(rule(fields))).toBe(false)
+  })
+})
+
 describe('isValidKeepAliveRule with no tab URL pattern', () => {
   it('rejects a rule whose tabUrls list is empty', () => {
     expect(isValidKeepAliveRule({ active: true, tabUrls: [] })).toBe(false)

@@ -31,6 +31,11 @@ function isValidOptionalPatternList (list: unknown) {
   return list === undefined || (Array.isArray(list) && list.every(isValidPattern))
 }
 
+export function isValidOptionalHostnameList (list: unknown): boolean {
+  return list === undefined ||
+    (Array.isArray(list) && list.every(entry => typeof entry === 'string' && validateHostnamePattern(entry)))
+}
+
 export function compileStaticExtensions (value: unknown): RegExp | undefined {
   if (typeof value !== 'string') return undefined
   const match = value.match(STATIC_EXTENSIONS_FORM)
@@ -55,13 +60,18 @@ export function isValidResourceTypes (list: unknown): boolean {
 
 export function isValidRule (rule: unknown): rule is ProxyRule {
   if (!isObject(rule)) return false
-  const { name, match, proxyId, bypassUrlPatterns, forceProxyUrlPatterns, bypassResourceTypes } = rule
+  const {
+    name, match, proxyId, bypassUrlPatterns, forceProxyUrlPatterns, bypassResourceTypes,
+    proxyOnlyResourceTypes, proxyOnlyPageHostnames,
+  } = rule
   return typeof name === 'string' && name.trim() !== '' &&
     Array.isArray(match) && match.length > 0 && match.every(isValidPattern) &&
     typeof proxyId === 'string' && proxyId !== '' &&
     isValidOptionalPatternList(bypassUrlPatterns) &&
     isValidOptionalPatternList(forceProxyUrlPatterns) &&
-    isValidResourceTypes(bypassResourceTypes)
+    isValidResourceTypes(bypassResourceTypes) &&
+    isValidResourceTypes(proxyOnlyResourceTypes) &&
+    isValidOptionalHostnameList(proxyOnlyPageHostnames)
 }
 
 export function isValidProxyHost (host: unknown): boolean {

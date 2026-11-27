@@ -10,6 +10,7 @@ import {
   isValidProxyItem,
   isValidProxyPort,
   isValidProxyType,
+  isValidOptionalHostnameList,
   isValidResourceTypes,
   isValidRule,
   isValidStaticExtensions,
@@ -72,6 +73,8 @@ function ruleProblem (entry: unknown) {
   if (!Array.isArray(entry.match) || entry.match.length === 0) return 'it has no match pattern'
   if (typeof entry.proxyId !== 'string' || entry.proxyId === '') return 'it has no proxy'
   if (!isValidResourceTypes(entry.bypassResourceTypes)) return 'its bypass resource types are not known names'
+  if (!isValidResourceTypes(entry.proxyOnlyResourceTypes)) return 'its only-proxy resource types are not known names'
+  if (!isValidOptionalHostnameList(entry.proxyOnlyPageHostnames)) return 'its only-on-page hostnames are not valid'
   return invalidPatternProblem(entry) ?? 'a field is missing or has the wrong type'
 }
 

@@ -27,6 +27,15 @@ describe('isValidRule', () => {
   it('accepts a rule whose proxy is not in the list', () => {
     expect(isValidRule(rule({ proxyId: 'gone' }))).toBe(true)
   })
+
+  it('accepts a rule with a listed resource type set and an empty one', () => {
+    expect(isValidRule(rule({ proxyOnlyResourceTypes: ['image', 'script'] }))).toBe(true)
+    expect(isValidRule(rule({ proxyOnlyResourceTypes: [] }))).toBe(true)
+  })
+
+  it('accepts a rule with page hostnames in the keep-alive form, bare or wildcard', () => {
+    expect(isValidRule(rule({ proxyOnlyPageHostnames: ['site.example', '*.news.example'] }))).toBe(true)
+  })
 })
 
 describe('isValidStaticExtensions', () => {
