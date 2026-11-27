@@ -16,13 +16,24 @@ export const canon = value => JSON.stringify(value, (_, v) => v && typeof v === 
   ? Object.fromEntries(Object.keys(v).sort().map(k => [k, v[k]]))
   : v)
 
+export const CREDENTIAL_PROXY = {
+  id: 'proxy-creds',
+  type: 'http',
+  proxyDNS: false,
+  host: 'creds.lan',
+  port: 3128,
+  username: 'smoke-user',
+  password: 'smoke-pass'
+}
+
 export const FIXTURE = {
   proxyList: [
     { id: 'proxy-good', label: 'good', type: 'http', proxyDNS: false, host: ' good.lan ', port: 8080, notifyIfDown: false },
     { id: 'proxy-broken', label: 'broken', type: 'http', proxyDNS: false, host: '', port: 0 },
     null,
     'set aside text',
-    {}
+    {},
+    CREDENTIAL_PROXY
   ],
   defaultProxy: 'proxy-good',
   fallbackDirect: false,

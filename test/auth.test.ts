@@ -22,7 +22,7 @@ describe('auth credentials', () => {
     await import('../src/background.firefox')
     await Promise.resolve()
     const handler = browser.webRequest.onAuthRequired._listeners[0]
-    const res = await handler({ challenger: { host: 'h', port: 80 } } as any)
+    const res = await handler({ isProxy: true, challenger: { host: 'h', port: 80 } } as any)
     expect(res).toEqual({ authCredentials: { username: 'u', password: 'p' } })
   })
 })

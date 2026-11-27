@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { canon, FIXTURE, serveImportFile, SET_ASIDE_PROXY, SET_ASIDE_RULE, sleep, URL_IMPORT_FILE, waitFor } from './smoke-fixture.mjs'
 import { connectOnce, MarionetteClient } from './smoke-marionette.mjs'
+import { checkCredentialWiring } from './smoke-credentials.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = resolve(process.argv[2] ?? join(ROOT, 'dist'))
@@ -262,6 +263,7 @@ async function runFirefoxSmoke () {
   await removeSetAsideEntries()
   await importRulesFromUrl()
   await refuseInvalidProxySave()
+  await checkCredentialWiring(evaluate, failures)
   await setTabProxyFromPopup(second)
 }
 

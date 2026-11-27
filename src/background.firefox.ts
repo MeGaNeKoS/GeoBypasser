@@ -2,7 +2,7 @@ import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import browser, { Proxy, Tabs, WebRequest } from 'webextension-polyfill'
 
 import {
-  getProxyTypeByChallenger,
+  authCredentialsFor,
   makeDefaultProxyHandler,
   makeDomainProxyHandler,
   makeProxyHandler,
@@ -116,23 +116,14 @@ function createAuthRequiredHandler (proxyList: ProxyListItem[]) {
   return function (details: OnAuthRequiredDetailsType) {
     console.debug(`[${APP_NAME}BG] Auth required detected:`, details)
 
-    const proxy = getProxyTypeByChallenger(
-      details.challenger.host,
-      details.challenger.port,
-      proxyList,
-    )
-    if (proxy) {
+    const credentials = authCredentialsFor(details, proxyList)
+    if (credentials) {
       console.debug(
-        `[${APP_NAME}BG] Auth required for ${details.challenger.host}:${details.challenger.port} - providing credentials (username: ${proxy.username}).`)
-      return {
-        authCredentials: {
-          username: proxy.username || '',
-          password: proxy.password || '',
-        },
-      }
+        `[${APP_NAME}BG] Auth required for ${details.challenger.host}:${details.challenger.port} - providing proxy credentials.`)
+      return { authCredentials: credentials }
     }
     console.debug(
-      `[${APP_NAME}BG] Auth required for ${details.challenger.host}:${details.challenger.port} - no credentials found in proxy list.`)
+      `[${APP_NAME}BG] Auth required for ${details.challenger.host}:${details.challenger.port} - no proxy credentials apply.`)
     return {}
   }
 }
@@ -254,7 +245,7 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 
   console.info(`[${APP_NAME}BG] Loading initial config...`)
   const config = await getConfig()
-  console.info(`[${APP_NAME}BG] Loaded initial config:`, config)
+  console.info(`[${APP_NAME}BG] Loaded initial config.`)
 
   Object.assign(tabProxyMap, await getTabProxyMap())
   if (Object.keys(tabProxyMap).length) {
@@ -345,7 +336,7 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
 
   // Storage listener for live config updates
   browser.storage.onChanged.addListener(async (changes, areaName) => {
-    console.info(`[${APP_NAME}BG] Storage change detected. Area: ${areaName}. Changes:`, changes)
+    console.info(`[${APP_NAME}BG] Storage change detected. Area: ${areaName}. Keys: ${Object.keys(changes).join(', ')}.`)
 
     if (areaName === 'local' && changes.storageMode) {
       console.info(`[${APP_NAME}BG] Detected storageMode change, reloading config...`)

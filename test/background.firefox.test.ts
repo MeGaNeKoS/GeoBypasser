@@ -24,7 +24,7 @@ describe('Firefox auth for a proxy with whitespace around its host', () => {
 
     const [authListener] = browser.webRequest.onAuthRequired._listeners
     expect(authListener).toBeDefined()
-    const result = await authListener({ challenger: { host: 'good.lan', port: 8080 } })
+    const result = await authListener({ isProxy: true, challenger: { host: 'good.lan', port: 8080 } })
     expect(result).toEqual({ authCredentials: { username: 'u', password: 'p' } })
   })
 })

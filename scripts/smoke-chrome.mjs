@@ -5,6 +5,7 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { canon, FIXTURE, serveImportFile, SET_ASIDE_PROXY, SET_ASIDE_RULE, sleep, URL_IMPORT_FILE, waitFor } from './smoke-fixture.mjs'
+import { checkCredentialWiring } from './smoke-credentials.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = join(ROOT, 'dist')
@@ -279,6 +280,8 @@ async function runSmoke () {
     failures.push('the proxy host field is not marked after a refused proxy save')
   }
   console.log('refused proxy save with host "a:1; PROXY x:8080": storage unchanged, host field marked')
+
+  await checkCredentialWiring((fn, args = []) => evalIn(dashboard, `(${fn.toString()})(...${JSON.stringify(args)})`), failures)
 
   const popup = await openTab('popup.html')
   await sleep(1000)

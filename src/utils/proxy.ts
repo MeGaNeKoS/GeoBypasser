@@ -9,6 +9,7 @@ import { supportsProxyOnRequest } from '@utils/env'
 import { addTestURLToPac } from '@utils/pac'
 import { isRuleActive, usableOverrides, usableProxies, usableRules } from '@utils/usable'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
+import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
 
 type ProxyTestJob = {
   proxy: ProxyListItem;
@@ -191,6 +192,16 @@ export function getProxyTypeByChallenger (
   return usableProxies(proxyList).find(proxy =>
     proxy.host === host && proxy.port == port && proxy.type === 'http',
   )
+}
+
+export function authCredentialsFor (
+  details: Pick<OnAuthRequiredDetailsType, 'isProxy' | 'challenger'>,
+  proxyList: ProxyListItem[],
+): { username: string; password: string } | undefined {
+  if (!details.isProxy) return undefined
+  const proxy = getProxyTypeByChallenger(details.challenger.host, details.challenger.port, proxyList)
+  if (!proxy) return undefined
+  return { username: proxy.username || '', password: proxy.password || '' }
 }
 
 async function testProxyConfig (

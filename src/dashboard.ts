@@ -16,6 +16,8 @@ import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
 import { refuseConfigFile, refuseKeepAliveRules, refuseOverrides, refuseProxyItems, refuseRules, withImportedRules } from '@utils/importFiles'
 import { isRuleActive } from '@utils/usable'
+import { exportProxyList, keepStoredCredentials } from '@utils/proxyCredentials'
+import { isValidProxyItem } from '@utils/validity'
 import { markInvalid, markRuleFieldsInvalid } from '@utils/fieldMarks'
 import {
   isValidDomain,
@@ -1021,7 +1023,7 @@ async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
 
   if (cfg.proxyList) {
     const existing = new Map(updated.proxyList.map((p, idx) => [proxySignature(p), idx]))
-    for (const p of cfg.proxyList as ProxyListItem[]) {
+    for (const p of keepStoredCredentials(cfg.proxyList as ProxyListItem[], updated.proxyList)) {
       const sig = proxySignature(p)
       if (existing.has(sig)) {
         const idx = existing.get(sig)!
@@ -1298,7 +1300,7 @@ function handleImportRules (files: FileList | null) {
 }
 
 function exportProxies (list: ProxyListItem[]) {
-  download('proxies.json', JSON.stringify({ proxyList: list }, null, 2))
+  download('proxies.json', JSON.stringify({ proxyList: exportProxyList(list, 'omit') }, null, 2))
 }
 
 function exportAllProxies () {
@@ -1326,8 +1328,8 @@ function handleImportProxies (files: FileList | null) {
       const raw = JSON.parse(t)
       const verdict = refuseProxyItems(raw?.proxyList)
       alertImportMessages(verdict.messages)
-      const arr = verdict.accepted
-      const existing = new Map(config.proxyList.map((p, idx) => [proxySignature(p), idx]))
+      const arr = keepStoredCredentials(verdict.accepted, config.proxyList)
+      const existing = new Map(config.proxyList.flatMap((p, idx) => isValidProxyItem(p) ? [[proxySignature(p), idx] as const] : []))
 
       for (const p of arr) {
         const sig = proxySignature(p)
@@ -1564,6 +1566,7 @@ function openExportConfigModal () {
 
   ;['proxy', 'rule', 'override', 'keepalive'].forEach(updateExportToggleLabel)
   updateExportSelectAllLabel()
+  ;(document.getElementById('exportConfigCredentials') as HTMLInputElement).checked = false
 
   document.getElementById('exportConfigModal')!.classList.remove('hidden')
 }
@@ -1612,14 +1615,14 @@ function exportConfigFromModal () {
   const container = document.getElementById('exportConfigItems')!
   const proxyIdxs = Array.from(container.querySelectorAll('input[data-group="proxy"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
-  if (proxyIdxs.length) obj.proxyList = proxyIdxs.map(i => config.proxyList[i])
-  const exportedProxyIds = new Set(obj.proxyList?.map(p => p.id) || [])
+  const includeCredentials = (document.getElementById('exportConfigCredentials') as HTMLInputElement).checked
+  if (proxyIdxs.length) {
+    obj.proxyList = exportProxyList(proxyIdxs.map(i => config.proxyList[i]), includeCredentials ? 'include' : 'omit')
+  }
+  const exportedProxyIds = new Set(obj.proxyList?.map(p => p?.id) || [])
   const ruleIdxs = Array.from(container.querySelectorAll('input[data-group="rule"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => Number((c as HTMLInputElement).value))
-  if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => {
-    const r = config.rules[i]
-    return stripRule(r, exportedProxyIds.has(r.proxyId))
-  })
+  if (ruleIdxs.length) obj.rules = ruleIdxs.map(i => config.rules[i]).filter(r => r).map(r => stripRule(r, exportedProxyIds.has(r.proxyId)))
   const ovDomains = Array.from(container.querySelectorAll('input[data-group="override"]')).filter(
     (c) => (c as HTMLInputElement).checked).map(c => (c as HTMLInputElement).value)
   if (ovDomains.length) {
