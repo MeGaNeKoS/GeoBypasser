@@ -1,5 +1,5 @@
 ---
-status: open
+status: done
 owner: extension
 ---
 
@@ -7,4 +7,6 @@ owner: extension
 
 Done when every acceptance criterion of `E05/S01` holds.
 
-Keep-alive checks and their notifications live in `src/utils/tab.ts` and run only in the Firefox background. A proxy's down count today is held on the proxy object in memory (`downNotification`) and capped at four notifications.
+Keep-alive checks and their notifications live in `src/utils/tab.ts` and run only in the Firefox background. Before this task the down count was held on the proxy object and the first failed check notified.
+
+Not covered by an automated check: how the notices look in a real Firefox, and what Firefox puts in a `proxy.onError` message, which is now logged on its own.

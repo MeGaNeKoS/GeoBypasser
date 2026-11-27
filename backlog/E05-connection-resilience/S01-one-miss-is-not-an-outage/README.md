@@ -12,4 +12,6 @@ Before this story, keep-alive checks a proxy every 15 seconds, and the first fai
 4. When a proxy that was reported down passes a check, the user gets exactly one notification saying it is back, and the failure count starts again from zero. Covered by a test.
 5. Both notifications name the proxy by its label, or by host and port when it has no label.
 6. A proxy with "notify if down" off produces no notification in any of these cases. Covered by a test.
-7. `npm test` passes, and `npm run build:dev:firefox` and `npm run build:dev:chrome` both succeed.
+7. A single proxy error reported by the browser (`proxy.onError` on Firefox) raises no notification; it is logged without credentials. Being told a proxy is down comes only from the keep-alive checks above. Covered by a test.
+8. Notices are per proxy: a notice for one proxy never replaces or hides a notice for another, and the "back" notice replaces that proxy's "down" notice. Covered by a test.
+9. `npm test`, both dev builds, and both smoke tests pass.
