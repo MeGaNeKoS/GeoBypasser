@@ -76,6 +76,7 @@ table { border-collapse: collapse; }
 th, td { border: 1px solid #555; padding: 4px; }
 tr.missing-proxy { background: #500; }
 tr.invalid-rule { background: #550; }
+tr.invalid-proxy { background: #550; }
 
 .tree ul {
   list-style: none;
