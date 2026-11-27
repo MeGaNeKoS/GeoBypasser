@@ -36,7 +36,12 @@ export function replaceContent (container: Element, children: Node[], focusKey?:
   const restoreKey = focusKey ?? focusedKey()
   container.replaceChildren(...children)
   if (restoreKey === undefined) return
-  container.querySelector<HTMLElement>(`[data-focus-key="${restoreKey}"]`)?.focus()
+  focusableWithKey(container, restoreKey)?.focus()
+}
+
+function focusableWithKey (container: Element, key: string): HTMLElement | undefined {
+  return Array.from(container.querySelectorAll<HTMLElement>('[data-focus-key]'))
+    .find(node => node.dataset.focusKey === key)
 }
 
 function focusedKey (): string | undefined {

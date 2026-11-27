@@ -15,11 +15,32 @@ const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> 
   ['about', 'about'],
 ]
 
+export const SET_ASIDE_ONLY_QUERY = 'set-aside'
+
+const SET_ASIDE_SECTION_IDS: readonly string[] = [PROXY_SECTION_ID, RULES_SECTION_ID]
+
 export function sectionIdForHash (hash: string): string {
-  const name = hash.replace(/^#/, '')
+  const name = pathOf(hash)
   return SECTION_HASHES.find(([, sectionHash]) => sectionHash === name)?.[0] ?? HOME_SECTION_ID
 }
 
 export function hashForSection (sectionId: string): string {
   return SECTION_HASHES.find(([id]) => id === sectionId)?.[1] ?? HOME_SECTION_ID
+}
+
+export function isSetAsideOnlyHash (hash: string): boolean {
+  return new URLSearchParams(queryOf(hash)).has(SET_ASIDE_ONLY_QUERY)
+}
+
+export function setAsideOnlyHashFor (sectionHash: string): string {
+  const sectionId = sectionIdForHash(sectionHash)
+  return SET_ASIDE_SECTION_IDS.includes(sectionId) ? `#${sectionHash}?${SET_ASIDE_ONLY_QUERY}` : `#${sectionHash}`
+}
+
+function pathOf (hash: string): string {
+  return hash.replace(/^#/, '').split('?')[0]
+}
+
+function queryOf (hash: string): string {
+  return hash.split('?')[1] ?? ''
 }

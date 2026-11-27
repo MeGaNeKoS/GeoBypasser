@@ -9,8 +9,8 @@ describe('isRuleShownInvalid', () => {
     expect(isRuleShownInvalid(rule({ match: ['not a pattern'] }))).toBe(true)
   })
 
-  it('is true for a rule with an invalid staticExtensions value', () => {
-    expect(isRuleShownInvalid(rule({ staticExtensions: '/(/' }))).toBe(true)
+  it('is false for a rule whose only fault is an invalid staticExtensions value', () => {
+    expect(isRuleShownInvalid(rule({ staticExtensions: '/(/' }))).toBe(false)
   })
 })
 

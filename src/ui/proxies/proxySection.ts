@@ -6,16 +6,20 @@ import { isValidProxyId } from '@utils/validity'
 import { button } from '../components/button'
 import { switchControl } from '../components/controls'
 import { banner } from '../components/feedback'
-import { listSection } from '../components/list-section'
+import { listSection, setAsideNotes } from '../components/list-section'
 import type { ListRow } from '../components/list-section'
+import { nothingLeftToFix, setAsideBanners } from '../components/set-aside-view'
+import type { SetAsideViewOptions } from '../components/set-aside-view'
 import { element, replaceContent, requireElement } from '../dom'
 import { downloadJsonFile } from '../download'
+import { isSetAsideOnlyHash } from '../shell/routes'
 import { importProxyFile } from './proxyImport'
 import { openProxyEditor } from './proxySheet'
 import { changeProxyList, readProxyList } from './proxyStore'
 
 const PROXY_CONTAINER_ID = 'proxyContent'
 const PROXY_IMPORT_INPUT_ID = 'proxyImportInput'
+const PROXY_SECTION_HASH = 'proxies'
 const PROXY_HELP = 'Proxies that rules, site overrides and keep-alive checks can use.'
 const EMPTY_TEXT = 'Add a proxy, or import a file of proxies.'
 const EXPORT_FILENAME = 'proxies.json'
@@ -24,17 +28,17 @@ type ProxyRow = ReturnType<typeof proxyRows>[number]
 
 let importNotes: string[] = []
 
-export async function renderProxySection (): Promise<void> {
+export async function renderProxySection (setAsideOnly = false): Promise<void> {
   const container = requireElement(PROXY_CONTAINER_ID)
   const list = await readProxyList()
-  replaceContent(container, [element('div', { class: 'stack' }, importNoteBanner(), proxySection(list))])
+  replaceContent(container, [element('div', { class: 'stack' }, importNoteBanner(), proxySection(list, setAsideOnly))])
 }
 
 function rerender (): void {
-  void renderProxySection()
+  void renderProxySection(isSetAsideOnlyHash(location.hash))
 }
 
-function proxySection (list: ProxyListItem[]): HTMLElement {
+function proxySection (list: ProxyListItem[], setAsideOnly: boolean): HTMLElement {
   const picker = element('input', {
     id: PROXY_IMPORT_INPUT_ID,
     type: 'file',
@@ -42,6 +46,15 @@ function proxySection (list: ProxyListItem[]): HTMLElement {
     hidden: true,
     onchange: (event: Event) => void importFrom(event),
   })
+  const rows = proxyRows(list)
+  const view: SetAsideViewOptions = {
+    sectionHash: PROXY_SECTION_HASH,
+    noun: 'proxy',
+    nounPlural: 'proxies',
+    count: rows.filter(row => row.invalid).length,
+    onlyShown: setAsideOnly,
+  }
+  const shownRows = setAsideOnly ? rows.filter(row => row.invalid) : rows
   return element('div', {}, picker, listSection({
     title: 'Proxies',
     help: PROXY_HELP,
@@ -49,15 +62,18 @@ function proxySection (list: ProxyListItem[]): HTMLElement {
     nounPlural: 'proxies',
     addLabel: 'Add proxy',
     state: 'populated',
-    rows: proxyRows(list).map(row => rowFor(list, row)),
-    empty: {
-      title: 'No proxies yet',
-      text: EMPTY_TEXT,
-      actions: [
-        button('Add proxy', { variant: 'primary', onClick: () => openProxyEditor({ onSaved: rerender }) }),
-        button('Import', { onClick: () => picker.click() }),
-      ],
-    },
+    rows: shownRows.map(row => rowFor(list, row)),
+    banners: setAsideBanners(view),
+    empty: setAsideOnly
+      ? nothingLeftToFix(view)
+      : {
+        title: 'No proxies yet',
+        text: EMPTY_TEXT,
+        actions: [
+          button('Add proxy', { variant: 'primary', onClick: () => openProxyEditor({ onSaved: rerender }) }),
+          button('Import', { onClick: () => picker.click() }),
+        ],
+      },
     onAdd: () => openProxyEditor({ onSaved: rerender }),
     onImport: () => picker.click(),
     onRetry: rerender,
@@ -75,11 +91,16 @@ function rowFor (list: ProxyListItem[], row: ProxyRow): ListRow {
     setAside: row.invalid,
     body: [
       element('strong', {}, row.label),
+      ...(row.invalid ? setAsideNotes(row.faults) : []),
+      ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
       element('p', { class: 'help' }, detailsOf(row)),
-      switchControl(`Notify if ${row.label} is down`, row.notifyIfDown, checked => void setNotify(key, checked)),
+      switchControl(`Notify if ${row.label} is down`, row.notifyIfDown, checked => void setNotify(key, checked), { focusKey: `switch-${key}` }),
     ],
     actions: [
-      button('Edit', { onClick: () => openProxyEditor({ entry: { proxy: storedProxyOf(proxy), position: row.index }, onSaved: rerender }) }),
+      button(row.invalid ? 'Fix' : 'Edit', {
+        focusKey: `edit-${key}`,
+        onClick: () => openProxyEditor({ entry: { proxy: storedProxyOf(proxy), position: row.index }, onSaved: rerender }),
+      }),
     ],
   }
 }

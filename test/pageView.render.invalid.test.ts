@@ -40,10 +40,10 @@ describe('page views built from a config with wrong-type and set aside entries',
     expect(rows.map(r => r.invalid)).toEqual([true, true, true, true, false])
   })
 
-  it('shows the stored fields of a usable proxy row and blanks for the missing ones', () => {
+  it('shows the stored fields of a usable proxy row and placeholders for the missing ones', () => {
     const rows = proxyRows(proxyList)
     expect(rows[4]).toMatchObject({ label: 'Good', type: 'http', host: 'good.lan', port: '8080', username: '' })
-    expect(rows[3]).toMatchObject({ label: '', type: '', host: '', port: '', username: '' })
+    expect(rows[3]).toMatchObject({ label: '(no label)', type: '(missing)', host: '(missing)', port: '(missing)', username: '' })
   })
 
   it('keeps every rule row at its stored index and marks the set aside ones invalid', () => {

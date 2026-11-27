@@ -9,7 +9,7 @@ import { icon, installSprite } from '../icons'
 import { renderProxySection } from '../proxies/proxySection'
 import { renderRuleSection } from '../rules/ruleSection'
 import { clearSelections } from '../components/list-section'
-import { HOME_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, hashForSection, sectionIdForHash } from './routes'
+import { HOME_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
 
 export type FrameOptions = {
   onSectionShown?: (sectionId: string) => void
@@ -72,9 +72,7 @@ async function showSection (requestedId: string, nav: FrameNav, options: FrameOp
   }
   renderMenuToggle(nav.menuToggle, labelOf(nav.buttons.find(button => sectionIdOf(button) === shownId)) ?? shownId)
   closeMenuOnCompactScreen(nav)
-  if (shownId === HOME_SECTION_ID) await renderHome()
-  if (shownId === PROXY_SECTION_ID) await renderProxySection()
-  if (shownId === RULES_SECTION_ID) await renderRuleSection()
+  await renderSection(shownId)
   if (menuWasOpen) focusSectionHeading(shownId)
   options.onSectionShown?.(shownId)
 }
@@ -87,11 +85,18 @@ function focusSectionHeading (sectionId: string): void {
   heading.focus()
 }
 
+async function renderSection (sectionId: string): Promise<void> {
+  const setAsideOnly = isSetAsideOnlyHash(location.hash)
+  if (sectionId === HOME_SECTION_ID) await renderHome()
+  if (sectionId === PROXY_SECTION_ID) await renderProxySection(setAsideOnly)
+  if (sectionId === RULES_SECTION_ID) await renderRuleSection(setAsideOnly)
+}
+
 function onStorageChanged (nav: FrameNav): void {
   void refreshNavCounts(nav)
-  if (sectionIdForHash(location.hash) !== RULES_SECTION_ID) return
-  clearSelections()
-  void renderRuleSection()
+  const shownId = sectionIdForHash(location.hash)
+  if (shownId === RULES_SECTION_ID) clearSelections()
+  void renderSection(shownId)
 }
 
 async function refreshNavCounts (nav: FrameNav): Promise<void> {

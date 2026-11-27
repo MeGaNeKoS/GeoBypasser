@@ -6,6 +6,7 @@ import type { ButtonVariant } from '../components/button'
 import { element } from '../dom'
 import type { Child } from '../dom'
 import { icon } from '../icons'
+import { setAsideOnlyHashFor } from '../shell/routes'
 
 type ActionOptions = {
   variant?: ButtonVariant
@@ -28,16 +29,20 @@ function linkList (links: SetAsideLink[]): Child[] {
 }
 
 function linkOrText (link: SetAsideLink): Child {
-  return link.section ? sectionLink(link.section, link.label) : link.label
+  return link.section ? setAsideLink(link.section, link.label) : link.label
+}
+
+function setAsideLink (section: string, label: string): HTMLAnchorElement {
+  return element('a', { class: 'home-link', href: setAsideOnlyHashFor(section), 'data-focus-key': `set-aside-${section}` }, label)
 }
 
 export function quickActions (sitesShown: boolean): HTMLElement {
   return buttonGroup(
-    actionButton('Add rule', 'rules', null, { variant: 'primary' }),
-    actionButton('Add proxy', 'proxies', null),
-    ...(sitesShown ? [actionButton('Add site', 'sites', 'addOverride')] : []),
-    actionButton('Import', 'import-export', 'importConfigBtn'),
-    actionButton('Browse community rules', 'import-export', 'openCommunityImport'),
+    actionButton('Add rule', 'rules', null, { variant: 'primary' }, 'quick-add-rule'),
+    actionButton('Add proxy', 'proxies', null, {}, 'quick-add-proxy'),
+    ...(sitesShown ? [actionButton('Add site', 'sites', 'addOverride', {}, 'quick-add-site')] : []),
+    actionButton('Import', 'import-export', 'importConfigBtn', {}, 'quick-import'),
+    actionButton('Browse community rules', 'import-export', 'openCommunityImport', {}, 'quick-community'),
   )
 }
 
@@ -47,17 +52,17 @@ export function getStartedCard (view: HomeView): HTMLElement {
     element('h3', { class: 'group-label' }, 'Get started'),
     element('ol', { class: 'home-steps' },
       setupStep(1, 'Add a proxy', 'A server your traffic can go through.', proxyAdded, [
-        actionButton('Add proxy', 'proxies', null, { variant: 'primary' }),
-        actionButton('Import a file', 'proxies', null),
-        actionButton('Browse community rules', 'import-export', 'openCommunityImport'),
+        actionButton('Add proxy', 'proxies', null, { variant: 'primary' }, 'step-1-add-proxy'),
+        actionButton('Import a file', 'proxies', null, {}, 'step-1-import'),
+        actionButton('Browse community rules', 'import-export', 'openCommunityImport', {}, 'step-1-community'),
       ]),
       setupStep(2, 'Choose what uses it', 'A rule for matching requests, one site, or everything by default.', choiceMade, [
-        actionButton('Add a rule', 'rules', null, { disabled: !proxyAdded }),
-        ...(view.sitesShown ? [actionButton('Add a site', 'sites', 'addOverride', { disabled: !proxyAdded })] : []),
-        actionButton('Set a default', 'defaults', null, { disabled: !proxyAdded }),
+        actionButton('Add a rule', 'rules', null, { disabled: !proxyAdded }, 'step-2-add-rule'),
+        ...(view.sitesShown ? [actionButton('Add a site', 'sites', 'addOverride', { disabled: !proxyAdded }, 'step-2-add-site')] : []),
+        actionButton('Set a default', 'defaults', null, { disabled: !proxyAdded }, 'step-2-default'),
       ], proxyAdded ? undefined : 'Add a proxy first.'),
       setupStep(3, 'Check it works', 'Test a proxy. Then open a site and look at the popup.', false, [
-        actionButton('Test a proxy', 'test', null),
+        actionButton('Test a proxy', 'test', null, {}, 'step-3-test'),
       ]),
     ),
   )
@@ -82,7 +87,7 @@ export function routesCard (view: HomeView): HTMLElement {
     element('ol', { class: 'home-routes__list' },
       ...view.routes.map(row => element('li', {}, routeItem(row))),
     ),
-    element('p', { class: 'home-muted' }, sectionLink('defaults', view.failureNote)),
+    element('p', { class: 'home-muted' }, sectionLink('defaults', view.failureNote, 'route-failure')),
   )
 }
 
@@ -97,7 +102,7 @@ function routeItem (row: RouteRow): HTMLElement {
     routeDetail(row),
   ]
   return row.section
-    ? element('a', { class: 'home-route', href: `#${row.section}` }, ...content)
+    ? element('a', { class: 'home-route', href: `#${row.section}`, 'data-focus-key': `route-${row.label}` }, ...content)
     : element('div', { class: 'home-route' }, ...content)
 }
 
@@ -116,9 +121,9 @@ export function proxiesCard (summary: ProxiesSummary): HTMLElement {
     element('p', {}, `Keep-alive: ${keepAliveRulesPhrase(summary.keepAliveRules)}`, ' ', summary.keepAliveBadge ? badge(summary.keepAliveBadge) : null),
     element('p', {}, `Notify if down: ${summary.notifyIfDown > 0 ? `on for ${summary.notifyIfDown}` : 'off'}`),
     element('p', { class: 'home-proxies__links' },
-      sectionLink('proxies', 'Manage proxies'),
-      sectionLink('keep-alive', 'Keep-alive'),
-      sectionLink('test', 'Test a proxy'),
+      sectionLink('proxies', 'Manage proxies', 'card-manage-proxies'),
+      sectionLink('keep-alive', 'Keep-alive', 'card-keep-alive'),
+      sectionLink('test', 'Test a proxy', 'card-test'),
     ),
   )
 }
@@ -127,10 +132,11 @@ export function welcomeText (): HTMLElement {
   return element('p', { class: 'home-muted' }, 'Send some of your traffic through a proxy and leave the rest direct.')
 }
 
-function actionButton (label: string, section: string, controlId: string | null, options: ActionOptions = {}): HTMLButtonElement {
+function actionButton (label: string, section: string, controlId: string | null, options: ActionOptions, focusKey: string): HTMLButtonElement {
   return button(label, {
     variant: options.variant,
     disabled: options.disabled,
+    focusKey,
     onClick: () => openSection(section, controlId),
   })
 }
@@ -140,6 +146,6 @@ function openSection (section: string, controlId: string | null): void {
   if (controlId) document.getElementById(controlId)?.click()
 }
 
-function sectionLink (section: string, label: string): HTMLAnchorElement {
-  return element('a', { class: 'home-link', href: `#${section}` }, label)
+function sectionLink (section: string, label: string, focusKey: string): HTMLAnchorElement {
+  return element('a', { class: 'home-link', href: `#${section}`, 'data-focus-key': focusKey }, label)
 }

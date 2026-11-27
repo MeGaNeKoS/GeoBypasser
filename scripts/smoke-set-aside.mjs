@@ -11,7 +11,7 @@ function indexOfSetAside (proxyList, isSetAside) {
 async function saveSetAsideRow (run, index, { host, port }) {
   await run(clickSelector, ['[data-tab="proxy"]'])
   await sleep(UI_SETTLE_MS)
-  await run(clickProxyRowAction, [index, 'Edit'])
+  await run(clickProxyRowAction, [index, 'Fix'])
   await run(saveOpenProxySheetAddress, [host, port])
   await waitFor(async () => (await run(readLocalStorage)).proxyList[index]?.host === host, STORAGE_WAIT_MS, `set aside row ${index} to be saved with ${host}`)
 }
@@ -85,6 +85,78 @@ async function checkConfigExportEveryRow (run, failures) {
     failures.push('config export with every row selected lacks a rule or proxy list')
   } else if (parsed.rules.some(rule => typeof rule !== 'object' || rule === null)) {
     failures.push('config export with every row selected wrote a rule that is not an object')
+  }
+}
+
+const HOME_SET_ASIDE_LINK = 'a[href="#proxies?set-aside"]'
+const SET_ASIDE_ONLY_BANNER_TEXT = 'Only the proxies that are not used are shown.'
+const SHOW_ALL_ACTION = '[data-focus-key="show-all"]'
+
+function readSetAsideOnlyView (bannerText) {
+  return { hash: location.hash, onlyShown: document.body.textContent.includes(bannerText) }
+}
+
+function linkExists (selector) {
+  return document.querySelector(selector) !== null
+}
+
+function focusFirstMatching (selector) {
+  const node = document.querySelector(selector)
+  node?.focus()
+  return node?.dataset.focusKey ?? null
+}
+
+function readFocusedKey () {
+  return document.activeElement?.dataset?.focusKey ?? null
+}
+
+async function checkHomeLinkOpensSetAsideOnly (run, failures) {
+  await run(setLocationHash, ['#home'])
+  await waitFor(() => run(linkExists, [HOME_SET_ASIDE_LINK]), STORAGE_WAIT_MS, 'the Home link to set aside proxies')
+  await run(clickSelector, [HOME_SET_ASIDE_LINK])
+  await sleep(UI_SETTLE_MS)
+  const view = await run(readSetAsideOnlyView, [SET_ASIDE_ONLY_BANNER_TEXT])
+  if (view.hash !== '#proxies?set-aside') failures.push(`the Home set aside link opened ${view.hash}, not #proxies?set-aside`)
+  if (!view.onlyShown) failures.push('the Proxies view opened from Home does not say it shows only the set aside proxies')
+  await run(clickSelector, [SHOW_ALL_ACTION])
+  await sleep(UI_SETTLE_MS)
+  const all = await run(readSetAsideOnlyView, [SET_ASIDE_ONLY_BANNER_TEXT])
+  if (all.hash !== '#proxies' || all.onlyShown) failures.push('Show all proxies did not return to the full Proxies view')
+}
+
+function setLocationHash (hash) {
+  location.hash = hash
+}
+
+async function checkFocusSurvivesStorageChange (run, failures, { hash, selector }) {
+  await run(setLocationHash, [hash])
+  await sleep(UI_SETTLE_MS)
+  const key = await run(focusFirstMatching, [selector])
+  if (key === null) {
+    failures.push(`no control matching ${selector} to focus on ${hash}`)
+    return
+  }
+  const before = await run(readLocalStorage)
+  await run(writeLocalStorage, [{ fallbackDirect: !before.fallbackDirect }])
+  await waitFor(async () => (await run(readLocalStorage)).fallbackDirect === !before.fallbackDirect, STORAGE_WAIT_MS, 'the focus check storage change to reach storage.local')
+  await sleep(UI_SETTLE_MS)
+  const focused = await run(readFocusedKey)
+  if (focused !== key) failures.push(`focus moved from ${key} to ${focused} after a storage change on ${hash}`)
+  await run(writeLocalStorage, [{ fallbackDirect: before.fallbackDirect }])
+}
+
+async function checkSetAsideFocusAndHome (run, failures) {
+  await checkHomeLinkOpensSetAsideOnly(run, failures)
+  await checkFocusSurvivesStorageChange(run, failures, { hash: '#home', selector: '#homeContent [data-focus-key^="quick-"]' })
+  await checkFocusSurvivesStorageChange(run, failures, { hash: '#proxies', selector: '#proxyContent [data-focus-key^="edit-"]' })
+  await checkFocusSurvivesStorageChange(run, failures, { hash: '#rules', selector: '#rulesContent [data-focus-key^="edit-"]' })
+}
+
+export async function checkSetAsideOnlyAndFocus (run, failures) {
+  const failuresBefore = failures.length
+  await runStep('Home set aside link and focus across storage changes', () => checkSetAsideFocusAndHome(run, failures), failures)
+  if (failures.length === failuresBefore) {
+    console.log('set aside: the Home link opens Proxies with only the set aside rows shown, Show all returns, and focus stays on its control after a storage change on Home, Proxies and Rules')
   }
 }
 

@@ -109,7 +109,7 @@ export function isValidTestUrl (url: unknown): url is string {
 }
 
 export function isRuleShownInvalid (rule: unknown): boolean {
-  return !isValidRule(rule) || !isValidStaticExtensions((rule as ProxyRule).staticExtensions)
+  return !isValidRule(rule)
 }
 
 export function isProxyShownInvalid (proxy: unknown): boolean {

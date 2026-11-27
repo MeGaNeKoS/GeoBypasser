@@ -104,11 +104,11 @@ export async function editSetAsideEntries (run) {
   for (const index of SET_ASIDE_EDIT_INDEXES) {
     await run(clickSelector, ['[data-tab="proxy"]'])
     await sleep(UI_SETTLE_MS)
-    await run(clickProxyRowAction, [index, 'Edit'])
+    await run(clickProxyRowAction, [index, 'Fix'])
     await run(closeOpenSheet)
     await run(clickSelector, ['[data-tab="rules"]'])
     await sleep(UI_SETTLE_MS)
-    await run(clickRuleRowAction, [index, 'Edit'])
+    await run(clickRuleRowAction, [index, 'Fix'])
     await run(closeOpenSheet)
   }
   console.log(`clicked Edit on set aside rows ${SET_ASIDE_EDIT_INDEXES.join(', ')} of both tables`)

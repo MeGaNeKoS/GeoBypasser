@@ -2,8 +2,12 @@ import { DIRECT_PROXY_ID } from '@constant/proxy'
 import type { KeepAliveProxyRule, ProxyRule } from '@customTypes/proxy'
 import { isProxyShownInvalid, isRuleShownInvalid } from '@utils/validity'
 import { isRuleActive, usableKeepAliveRules, usableOverrides, usableProxies, usableRules } from '@utils/usable'
+import { proxyReasons, ruleReasons, staticExtensionsIgnoredNote } from '@utils/setAsideReasons'
 
 type Entry = Record<string, any>
+
+const MISSING_TEXT = '(missing)'
+const NO_LABEL_TEXT = '(no label)'
 
 function asEntry (value: unknown): Entry {
   return typeof value === 'object' && value !== null ? value as Entry : {}
@@ -13,18 +17,29 @@ function asText (value: unknown): string {
   return value === undefined || value === null ? '' : String(value)
 }
 
+function asFieldText (value: unknown): string {
+  return value === undefined || value === null || value === '' ? MISSING_TEXT : String(value)
+}
+
+function rawEntryText (value: unknown): string | undefined {
+  return typeof value === 'object' || value === undefined ? undefined : String(value)
+}
+
 export function proxyRows (list: unknown, isRevealed: (index: number) => boolean = () => false) {
   const items = Array.isArray(list) ? list : []
   return items.map((value, index) => {
     const proxy = asEntry(value)
+    const invalid = isProxyShownInvalid(value)
     return {
       index,
-      invalid: isProxyShownInvalid(value),
+      invalid,
+      faults: invalid ? proxyReasons(value) : [],
+      rawEntry: rawEntryText(value),
       entry: proxy,
-      label: asText(proxy.label || proxy.host),
-      type: proxy.type === 'socks' ? 'socks5' : asText(proxy.type),
-      host: asText(proxy.host),
-      port: asText(proxy.port),
+      label: asText(proxy.label || proxy.host) || NO_LABEL_TEXT,
+      type: proxy.type === 'socks' ? 'socks5' : asFieldText(proxy.type),
+      host: asFieldText(proxy.host),
+      port: asFieldText(proxy.port),
       username: asText(proxy.username),
       hasPassword: !!proxy.password,
       password: proxy.password ? (isRevealed(index) ? asText(proxy.password) : '******') : '',
@@ -39,9 +54,13 @@ export function ruleRows (list: unknown, proxyList: unknown) {
   return items.map((value, index) => {
     const rule = asEntry(value)
     const proxy = proxies.find(p => p.id === rule.proxyId)
+    const invalid = isRuleShownInvalid(value)
     return {
       index,
-      invalid: isRuleShownInvalid(value),
+      invalid,
+      faults: invalid ? ruleReasons(value) : [],
+      ignoredNote: invalid ? undefined : staticExtensionsIgnoredNote(value),
+      rawEntry: rawEntryText(value),
       rule,
       active: isRuleActive(rule),
       name: asText(rule.name),

@@ -86,7 +86,11 @@ describe('config written before the validity story', () => {
   it('shows the rule with a port in its match pattern as invalid', async () => {
     const config = await getConfig()
     expect(isRuleShownInvalid(config.rules[1])).toBe(true)
-    expect(isRuleShownInvalid(config.rules[0])).toBe(true)
+  })
+
+  it('does not set aside the rule whose only fault is its staticExtensions value', async () => {
+    const config = await getConfig()
+    expect(isRuleShownInvalid(config.rules[0])).toBe(false)
   })
 
   it('uses the proxy host as stored', async () => {

@@ -29,6 +29,7 @@ export async function renderHome (): Promise<void> {
 }
 
 function showLoading (container: HTMLElement): void {
+  if (container.hasChildNodes()) return
   container.setAttribute('aria-busy', 'true')
   replaceContent(container, [loadingBody()])
 }

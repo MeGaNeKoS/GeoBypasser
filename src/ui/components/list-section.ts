@@ -1,11 +1,26 @@
 import { element, replaceContent } from '../dom'
+import { icon } from '../icons'
 import { button } from './button'
-import { banner, skeletonRows, stateBlock, statusLine } from './feedback'
+import { badge, banner, skeletonRows, stateBlock, statusLine } from './feedback'
 import type { ListState } from './state-body'
 
 export function setAsideBanner (count: number, noun: string, nounPlural: string, action?: Node): HTMLDivElement {
   const subject = count === 1 ? `1 ${noun} is` : `${count} ${nounPlural} are`
   return banner({ tone: 'warn', text: `${subject} not used because ${count === 1 ? 'it is' : 'they are'} invalid.`, action })
+}
+
+export function setAsideNotes (reasons: string[]): Node[] {
+  return [
+    badge('not-used'),
+    element('p', { class: 'help set-aside__reason' }, reasons.join(' ')),
+  ]
+}
+
+export function ignoredSettingNotes (note: string): Node[] {
+  return [
+    badge('ignored'),
+    element('p', { class: 'help set-aside__reason' }, note),
+  ]
 }
 
 export type ListRow = {
@@ -52,7 +67,7 @@ export function listSection (options: ListSectionOptions): HTMLElement {
         ),
         element('p', { class: 'help' }, options.help),
       ),
-      button(options.addLabel, { variant: 'primary', disabled: !writable, onClick: options.onAdd }),
+      button(options.addLabel, { variant: 'primary', disabled: !writable, focusKey: 'add', onClick: options.onAdd }),
     ),
     new ListRegion(options).node,
   )
@@ -138,8 +153,8 @@ class ListRegion {
     )
     return element('div', { class: 'toolbar' },
       selectAll,
-      button('Import', { onClick: this.options.onImport }),
-      button('Export all', { onClick: () => this.exportIds(ids) }),
+      button('Import', { focusKey: 'import', onClick: this.options.onImport }),
+      button('Export all', { focusKey: 'export-all', onClick: () => this.exportIds(ids) }),
       ...this.options.toolbarExtras ?? [],
       this.selectionControls(),
     )
@@ -154,8 +169,8 @@ class ListRegion {
     }
     return element('div', { class: 'button-row' },
       element('span', { class: 'toolbar__selection' }, `${count} selected`),
-      button('Export selected', { onClick: () => this.exportIds(ids) }),
-      button('Delete selected', { onClick: () => this.askRemoval('selection') }),
+      button('Export selected', { focusKey: 'export-selected', onClick: () => this.exportIds(ids) }),
+      button('Delete selected', { focusKey: 'delete-selected', onClick: () => this.askRemoval('selection') }),
     )
   }
 
@@ -173,6 +188,7 @@ class ListRegion {
     })
     return element('li', { class: row.setAside ? 'row row--set-aside' : 'row' },
       select,
+      row.setAside ? element('span', { class: 'row__gutter', 'aria-hidden': 'true' }, icon('alert')) : null,
       element('div', { class: 'row__body' }, ...row.body),
       element('div', { class: 'row__actions' }, ...this.rowActions(row)),
     )
@@ -182,7 +198,7 @@ class ListRegion {
     if (this.pendingRemoval === row.id) {
       return [this.confirm(`Delete this ${this.options.noun}?`, [row.id], row.id)]
     }
-    return [...row.actions, button('Delete', { onClick: () => this.askRemoval(row.id) })]
+    return [...row.actions, button('Delete', { focusKey: `delete-${row.id}`, onClick: () => this.askRemoval(row.id) })]
   }
 
   private confirm (question: string, ids: string[], pendingKey: string): HTMLElement {

@@ -6,10 +6,13 @@ import { exportedRules } from '@utils/ruleExport'
 import { button } from '../components/button'
 import { lockedSwitchText, switchControl } from '../components/controls'
 import { banner } from '../components/feedback'
-import { listSection } from '../components/list-section'
+import { ignoredSettingNotes, listSection, setAsideNotes } from '../components/list-section'
 import type { ListRow } from '../components/list-section'
+import { nothingLeftToFix, setAsideBanners } from '../components/set-aside-view'
+import type { SetAsideViewOptions } from '../components/set-aside-view'
 import { element, replaceContent, requireElement } from '../dom'
 import { downloadJsonFile } from '../download'
+import { isSetAsideOnlyHash } from '../shell/routes'
 import { rowTuningNodes } from './ruleFineTuning'
 import { importRuleFile } from './ruleImport'
 import { openRuleEditor } from './ruleSheet'
@@ -18,6 +21,7 @@ import { changeRuleList } from './ruleStore'
 
 const RULES_CONTAINER_ID = 'rulesContent'
 const RULE_IMPORT_INPUT_ID = 'ruleImportInput'
+const RULES_SECTION_HASH = 'rules'
 const RULES_HELP = 'Create match rules to automatically route requests through a proxy.'
 const EMPTY_TEXT = 'Add a rule, or import a file of rules.'
 const EXPORT_FILENAME = 'rules.json'
@@ -29,17 +33,17 @@ type RuleRow = ReturnType<typeof ruleRows>[number]
 
 let notices: string[] = []
 
-export async function renderRuleSection (): Promise<void> {
+export async function renderRuleSection (setAsideOnly = false): Promise<void> {
   const container = requireElement(RULES_CONTAINER_ID)
   const config = await getConfig()
-  replaceContent(container, [element('div', { class: 'stack' }, noticeBanner(), ruleSection(config.rules, config.proxyList))])
+  replaceContent(container, [element('div', { class: 'stack' }, noticeBanner(), ruleSection(config.rules, config.proxyList, setAsideOnly))])
 }
 
 function rerender (): void {
-  void renderRuleSection()
+  void renderRuleSection(isSetAsideOnlyHash(location.hash))
 }
 
-function ruleSection (list: ProxyRule[], proxyList: unknown): HTMLElement {
+function ruleSection (list: ProxyRule[], proxyList: unknown, setAsideOnly: boolean): HTMLElement {
   const picker = element('input', {
     id: RULE_IMPORT_INPUT_ID,
     type: 'file',
@@ -47,6 +51,15 @@ function ruleSection (list: ProxyRule[], proxyList: unknown): HTMLElement {
     hidden: true,
     onchange: (event: Event) => void importFrom(event),
   })
+  const rows = ruleRows(list, proxyList)
+  const view: SetAsideViewOptions = {
+    sectionHash: RULES_SECTION_HASH,
+    noun: 'rule',
+    nounPlural: 'rules',
+    count: rows.filter(row => row.invalid).length,
+    onlyShown: setAsideOnly,
+  }
+  const shownRows = setAsideOnly ? rows.filter(row => row.invalid) : rows
   return element('div', {}, picker, listSection({
     title: 'Rules',
     help: RULES_HELP,
@@ -54,15 +67,18 @@ function ruleSection (list: ProxyRule[], proxyList: unknown): HTMLElement {
     nounPlural: 'rules',
     addLabel: 'Add rule',
     state: 'populated',
-    rows: ruleRows(list, proxyList).map(row => rowFor(list, row, proxyList)),
-    empty: {
-      title: 'No rules yet',
-      text: EMPTY_TEXT,
-      actions: [
-        button('Add rule', { variant: 'primary', onClick: () => openEditor(undefined, proxyList) }),
-        button('Import', { onClick: () => picker.click() }),
-      ],
-    },
+    rows: shownRows.map(row => rowFor(list, row, proxyList)),
+    banners: setAsideBanners(view),
+    empty: setAsideOnly
+      ? nothingLeftToFix(view)
+      : {
+        title: 'No rules yet',
+        text: EMPTY_TEXT,
+        actions: [
+          button('Add rule', { variant: 'primary', onClick: () => openEditor(undefined, proxyList) }),
+          button('Import', { onClick: () => picker.click() }),
+        ],
+      },
     onAdd: () => openEditor(undefined, proxyList),
     onImport: () => picker.click(),
     onRetry: rerender,
@@ -81,12 +97,20 @@ function rowFor (list: ProxyRule[], row: RuleRow, proxyList: unknown): ListRow {
     setAside: row.invalid,
     body: [
       element('strong', {}, name),
+      ...(row.invalid ? setAsideNotes(row.faults) : []),
+      ...(row.ignoredNote === undefined ? [] : ignoredSettingNotes(row.ignoredNote)),
+      ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
       element('p', { class: 'help' }, matchLineOf(row.rule.match)),
       element('p', { class: 'help' }, row.proxyLabel, ...(stored ? rowTuningNodes(ruleFormOf(stored)) : [])),
-      row.invalid ? lockedSwitchText(name) : switchControl(`Active: ${name}`, row.active, checked => void setActive(row.index, checked)),
+      row.invalid
+        ? lockedSwitchText(name)
+        : switchControl(`Active: ${name}`, row.active, checked => void setActive(row.index, checked), { focusKey: `switch-${key}` }),
     ],
     actions: [
-      button('Edit', { onClick: () => openEditor({ raw: list[row.index], position: row.index, invalid: row.invalid }, proxyList) }),
+      button(row.invalid ? 'Fix' : 'Edit', {
+        focusKey: `edit-${key}`,
+        onClick: () => openEditor({ raw: list[row.index], position: row.index, invalid: row.invalid }, proxyList),
+      }),
     ],
   }
 }
