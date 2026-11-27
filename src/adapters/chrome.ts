@@ -1,7 +1,56 @@
-import browser, { WebRequest } from 'webextension-polyfill'
+import browser, { Types, WebRequest } from 'webextension-polyfill'
 import type { NetworkMonitor } from '@core/networkMonitor'
+import type { ProxyControlState } from '@customTypes/proxyControl'
+import { APP_NAME } from '@constant/defaults'
+
+export { getConfig as readStoredConfig } from '@utils/storage'
 
 type CompletedDetails = WebRequest.OnCompletedDetailsType & { encodedDataLength?: number }
+
+type ProxyAuthListener = Parameters<typeof chrome.webRequest.onAuthRequired.addListener>[0]
+
+export function registerChromeProxyAuth (listener: ProxyAuthListener) {
+  chrome.webRequest.onAuthRequired.addListener(
+    listener,
+    { urls: ['<all_urls>'] },
+    ['blocking'], // Chrome only supports 'blocking', not 'asyncBlocking'
+  )
+}
+
+export function setChromePacScript (pacScript: string) {
+  return browser.proxy.settings.set({
+    value: {
+      mode: 'pac_script',
+      pacScript: { data: pacScript },
+    },
+  })
+}
+
+export async function readChromeLevelOfControl (): Promise<Types.LevelOfControl> {
+  const setting = await browser.proxy.settings.get({})
+  return setting.levelOfControl
+}
+
+export function onChromeProxyLevelChanged (listener: (levelOfControl: Types.LevelOfControl) => Promise<void>) {
+  browser.proxy.settings.onChange.addListener(details => listener(details.levelOfControl))
+}
+
+export async function broadcastChromeProxyControl (state: ProxyControlState) {
+  await browser.runtime.sendMessage({ type: 'proxyControlChanged', state })
+    .catch(() => console.debug(`[${APP_NAME}BG] No extension page is listening for the proxy control state`))
+}
+
+export function onChromeRuntimeMessage (listener: (message: unknown) => unknown) {
+  browser.runtime.onMessage.addListener(listener)
+}
+
+export function onChromeStorageChanged (listener: (changes: Record<string, { newValue?: unknown }>, areaName: string) => Promise<void>) {
+  browser.storage.onChanged.addListener(listener)
+}
+
+export function onChromeTabRemoved (listener: (tabId: number) => void) {
+  browser.tabs.onRemoved.addListener(listener)
+}
 
 function contentLengthBytes (requestHeaders: WebRequest.HttpHeaders | undefined): number | undefined {
   const header = requestHeaders?.find(h => h.name.toLowerCase() === 'content-length')

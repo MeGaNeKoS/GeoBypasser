@@ -1,9 +1,34 @@
-import browser from 'webextension-polyfill'
+import browser, { Proxy } from 'webextension-polyfill'
 import type { NetworkMonitor } from '@core/networkMonitor'
 import type { KeepAlivePorts, KeepAliveTabListeners } from '@core/keepAlive'
 import type { RoutingPorts } from '@core/routing'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { saveTabProxyMap } from '@utils/storage'
+
+export { getConfig as readStoredConfig, getTabProxyMap as readStoredTabProxyMap } from '@utils/storage'
+
+type ProxyAuthListener = Parameters<typeof browser.webRequest.onAuthRequired.addListener>[0]
+type StorageChangedListener = Parameters<typeof browser.storage.onChanged.addListener>[0]
+
+export function registerFirefoxProxyAuth (listener: ProxyAuthListener) {
+  browser.webRequest.onAuthRequired.addListener(listener, { urls: ['<all_urls>'] }, ['blocking'])
+}
+
+export function onFirefoxRuntimeMessage (listener: (message: unknown) => unknown) {
+  browser.runtime.onMessage.addListener(listener)
+}
+
+export function onFirefoxTabRemoved (listener: (tabId: number) => void) {
+  browser.tabs.onRemoved.addListener(listener)
+}
+
+export function onFirefoxProxyError (listener: (error: Proxy.OnErrorErrorType) => void) {
+  browser.proxy.onError.addListener(listener)
+}
+
+export function onFirefoxStorageChanged (listener: StorageChangedListener) {
+  browser.storage.onChanged.addListener(listener)
+}
 
 export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
   browser.webRequest.onCompleted.addListener(

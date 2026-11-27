@@ -1,7 +1,9 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import type { ProxyId } from '@customTypes/generic'
+import type { TabProxyMessage } from '@customTypes/messages'
 import type { Proxy } from 'webextension-polyfill'
 import { getAllMatchUrls } from '@utils/generic'
+import { generatePacScript } from '@utils/pac'
 import {
   makeDefaultProxyHandler,
   makeDomainProxyHandler,
@@ -73,16 +75,22 @@ export function createRouting (ports: RoutingPorts) {
     if (handlers.default) ports.proxyRequests.add(handlers.default, { urls: ['<all_urls>'] })
   }
 
+  function setTabProxy (tabId: number, proxyId: ProxyId) {
+    tabProxyMap[tabId] = proxyId
+    persistTabProxyMap()
+  }
+
+  function clearTabProxy (tabId: number) {
+    delete tabProxyMap[tabId]
+    persistTabProxyMap()
+  }
+
   return {
     attach,
     tabProxyCount: () => Object.keys(tabProxyMap).length,
-    setTabProxy (tabId: number, proxyId: ProxyId) {
-      tabProxyMap[tabId] = proxyId
-      persistTabProxyMap()
-    },
-    clearTabProxy (tabId: number) {
-      delete tabProxyMap[tabId]
-      persistTabProxyMap()
+    answerTabProxyMessage (message: TabProxyMessage) {
+      if (message.type === 'setTabProxy') setTabProxy(message.tabId, message.proxyId)
+      else clearTabProxy(message.tabId)
     },
     forgetTab (tabId: number) {
       if (!tabProxyMap[tabId]) return
@@ -93,6 +101,19 @@ export function createRouting (ports: RoutingPorts) {
     replaceTabProxyMap (map: Record<number, ProxyId>) {
       Object.keys(tabProxyMap).forEach(key => delete tabProxyMap[Number(key)])
       Object.assign(tabProxyMap, map)
+    },
+  }
+}
+
+export type PacPorts = {
+  setPacScript: (pacScript: string) => Promise<void>;
+}
+
+export function createPacRouting (ports: PacPorts) {
+  return {
+    async apply (config: GeoBypassRuntimeSettings) {
+      await ports.setPacScript(generatePacScript(config))
+      console.info(`[${APP_NAME}BG] Applied PAC script`)
     },
   }
 }

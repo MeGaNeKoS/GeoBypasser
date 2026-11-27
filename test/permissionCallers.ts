@@ -34,18 +34,18 @@ export const FIREFOX_PERMISSION_CALLERS: PermissionCallers = {
     { file: 'src/popup.ts', pattern: /browser\.tabs\./ },
   ],
   notifications: [{ file: 'src/adapters/firefox.ts', pattern: /browser\.notifications\./ }],
-  webRequest: [
-    { file: 'src/adapters/firefox.ts', pattern: /browser\.webRequest\./ },
-    { file: 'src/background.firefox.ts', pattern: /browser\.webRequest\./ },
-  ],
-  webRequestBlocking: [{ file: 'src/background.firefox.ts', pattern: /'blocking'/ }],
-  '<all_urls>': [{ file: 'src/background.firefox.ts', pattern: /'<all_urls>'/ }],
+  webRequest: [{ file: 'src/adapters/firefox.ts', pattern: /browser\.webRequest\./ }],
+  webRequestBlocking: [{ file: 'src/adapters/firefox.ts', pattern: /'blocking'/ }],
+  '<all_urls>': [{ file: 'src/adapters/firefox.ts', pattern: /'<all_urls>'/ }],
 }
 
 export const CHROME_PERMISSION_CALLERS: PermissionCallers = {
-  proxy: [{ file: 'src/utils/pac.ts', pattern: /browser\.proxy\./ }],
+  proxy: [{ file: 'src/adapters/chrome.ts', pattern: /browser\.proxy\./ }],
   storage: [{ file: 'src/utils/storage.ts', pattern: /browser\.storage\./ }],
-  tabs: [{ file: 'src/popup.ts', pattern: /browser\.tabs\./ }],
-  webRequest: [{ file: 'src/background.chrome.ts', pattern: /chrome\.webRequest\.onAuthRequired\.addListener/ }],
-  webRequestAuthProvider: [{ file: 'src/background.chrome.ts', pattern: /chrome\.webRequest\.onAuthRequired\.addListener/ }],
+  tabs: [
+    { file: 'src/adapters/chrome.ts', pattern: /browser\.tabs\./ },
+    { file: 'src/popup.ts', pattern: /browser\.tabs\./ },
+  ],
+  webRequest: [{ file: 'src/adapters/chrome.ts', pattern: /chrome\.webRequest\.onAuthRequired\.addListener\(/ }],
+  webRequestAuthProvider: [{ file: 'src/adapters/chrome.ts', pattern: /chrome\.webRequest\.onAuthRequired\.addListener\(/ }],
 }
