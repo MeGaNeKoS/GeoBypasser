@@ -1,5 +1,6 @@
 module.exports = {
   testEnvironment: 'node',
+  roots: ['<rootDir>/test'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/', '/.chrome-profile/', '/.chrome-cdp-work/'],
   modulePathIgnorePatterns: ['/.chrome-profile/', '/.chrome-cdp-work/'],
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
