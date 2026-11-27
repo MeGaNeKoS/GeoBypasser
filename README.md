@@ -1,11 +1,11 @@
 # GeoBypass
 
-GeoBypass is an experimental browser extension that routes only geo restricted requests through a configured proxy.  Other requests continue directly so the browsing and streaming experience stays fast.
+GeoBypass is a browser extension that manages a list of proxies and routes browser traffic through them by tab, by site, or by request rule. Traffic that matches no rule connects directly.
 
 ```mermaid
 graph TD
     User --> Browser
-    Browser -- "Geo-blocked Requests" --> Proxy
+    Browser -- "Matched Requests" --> Proxy
     Browser -- Normal Requests --> Internet
 ```
 
@@ -21,12 +21,12 @@ graph TD
 
 GeoBypasser supports importing external rule files and proxy configurations for quick setup.
 
-A companion project is available at:
+A companion repository of shared configuration files is available at:
 [**GeoBypass-Rules**](https://github.com/MeGaNeKoS/GeoBypass-Rules)
 
 This repository includes:
 
-- Rules and keep-alive monitors for various streaming and region-locked services
+- Rules and keep-alive monitors for known websites
 - Files organized by service using a consistent naming structure
 - An optional public proxy configuration for community use
 
