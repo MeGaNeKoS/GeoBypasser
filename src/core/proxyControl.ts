@@ -34,6 +34,6 @@ export function createProxyControl (ports: ProxyControlPorts) {
   }
 }
 
-function isGetProxyControlMessage (message: unknown): message is ProxyControlMessage {
+export function isGetProxyControlMessage (message: unknown): message is ProxyControlMessage {
   return isProxyControlMessage(message) && message.type === 'getProxyControl'
 }

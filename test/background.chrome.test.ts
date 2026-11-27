@@ -25,7 +25,7 @@ describe('Chrome auth for a proxy with whitespace around its host', () => {
     await flush()
 
     const authListener = addAuth.mock.calls[0][0]
-    const result = authListener({ isProxy: true, challenger: { host: 'good.lan', port: 8080 } })
+    const result = await new Promise(respond => authListener({ isProxy: true, challenger: { host: 'good.lan', port: 8080 } }, respond))
     expect(result).toEqual({ authCredentials: { username: 'u', password: 'p' } })
   })
 })

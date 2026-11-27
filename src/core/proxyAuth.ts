@@ -3,7 +3,7 @@ import type { WebRequest } from 'webextension-polyfill'
 import { APP_NAME } from '@constant/defaults'
 import { authCredentialsFor } from '@utils/proxy'
 
-type AuthChallenge = Pick<WebRequest.OnAuthRequiredDetailsType, 'isProxy' | 'challenger'>
+export type AuthChallenge = Pick<WebRequest.OnAuthRequiredDetailsType, 'isProxy' | 'challenger'>
 
 export function answerProxyAuth (details: AuthChallenge, proxyList: ProxyListItem[]) {
   console.debug(`[${APP_NAME}BG] Auth required detected:`, details)
@@ -20,6 +20,13 @@ export function answerProxyAuth (details: AuthChallenge, proxyList: ProxyListIte
   return {}
 }
 
-export function createProxyAuthListener (currentProxyList: () => ProxyListItem[]) {
-  return (details: AuthChallenge) => answerProxyAuth(details, currentProxyList())
+export type ProxyAuthResponse = ReturnType<typeof answerProxyAuth>
+
+export type ProxyListReady = <R>(use: (proxyList: ProxyListItem[]) => R) => Promise<R>
+
+export function answerProxyAuthWhenReady (details: AuthChallenge, proxyListReady: ProxyListReady): Promise<ProxyAuthResponse> {
+  return proxyListReady(proxyList => answerProxyAuth(details, proxyList)).catch(error => {
+    console.error(`[${APP_NAME}BG] Auth challenge answered without credentials, the stored proxy list did not load:`, error)
+    return {}
+  })
 }

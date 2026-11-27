@@ -4,13 +4,14 @@ import { browser } from './setup'
 export type BackgroundName = 'firefox' | 'chrome'
 
 type AuthListener = (details: unknown) => unknown
+type ChromeAuthListener = (details: unknown, respond: (response: unknown) => void) => void
 
 const BACKGROUND_PATHS: Record<BackgroundName, string> = {
   firefox: '../src/background.firefox',
   chrome: '../src/background.chrome',
 }
 
-let chromeAuthListeners: AuthListener[] = []
+let chromeAuthListeners: ChromeAuthListener[] = []
 
 export async function settle () {
   await new Promise(resolve => setImmediate(resolve))
@@ -50,7 +51,7 @@ export async function startBackground (name: BackgroundName) {
   resetBrowserEvents()
   chromeAuthListeners = []
   ;(global as any).chrome = {
-    webRequest: { onAuthRequired: { addListener: (listener: AuthListener) => { chromeAuthListeners.push(listener) } } },
+    webRequest: { onAuthRequired: { addListener: (listener: ChromeAuthListener) => { chromeAuthListeners.push(listener) } } },
   }
   jest.resetModules()
   await import(BACKGROUND_PATHS[name])
@@ -58,8 +59,9 @@ export async function startBackground (name: BackgroundName) {
 }
 
 export function authChallengeListener (name: BackgroundName): AuthListener {
-  const listeners = name === 'firefox' ? browser.webRequest.onAuthRequired._listeners : chromeAuthListeners
-  return listeners[0]
+  if (name === 'firefox') return browser.webRequest.onAuthRequired._listeners[0]
+  const [listener] = chromeAuthListeners
+  return details => new Promise(respond => listener(details, respond))
 }
 
 export function storageChangeListeners (): Array<(changes: unknown, areaName: string) => unknown> {

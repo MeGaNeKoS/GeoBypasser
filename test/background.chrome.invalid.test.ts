@@ -48,11 +48,11 @@ function lastPacWithoutEscapes () {
 
 function lastAuthListener () {
   const calls = addAuth.mock.calls as any[][]
-  return calls[calls.length - 1][0] as (details: unknown) => unknown
+  return calls[calls.length - 1][0] as (details: unknown, respond: (response: unknown) => void) => void
 }
 
 function authFor (host: string, port: number) {
-  return lastAuthListener()({ isProxy: true, challenger: { host, port } })
+  return new Promise(respond => lastAuthListener()({ isProxy: true, challenger: { host, port } }, respond))
 }
 
 function resetBackground () {
@@ -79,7 +79,7 @@ describe('Chrome background with set aside entries', () => {
     expect(lastPacWithoutEscapes()).toContain('setaside.example')
     expect(lastPacWithoutEscapes()).not.toContain('a:1; PROXY x:8080')
     expect(lastPacWithoutEscapes()).not.toContain('not a pattern')
-    expect(authFor('a:1; PROXY x:8080', 80)).toEqual({})
+    await expect(authFor('a:1; PROXY x:8080', 80)).resolves.toEqual({})
 
     setAsideStored[STORAGE_KEYS.rules] = [setAsideRule, setAsideProxyRule, goodRule, extraRule]
     const changes = {
@@ -92,7 +92,7 @@ describe('Chrome background with set aside entries', () => {
     expect(lastPacWithoutEscapes()).toContain('setaside.example')
     expect(lastPacWithoutEscapes()).not.toContain('a:1; PROXY x:8080')
     expect(lastPacWithoutEscapes()).not.toContain('not a pattern')
-    expect(authFor('a:1; PROXY x:8080', 80)).toEqual({})
+    await expect(authFor('a:1; PROXY x:8080', 80)).resolves.toEqual({})
   })
 })
 
@@ -112,7 +112,7 @@ describe('Chrome background with wrong-type entries inside sections', () => {
     expect(lastPacWithoutEscapes()).toContain('good.lan')
     expect(lastPacWithoutEscapes()).toContain('wrong.example')
     expect(lastPacWithoutEscapes()).not.toContain('wrong.lan')
-    expect(authFor('wrong.lan', 3128)).toEqual({})
+    await expect(authFor('wrong.lan', 3128)).resolves.toEqual({})
 
     const changes = Object.fromEntries(Object.entries(wrongTypeStored).map(([k, v]) => [k, { newValue: v }]))
     for (const fn of [...browser.storage.onChanged._listeners]) await fn(changes, 'local')
@@ -120,6 +120,6 @@ describe('Chrome background with wrong-type entries inside sections', () => {
     expect(lastPacWithoutEscapes()).toContain('good.lan')
     expect(lastPacWithoutEscapes()).toContain('example.com')
     expect(lastPacWithoutEscapes()).not.toContain('wrong.lan')
-    expect(authFor('wrong.lan', 3128)).toEqual({})
+    await expect(authFor('wrong.lan', 3128)).resolves.toEqual({})
   })
 })

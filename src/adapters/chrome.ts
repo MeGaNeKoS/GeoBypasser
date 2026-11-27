@@ -7,13 +7,19 @@ export { readStoredSections } from '@utils/storage'
 
 type CompletedDetails = WebRequest.OnCompletedDetailsType & { encodedDataLength?: number }
 
-type ProxyAuthListener = Parameters<typeof chrome.webRequest.onAuthRequired.addListener>[0]
+type ProxyAuthListener = (
+  details: chrome.webRequest.OnAuthRequiredDetails,
+  respond: (response: chrome.webRequest.BlockingResponse) => void,
+) => void
 
 export function registerChromeProxyAuth (listener: ProxyAuthListener) {
   chrome.webRequest.onAuthRequired.addListener(
-    listener,
+    (details, respond) => {
+      listener(details, response => respond?.(response))
+      return undefined
+    },
     { urls: ['<all_urls>'] },
-    ['blocking'], // Chrome only supports 'blocking', not 'asyncBlocking'
+    ['asyncBlocking'], // Chrome answers onAuthRequired through the callback, not a returned Promise
   )
 }
 

@@ -29,6 +29,12 @@ function challengeFor (proxy: ProxyListItem) {
   return { isProxy: true, url: TEST_URL, challenger: { host: proxy.host, port: proxy.port } }
 }
 
+type ChromeAuthListener = (details: unknown, respond: (response: unknown) => void) => void
+
+function answerChallenge (listener: ChromeAuthListener, details: unknown) {
+  return new Promise(respond => listener(details, respond))
+}
+
 describe('Chrome proxy auth listener across config changes', () => {
   const addAuthListener = jest.fn()
 
@@ -48,13 +54,13 @@ describe('Chrome proxy auth listener across config changes', () => {
   })
 
   it('answers from the latest proxy list and not an earlier one', async () => {
-    const [listener] = addAuthListener.mock.calls[0] as [(details: unknown) => unknown]
+    const [listener] = addAuthListener.mock.calls[0] as [ChromeAuthListener]
     const latest = proxyFor(CONFIG_CHANGES)
     const earlier = proxyFor(1)
 
-    expect(await listener(challengeFor(latest))).toEqual({
+    expect(await answerChallenge(listener, challengeFor(latest))).toEqual({
       authCredentials: { username: latest.username, password: latest.password },
     })
-    expect(await listener(challengeFor(earlier))).toEqual({})
+    expect(await answerChallenge(listener, challengeFor(earlier))).toEqual({})
   })
 })
