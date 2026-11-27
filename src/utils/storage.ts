@@ -1,8 +1,8 @@
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import browser from 'webextension-polyfill'
-import type { ProxyId, StorageMode } from '@customTypes/generic'
+import type { ProxyId } from '@customTypes/generic'
 import { APP_NAME, DEFAULT_SETTINGS } from '@constant/defaults'
-import { STORAGE_KEYS, STORAGE_MODE, TAB_PROXY_MAP } from '@constant/storageKeys'
+import { STORAGE_KEYS, TAB_PROXY_MAP } from '@constant/storageKeys'
 
 import type { RuntimeProxyRule } from '@customTypes/proxy'
 import { matchPattern } from 'browser-extension-url-match'
@@ -30,13 +30,6 @@ function safeCompile (pattern: string[] | string, options?: Partial<MatchPattern
 }
 
 const storedSnapshot = new Map<string, string | undefined>()
-
-export async function getUserStorageMode (): Promise<StorageMode> {
-  const result = await browser.storage.local.get(STORAGE_MODE)
-  const mode = result.storageMode === 'cloud' ? 'cloud' : 'local'
-  console.info(`[${APP_NAME}] Current storage mode: ${mode}`)
-  return mode
-}
 
 export function compileRules (rules: unknown[] = []): RuntimeProxyRule[] {
   return rules.map(rule => {
@@ -110,8 +103,6 @@ function sections (config: GeoBypassSettings): Record<string, unknown> {
 export class StorageWriteError extends Error {}
 
 async function writeSections (values: Record<string, unknown>, onlyChanged: boolean) {
-  const storageMode = await getUserStorageMode()
-  const storage = storageMode === 'cloud' ? browser.storage.sync : browser.storage.local
   const update: Record<string, unknown> = {}
   const serializedUpdate = new Map<string, string>()
   for (const [key, value] of Object.entries(values)) {
@@ -122,19 +113,17 @@ async function writeSections (values: Record<string, unknown>, onlyChanged: bool
   }
   if (serializedUpdate.size === 0) return
   try {
-    await storage.set(update)
+    await browser.storage.local.set(update)
   } catch (cause) {
     const detail = cause instanceof Error ? cause.message : String(cause)
-    throw new StorageWriteError(`Your last change was not saved to ${storageMode} storage: ${detail}`)
+    throw new StorageWriteError(`Your last change was not saved to local storage: ${detail}`)
   }
   for (const [key, serialized] of serializedUpdate) storedSnapshot.set(key, serialized)
-  console.info(`[${APP_NAME}] Saved config to ${storageMode} storage.`)
+  console.info(`[${APP_NAME}] Saved config to local storage.`)
 }
 
 export async function getConfig (): Promise<GeoBypassRuntimeSettings> {
-  const storageMode = await getUserStorageMode()
-  const storage = storageMode === 'cloud' ? browser.storage.sync : browser.storage.local
-  const result = await storage.get(Object.values(STORAGE_KEYS)) as Record<string, unknown>
+  const result = await browser.storage.local.get(Object.values(STORAGE_KEYS)) as Record<string, unknown>
   if (!result || Object.keys(result).length === 0) {
     console.warn(`[${APP_NAME}] No config found. Using default settings.`)
   }

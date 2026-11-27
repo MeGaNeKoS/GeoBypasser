@@ -360,11 +360,6 @@ function renderGeneral () {
   testUrl.value = config.testProxyUrl
   markInvalid(testUrl, false)
 
-  // const mode = document.getElementById('storageMode') as HTMLSelectElement
-  // browser.storage.local.get('storageMode').then(res => {
-  //   mode.value = res.storageMode === 'cloud' ? 'cloud' : 'local'
-  // })
-
   select.onchange = () => {
     if (canSaveDefaultProxy(select.value, config.proxyList)) updateConfig({ defaultProxy: select.value || undefined })
   }
@@ -374,7 +369,6 @@ function renderGeneral () {
     markInvalid(testUrl, !valid)
     if (valid) updateConfig({ testProxyUrl: testUrl.value })
   }
-  // mode.onchange = () => browser.storage.local.set({ storageMode: mode.value })
 }
 
 function renderProxyList () {

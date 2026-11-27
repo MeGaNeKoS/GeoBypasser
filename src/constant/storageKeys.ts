@@ -1,4 +1,3 @@
-export const STORAGE_MODE = 'storageMode'
 export const TAB_PROXY_MAP = 'tabProxyMap'
 
 export const STORAGE_KEYS = {

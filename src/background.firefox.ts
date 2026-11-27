@@ -10,7 +10,7 @@ import {
   resolveProxy,
 } from '@utils/proxy'
 import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@utils/generic'
-import { getConfig, getTabProxyMap, getUserStorageMode, sanitizeSection, saveTabProxyMap } from '@utils/storage'
+import { getConfig, getTabProxyMap, sanitizeSection, saveTabProxyMap } from '@utils/storage'
 import { ProxyListItem } from '@customTypes/proxy'
 import { APP_NAME } from '@constant/defaults'
 import { STORAGE_KEYS, TAB_PROXY_MAP } from '@constant/storageKeys'
@@ -338,17 +338,6 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
   browser.storage.onChanged.addListener(async (changes, areaName) => {
     console.info(`[${APP_NAME}BG] Storage change detected. Area: ${areaName}. Keys: ${Object.keys(changes).join(', ')}.`)
 
-    if (areaName === 'local' && changes.storageMode) {
-      console.info(`[${APP_NAME}BG] Detected storageMode change, reloading config...`)
-      const newConfig = await getConfig()
-      Object.assign(config, newConfig)
-      attachProxyHandlers(config, handlers, ['rules', 'defaultProxy'])
-      await initKeepAlive(config)
-      setupKeepAliveListeners(config, keepAliveHandlers)
-      console.info(`[${APP_NAME}BG] Handlers updated after storageMode switch.`)
-      return
-    }
-
     if (areaName === 'local' && changes[TAB_PROXY_MAP]) {
       const newMap = changes[TAB_PROXY_MAP].newValue as Record<number, string> || {}
       Object.keys(tabProxyMap).forEach(k => delete tabProxyMap[Number(k)])
@@ -356,9 +345,7 @@ function setupKeepAliveListeners (config: GeoBypassRuntimeSettings, currentHandl
       console.info(`[${APP_NAME}BG] tabProxyMap updated from storage.`)
     }
 
-    const currentStorageMode = await getUserStorageMode()
-    const currentArea = currentStorageMode === 'cloud' ? 'sync' : 'local'
-    if (areaName !== currentArea) return
+    if (areaName !== 'local') return
 
     const changedKeys: string[] = []
     if (changes[STORAGE_KEYS.proxyList]) {

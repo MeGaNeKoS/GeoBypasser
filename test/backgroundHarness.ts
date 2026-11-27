@@ -36,10 +36,14 @@ function resetBrowserEvents () {
 
 export function storeLocally (values: Record<string, unknown>) {
   browser.storage.local.get.mockImplementation(async (keys: unknown) => {
-    if (typeof keys === 'string') return {}
-    const wanted = Array.isArray(keys) ? keys as string[] : Object.keys(values)
+    const wanted = requestedKeys(keys, values)
     return Object.fromEntries(wanted.filter(key => key in values).map(key => [key, values[key]]))
   })
+}
+
+function requestedKeys (keys: unknown, values: Record<string, unknown>): string[] {
+  if (typeof keys === 'string') return [keys]
+  return Array.isArray(keys) ? keys as string[] : Object.keys(values)
 }
 
 export async function startBackground (name: BackgroundName) {

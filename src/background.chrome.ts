@@ -1,6 +1,6 @@
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import browser from 'webextension-polyfill'
-import { getConfig, getUserStorageMode } from '@utils/storage'
+import { getConfig } from '@utils/storage'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 import { generatePacScript } from '@utils/pac'
 import { APP_NAME } from '@constant/defaults'
@@ -43,9 +43,7 @@ async function applyPac (config: GeoBypassRuntimeSettings) {
   let config = await getConfig()
   await applyPac(config)
   browser.storage.onChanged.addListener(async (changes, areaName) => {
-    const currentMode = await getUserStorageMode()
-    const currentArea = currentMode === 'cloud' ? 'sync' : 'local'
-    if (areaName !== currentArea) return
+    if (areaName !== 'local') return
 
     if (Object.keys(changes).some(k => Object.values(STORAGE_KEYS).includes(k as any))) {
       config = await getConfig()

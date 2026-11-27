@@ -29,13 +29,11 @@ describe('compileRules', () => {
 describe('getConfig', () => {
   it('returns defaults when storage empty and compiles rules', async () => {
     browser.storage.local.get.mockResolvedValue({})
-    const spyMode = jest.spyOn(require('@utils/storage'), 'getUserStorageMode').mockResolvedValue('local')
     browser.storage.local.set.mockResolvedValue(undefined)
 
     const config = await getConfig()
     expect(config).toEqual({ ...DEFAULT_SETTINGS, rules: [] })
     expect(browser.storage.local.set).not.toHaveBeenCalled()
-    spyMode.mockRestore()
   })
 })
 
@@ -51,22 +49,18 @@ describe('saveConfig and updateConfig', () => {
 
   it('stores only non-compiled fields', async () => {
     browser.storage.local.set.mockResolvedValue(undefined)
-    const modeSpy = jest.spyOn(require('@utils/storage'), 'getUserStorageMode').mockResolvedValue('local')
 
     await saveConfig(runtimeConfig as unknown as GeoBypassSettings)
     expect(browser.storage.local.set).toHaveBeenCalled()
     const arg = browser.storage.local.set.mock.calls[0][0]
     expect(arg[STORAGE_KEYS.rules][0]).not.toHaveProperty('compiledMatch')
-    modeSpy.mockRestore()
   })
 
   it('updateConfig saves partial fields', async () => {
     browser.storage.local.set.mockResolvedValue(undefined)
-    const modeSpy = jest.spyOn(require('@utils/storage'), 'getUserStorageMode').mockResolvedValue('local')
     await updateConfig({ defaultProxy: 'p2', rules: [] })
     expect(browser.storage.local.set).toHaveBeenCalled()
     const arg = browser.storage.local.set.mock.calls[0][0]
     expect(arg).toEqual({ [STORAGE_KEYS.defaultProxy]: 'p2', [STORAGE_KEYS.rules]: [] })
-    modeSpy.mockRestore()
   })
 })
