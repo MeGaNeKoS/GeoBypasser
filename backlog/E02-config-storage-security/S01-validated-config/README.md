@@ -8,7 +8,8 @@ As a user who imports config from a file, a URL, a GitHub repository, or the Com
 
 - Pattern (a rule's match, bypass URL, and force proxy URL patterns): accepted by the match pattern library the extension already uses, in its non strict mode.
 - `staticExtensions`: absent, empty, or written as `/pattern/flags` where the pattern compiles and the flags are distinct letters from `gimsuy`.
-- Rule: has a name, at least one match pattern, and a proxy reference, and every pattern is valid. A rule's `staticExtensions` value does not decide whether the rule is valid. A rule without an `active` field is active.
+- Rule: has a name, at least one match pattern, and a proxy reference, and every pattern is valid. `bypassResourceTypes`, when present, is a list of resource type names the extension knows. A rule's `staticExtensions` value does not decide whether the rule is valid. A rule without an `active` field is active.
+- Keep-alive rule: `active` is true or false, and it has at least one tab URL pattern, each accepted by that field's edit form check.
 - Proxy: has an id and a type the extension supports. The host, once trimmed, is not empty and contains no whitespace, no control character, and none of `;`, `/`, `\`, `"`, `'`. The port is an integer from 1 to 65535.
 - Test URL (the general one and a keep-alive rule's own): an absolute `http` or `https` URL.
 - Website override domain and keep-alive tab URL: accepted by the check that field's edit form already applies.
