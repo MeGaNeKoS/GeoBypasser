@@ -2,5 +2,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "types": ["node", "jest", "chrome"]
-  }
+  },
+  "include": [
+    "src/**/*",
+    "assets/**/*",
+    "test/**/*"
+  ]
 }
