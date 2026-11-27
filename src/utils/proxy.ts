@@ -7,6 +7,7 @@ import { APP_NAME } from '@constant/defaults'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { supportsProxyOnRequest } from '@utils/env'
 import { addTestURLToPac } from '@utils/pac'
+import { pacRouteFor } from '@utils/pacRoute'
 import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableProxies, usableRules } from '@utils/usable'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
@@ -215,9 +216,7 @@ async function testProxyConfig (
   let testProxyHandler: ((requestInfo: Proxy.OnRequestDetailsType) => any) | null = null
 
   if (!supportsProxyOnRequest) {
-    const scheme = proxy.type === 'socks' ? 'SOCKS5' : 'PROXY'
-    const pacProxy = `${scheme} ${proxy.host}:${proxy.port}`
-    restore = await addTestURLToPac(testUrl, pacProxy)
+    restore = await addTestURLToPac(testUrl, pacRouteFor(proxy))
   } else {
     testProxyHandler = function (requestInfo: Proxy.OnRequestDetailsType) {
       console.debug(

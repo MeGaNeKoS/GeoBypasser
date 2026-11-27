@@ -2,6 +2,7 @@ import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import type { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { resolveProxy } from '@utils/proxy'
+import { pacRouteFor } from '@utils/pacRoute'
 import { matchPatternSource } from '@utils/pacPattern'
 import { compileStaticExtensions } from '@utils/validity'
 import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableRules } from '@utils/usable'
@@ -14,10 +15,8 @@ const LINE_SEPARATOR = String.fromCharCode(0x2028)
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029)
 
 function proxyToPac (proxy: ProxyListItem, fallbackDirect: boolean): string {
-  const scheme = proxy.type === 'socks' ? 'SOCKS5' : 'PROXY'
-  return fallbackDirect
-    ? `${scheme} ${proxy.host}:${proxy.port}; DIRECT`
-    : `${scheme} ${proxy.host}:${proxy.port}`
+  const route = pacRouteFor(proxy)
+  return fallbackDirect ? `${route}; DIRECT` : route
 }
 
 function pacString (text: string): string {

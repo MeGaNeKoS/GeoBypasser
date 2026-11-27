@@ -1,6 +1,7 @@
 import type { ProxyListItem } from '@customTypes/proxy'
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import { generatePacScript, _resetTestPac } from '@utils/pac'
+import { pacRouteFor } from '@utils/pacRoute'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { evaluatePac } from './pacEvaluation'
 import { browser } from './setup'
@@ -45,6 +46,6 @@ describe('the Chrome proxy test for a socks proxy', () => {
     const installedPacs: string[] = browser.proxy.settings.set.mock.calls.map(
       (call: [{ value: { pacScript: { data: string } } }]) => call[0].value.pacScript.data,
     )
-    expect(installedPacs.some(pac => pac.includes('return "SOCKS5 socks.lan:1080";'))).toBe(true)
+    expect(installedPacs.some(pac => pac.includes(`return ${JSON.stringify(pacRouteFor(socksProxy))};`))).toBe(true)
   })
 })

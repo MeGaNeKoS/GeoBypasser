@@ -1,6 +1,7 @@
 import type { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import { generatePacScript } from '@utils/pac'
+import { pacRouteFor } from '@utils/pacRoute'
 import { makeDefaultProxyHandler, makeDomainProxyHandler, makeProxyHandler } from '@utils/proxy'
 import { compileRules } from '@utils/storage'
 import type { Proxy } from 'webextension-polyfill'
@@ -94,13 +95,20 @@ async function firefoxRoute (row: Row): Promise<string> {
 }
 
 type FirefoxRoute = { type: string; host?: string; port?: number }
+type EndpointRoute = FirefoxRoute & { host: string; port: number }
+
+function isEndpointRoute (route: FirefoxRoute): route is EndpointRoute {
+  return route.host !== undefined && route.port !== undefined
+}
+
+function routeToPac (route: FirefoxRoute): string {
+  if (route.type === 'direct') return DIRECT
+  if (!isEndpointRoute(route)) throw new Error(`route of type ${route.type} has no endpoint`)
+  return pacRouteFor(route)
+}
 
 function toPacRoute (routes: FirefoxRoute[]): string {
-  return routes.map(route => {
-    if (route.type === 'direct') return DIRECT
-    const scheme = route.type === 'socks' ? 'SOCKS5' : 'PROXY'
-    return `${scheme} ${route.host}:${route.port}`
-  }).join('; ')
+  return routes.map(routeToPac).join('; ')
 }
 
 describe('a route table run through the Firefox handlers and the Chrome PAC script', () => {
