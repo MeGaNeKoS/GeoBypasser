@@ -1741,11 +1741,12 @@ function clearTabProxies () {
 }
 
 function renderAbout () {
-  const { name, version } = browser.runtime.getManifest()
+  const { name, version, description } = browser.runtime.getManifest()
   const nameEl = document.getElementById('aboutName')!
   const versionEl = document.getElementById('aboutVersion')!
   nameEl.textContent = name
   versionEl.textContent = version
+  document.getElementById('aboutSummary')!.textContent = description ?? ''
 }
 
 function renderAll () {
@@ -1761,9 +1762,9 @@ function renderAll () {
 }
 
 
-document.addEventListener('DOMContentLoaded', async () => {
 alertUnsavedChanges(window, alert)
 
+document.addEventListener('DOMContentLoaded', async () => {
   config = await getConfig()
   renderAll()
 
@@ -1771,6 +1772,10 @@ alertUnsavedChanges(window, alert)
     document.getElementById('clearTabProxies')?.remove()
     document.querySelector('button[data-tab="override"]')?.remove()
     document.getElementById('override')?.remove()
+    document.getElementById('aboutTabRule')?.remove()
+    document.getElementById('aboutMainSiteRule')?.remove()
+    document.getElementById('aboutTabAssignment')?.remove()
+    document.getElementById('aboutDomainOverrides')?.remove()
     document.getElementById('networkHint')?.classList.remove('hidden')
   }
 

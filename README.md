@@ -1,6 +1,6 @@
 # GeoBypass
 
-GeoBypass is a browser extension that manages a list of proxies and routes browser traffic through them by tab, by site, or by request rule. Traffic that matches no rule connects directly.
+GeoBypass is a browser extension that manages a list of proxies and routes browser traffic through them by request rule. Routing by tab and by site is available on Firefox only. Traffic that matches no rule connects directly.
 
 ```mermaid
 graph TD

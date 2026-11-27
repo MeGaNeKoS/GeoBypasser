@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GeoBypass",
   "version": "1.2.1",
-  "description": "Manage a list of proxies and route browser traffic through them by tab, by site, or by request rule.",
+  "description": "Manage a list of proxies and route browser traffic through them by request rule.",
   "permissions": [
     "proxy",
     "storage",
