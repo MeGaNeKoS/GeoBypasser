@@ -1,8 +1,8 @@
 import { browser } from './setup'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 
-jest.mock('@utils/tab', () => {
-  const original = jest.requireActual('@utils/tab')
+jest.mock('@core/keepAlive', () => {
+  const original = jest.requireActual('@core/keepAlive')
   return { ...original, maybeUpdateProxyKeepAlive: jest.fn() }
 })
 
@@ -47,7 +47,7 @@ describe('keep-alive entries that are set aside', () => {
       return Object.fromEntries((keys as string[]).filter(k => k in setAsideStored).map(k => [k, setAsideStored[k]]))
     })
     ;(browser.tabs.query as jest.Mock).mockResolvedValue([{ id: 1, url: 'https://example.com/a', discarded: false }])
-    const maybeUpdate = require('@utils/tab').maybeUpdateProxyKeepAlive as jest.Mock
+    const maybeUpdate = require('@core/keepAlive').maybeUpdateProxyKeepAlive as jest.Mock
     maybeUpdate.mockClear()
 
     await import('../src/background.firefox')
@@ -68,7 +68,7 @@ describe('keep-alive rule with an invalid test URL', () => {
       return Object.fromEntries((keys as string[]).filter(k => k in invalidUrlStored).map(k => [k, invalidUrlStored[k]]))
     })
     ;(browser.tabs.query as jest.Mock).mockResolvedValue([{ id: 1, url: 'https://example.com/a', discarded: false }])
-    const maybeUpdate = require('@utils/tab').maybeUpdateProxyKeepAlive as jest.Mock
+    const maybeUpdate = require('@core/keepAlive').maybeUpdateProxyKeepAlive as jest.Mock
     maybeUpdate.mockClear()
 
     await import('../src/background.firefox')

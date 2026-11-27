@@ -13,7 +13,7 @@ import { getAllMatchUrls, getHostname, KeepAliveState, matchHostname } from '@ut
 import { getConfig, getTabProxyMap, sanitizeSection, saveTabProxyMap } from '@utils/storage'
 import { APP_NAME } from '@constant/defaults'
 import { STORAGE_KEYS, TAB_PROXY_MAP } from '@constant/storageKeys'
-import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
+import { makeOnActiveHandler, makeOnRemovedHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@core/keepAlive'
 import { isNetworkMessage, isTabProxyMessage } from '@utils/messages'
 import { createNetworkMonitor } from '@core/networkMonitor'
 import { registerFirefoxNetworkMonitor } from '@adapters/firefox'

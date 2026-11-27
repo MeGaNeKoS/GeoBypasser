@@ -1,4 +1,4 @@
-import { maybeUpdateProxyKeepAlive } from '@utils/tab'
+import { maybeUpdateProxyKeepAlive } from '@core/keepAlive'
 import { browser } from './setup'
 import { answerChecksBy, checkCount, keepAliveProxy, keepAliveState } from './keepAliveHarness'
 

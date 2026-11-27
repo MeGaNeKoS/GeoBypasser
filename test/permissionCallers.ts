@@ -35,7 +35,7 @@ export const FIREFOX_PERMISSION_CALLERS: PermissionCallers = {
   ],
   notifications: [
     { file: 'src/background.firefox.ts', pattern: /browser\.notifications\./ },
-    { file: 'src/utils/tab.ts', pattern: /browser\.notifications\./ },
+    { file: 'src/core/keepAlive.ts', pattern: /browser\.notifications\./ },
   ],
   webRequest: [{ file: 'src/background.firefox.ts', pattern: /browser\.webRequest\./ }],
   webRequestBlocking: [{ file: 'src/background.firefox.ts', pattern: /'blocking'/ }],

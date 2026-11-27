@@ -1,4 +1,4 @@
-import { makeOnActiveHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@utils/tab'
+import { makeOnActiveHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@core/keepAlive'
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import type { ProxyListItem } from '@customTypes/proxy'
 import { browser } from './setup'
@@ -28,7 +28,7 @@ describe('maybeUpdateProxyKeepAlive', () => {
       consecutiveFailures: 0,
       reportedDown: false,
     }
-    const spy = jest.spyOn(require('@utils/tab'), 'keepAliveProxyStatus').mockImplementation(() => {})
+    const spy = jest.spyOn(require('@core/keepAlive'), 'keepAliveProxyStatus').mockImplementation(() => {})
     maybeUpdateProxyKeepAlive(proxy, state)
     expect(state.timer).not.toBeNull()
     state.activeTabs.get('x')!.clear()

@@ -1,8 +1,8 @@
 import { browser } from './setup'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 
-jest.mock('@utils/tab', () => {
-  const original = jest.requireActual('@utils/tab')
+jest.mock('@core/keepAlive', () => {
+  const original = jest.requireActual('@core/keepAlive')
   return { ...original, maybeUpdateProxyKeepAlive: jest.fn() }
 })
 

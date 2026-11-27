@@ -16,8 +16,8 @@ jest.mock('@utils/storage', () => {
   }
 })
 
-jest.mock('@utils/tab', () => {
-  const original = jest.requireActual('@utils/tab')
+jest.mock('@core/keepAlive', () => {
+  const original = jest.requireActual('@core/keepAlive')
   return { ...original, maybeUpdateProxyKeepAlive: jest.fn() }
 })
 
@@ -27,7 +27,7 @@ describe('background init', () => {
     await Promise.resolve()
     await Promise.resolve()
     expect(browser.proxy.onRequest._listeners.length).toBeGreaterThan(0)
-    const tabUtils = require('@utils/tab')
-    expect(tabUtils.maybeUpdateProxyKeepAlive).toHaveBeenCalled()
+    const keepAlive = require('@core/keepAlive')
+    expect(keepAlive.maybeUpdateProxyKeepAlive).toHaveBeenCalled()
   })
 })
