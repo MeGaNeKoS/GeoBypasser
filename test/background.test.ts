@@ -1,6 +1,7 @@
 import { browser } from './setup'
 import { DEFAULT_SETTINGS } from '@constant/defaults'
 import { compileRules } from '@utils/storage'
+import { letBackgroundStart } from './keepAliveFakeCheck'
 
 jest.mock('@utils/storage', () => {
   const original = jest.requireActual('@utils/storage')
@@ -16,18 +17,18 @@ jest.mock('@utils/storage', () => {
   }
 })
 
-jest.mock('@core/keepAlive', () => {
-  const original = jest.requireActual('@core/keepAlive')
-  return { ...original, maybeUpdateProxyKeepAlive: jest.fn() }
-})
+jest.mock('@adapters/firefox', () => require('./keepAliveFakeCheck').withFakeProxyCheck())
 
 describe('background init', () => {
+  beforeEach(() => { jest.useFakeTimers() })
+  afterEach(() => { jest.useRealTimers() })
+
   it('attaches handlers and keep-alive', async () => {
+    (browser.tabs.query as jest.Mock).mockResolvedValue([{ id: 1, url: 'https://example.com/a', discarded: false }])
     await import('../src/background.firefox')
-    await Promise.resolve()
-    await Promise.resolve()
+    await letBackgroundStart()
     expect(browser.proxy.onRequest._listeners.length).toBeGreaterThan(0)
-    const keepAlive = require('@core/keepAlive')
-    expect(keepAlive.maybeUpdateProxyKeepAlive).toHaveBeenCalled()
+    const { fakeProxyCheck } = require('@adapters/firefox') as { fakeProxyCheck: jest.Mock }
+    expect(fakeProxyCheck).toHaveBeenCalled()
   })
 })

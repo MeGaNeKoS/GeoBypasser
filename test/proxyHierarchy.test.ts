@@ -46,7 +46,7 @@ async function runRequest (
   tabMap: Record<number, string> = {},
 ) {
   const tabHandler = makeTabProxyHandler(cfg, tabMap)
-  const domainHandler = makeDomainProxyHandler(cfg)
+  const domainHandler = makeDomainProxyHandler(cfg, browser.tabs.get)
   const ruleHandler = makeProxyHandler(cfg)
   const defaultHandler = cfg.defaultProxy ? makeDefaultProxyHandler(cfg) : undefined
   const info: any = { tabId, url: reqUrl, type }

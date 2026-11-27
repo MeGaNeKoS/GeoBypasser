@@ -41,7 +41,7 @@ describe('makeDomainProxyHandler', () => {
     const cfg = baseConfig()
     cfg.perWebsiteOverride = { 'example.com': 'p1' }
     browser.tabs.get.mockResolvedValue({ id: 1, url: 'https://example.com/path' })
-    const res = await makeDomainProxyHandler(cfg)({ tabId: 1 } as any)
+    const res = await makeDomainProxyHandler(cfg, browser.tabs.get)({ tabId: 1 } as any)
     expect(res).toEqual([{ ...proxy, proxyDNS: false }, { type: 'direct' }])
   })
 
@@ -50,7 +50,7 @@ describe('makeDomainProxyHandler', () => {
     cfg.perWebsiteOverride = { 'example.com': 'missing' }
     browser.tabs.get.mockResolvedValue({ id: 1, url: 'https://example.com' })
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
-    await makeDomainProxyHandler(cfg)({ tabId: 1 } as any)
+    await makeDomainProxyHandler(cfg, browser.tabs.get)({ tabId: 1 } as any)
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
   })

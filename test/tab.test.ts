@@ -1,4 +1,5 @@
-import { makeOnActiveHandler, makeOnUpdateHandler, maybeUpdateProxyKeepAlive } from '@core/keepAlive'
+import { makeOnActiveHandler, makeOnUpdateHandler } from '@core/keepAlive'
+import { keepAlivePorts, maybeUpdateProxyKeepAlive } from './keepAliveHarness'
 import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import type { ProxyListItem } from '@customTypes/proxy'
 import { browser } from './setup'
@@ -53,13 +54,13 @@ describe('onUpdate/onActive handlers', () => {
       },
     }
     jest.useFakeTimers()
-    const onUpdate = makeOnUpdateHandler(cfg, states)
+    const onUpdate = makeOnUpdateHandler(cfg, states, keepAlivePorts)
     onUpdate(1, { url: 'https://example.com' } as any, { url: 'https://old.com', discarded: false } as any)
     expect(states.p1.activeTabs.get('example.com')?.has(1)).toBe(true)
     expect(states.p1.timer).not.toBeNull()
 
     browser.tabs.get.mockResolvedValue({ id: 1, url: 'https://example.com', discarded: false })
-    const onActive = makeOnActiveHandler(cfg, states)
+    const onActive = makeOnActiveHandler(cfg, states, keepAlivePorts)
     await onActive({ tabId: 1 } as any)
     expect(states.p1.activeTabs.get('example.com')?.has(1)).toBe(true)
     jest.useRealTimers()

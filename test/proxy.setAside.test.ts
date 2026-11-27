@@ -44,7 +44,7 @@ async function route (cfg: any, url: string) {
 
 async function routeDomain (cfg: any) {
   ;(browser.tabs.get as jest.Mock).mockResolvedValue({ id: 1, url: 'https://example.com/a' })
-  return makeDomainProxyHandler(cfg)({ url: 'https://example.com/a', type: 'main_frame', tabId: 1 } as any)
+  return makeDomainProxyHandler(cfg, browser.tabs.get)({ url: 'https://example.com/a', type: 'main_frame', tabId: 1 } as any)
 }
 
 const urls = ['https://example.com/a', 'https://example.org/b', 'https://other.test/']

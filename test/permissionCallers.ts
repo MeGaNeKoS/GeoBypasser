@@ -27,17 +27,17 @@ function hasCaller (candidates: PermissionCaller[], readSource: SourceReader): b
 }
 
 export const FIREFOX_PERMISSION_CALLERS: PermissionCallers = {
-  proxy: [{ file: 'src/background.firefox.ts', pattern: /browser\.proxy\./ }],
+  proxy: [{ file: 'src/adapters/firefox.ts', pattern: /browser\.proxy\./ }],
   storage: [{ file: 'src/utils/storage.ts', pattern: /browser\.storage\./ }],
   tabs: [
-    { file: 'src/background.firefox.ts', pattern: /browser\.tabs\./ },
+    { file: 'src/adapters/firefox.ts', pattern: /browser\.tabs\./ },
     { file: 'src/popup.ts', pattern: /browser\.tabs\./ },
   ],
-  notifications: [
-    { file: 'src/background.firefox.ts', pattern: /browser\.notifications\./ },
-    { file: 'src/core/keepAlive.ts', pattern: /browser\.notifications\./ },
+  notifications: [{ file: 'src/adapters/firefox.ts', pattern: /browser\.notifications\./ }],
+  webRequest: [
+    { file: 'src/adapters/firefox.ts', pattern: /browser\.webRequest\./ },
+    { file: 'src/background.firefox.ts', pattern: /browser\.webRequest\./ },
   ],
-  webRequest: [{ file: 'src/background.firefox.ts', pattern: /browser\.webRequest\./ }],
   webRequestBlocking: [{ file: 'src/background.firefox.ts', pattern: /'blocking'/ }],
   '<all_urls>': [{ file: 'src/background.firefox.ts', pattern: /'<all_urls>'/ }],
 }

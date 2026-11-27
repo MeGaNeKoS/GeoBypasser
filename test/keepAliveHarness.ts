@@ -1,8 +1,18 @@
 import type { ProxyListItem } from '@customTypes/proxy'
 import type { KeepAliveState } from '@utils/generic'
 import { testProxyConfigQueued } from '@utils/proxy'
+import { firefoxKeepAlivePorts } from '@adapters/firefox'
+import { maybeUpdateProxyKeepAlive as updateKeepAlive } from '@core/keepAlive'
 
 export const KEEP_ALIVE_TEST_URL = 'https://t/'
+
+const keepAlivePorts = firefoxKeepAlivePorts()
+
+export function maybeUpdateProxyKeepAlive (proxy: ProxyListItem, state: KeepAliveState) {
+  updateKeepAlive(proxy, state, keepAlivePorts)
+}
+
+export { keepAlivePorts }
 
 export function keepAliveProxy (overrides: Partial<ProxyListItem> = {}): ProxyListItem {
   return { id: 'p1', type: 'http', host: 'h', port: 80, proxyDNS: true, notifyIfDown: true, ...overrides }

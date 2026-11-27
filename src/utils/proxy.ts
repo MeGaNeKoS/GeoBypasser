@@ -1,7 +1,7 @@
 import type { ProxyListItem, ProxyTestResult, RuntimeProxyRule } from '@customTypes/proxy'
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
 import { ProxyId } from '@customTypes/generic'
-import browser, { Proxy, WebRequest } from 'webextension-polyfill'
+import browser, { Proxy, Tabs, WebRequest } from 'webextension-polyfill'
 import { fetchWithTimeout, getHostname, isHostOrSubdomain, matchPatternList } from '@utils/generic'
 import { APP_NAME } from '@constant/defaults'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
@@ -53,12 +53,14 @@ function overrideProxyIdForHost (overrides: unknown, hostname: string): string |
     .find(([domain]) => isHostOrSubdomain(hostname, domain.toLowerCase()))?.[1]
 }
 
-export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings) {
+export type TabLookup = (tabId: number) => Promise<Pick<Tabs.Tab, 'url'>>
+
+export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings, lookupTab: TabLookup) {
   return async function handleDomainProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
     if (requestInfo.tabId === undefined) return
     let tab
     try {
-      tab = await browser.tabs.get(requestInfo.tabId)
+      tab = await lookupTab(requestInfo.tabId)
     } catch {
       return
     }

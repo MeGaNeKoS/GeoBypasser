@@ -1,6 +1,5 @@
-import { maybeUpdateProxyKeepAlive } from '@core/keepAlive'
 import { browser } from './setup'
-import { answerChecksBy, checkCount, keepAliveProxy, keepAliveState } from './keepAliveHarness'
+import { answerChecksBy, checkCount, keepAliveProxy, keepAliveState, maybeUpdateProxyKeepAlive } from './keepAliveHarness'
 
 jest.mock('@utils/proxy', () => ({ ...jest.requireActual('@utils/proxy'), testProxyConfigQueued: jest.fn() }))
 

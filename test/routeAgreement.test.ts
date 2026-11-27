@@ -86,7 +86,7 @@ async function firefoxRoute (row: Row): Promise<string> {
   browser.tabs.get.mockResolvedValue({ id: 1, url: row.url })
   const requestInfo = { url: row.url, type: 'main_frame', tabId: 1 } as Proxy.OnRequestDetailsType
   const runtimeConfig = configFor(row)
-  const handlers = [makeDomainProxyHandler(runtimeConfig), makeProxyHandler(runtimeConfig), makeDefaultProxyHandler(runtimeConfig)]
+  const handlers = [makeDomainProxyHandler(runtimeConfig, browser.tabs.get),makeProxyHandler(runtimeConfig), makeDefaultProxyHandler(runtimeConfig)]
   for (const handler of handlers) {
     const result = await handler(requestInfo)
     if (result !== undefined) return toPacRoute(result)

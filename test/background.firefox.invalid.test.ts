@@ -1,11 +1,6 @@
 import { browser } from './setup'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 
-jest.mock('@core/keepAlive', () => {
-  const original = jest.requireActual('@core/keepAlive')
-  return { ...original, maybeUpdateProxyKeepAlive: jest.fn() }
-})
-
 const good = { id: 'good', type: 'http', host: 'good.lan', port: 8080, proxyDNS: false }
 const goodRule = { active: true, name: 'good', match: ['https://example.com/*'], proxyId: 'good' }
 const setAsideHost = { id: 'bad', type: 'http', host: 'a:1; PROXY x:8080', port: 80, proxyDNS: false }
