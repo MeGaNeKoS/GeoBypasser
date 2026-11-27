@@ -20,6 +20,7 @@ const browser: any = {
       settings: {
         get: jest.fn(async () => ({ value: {}, levelOfControl: 'controlled_by_this_extension' })),
         set: jest.fn(async () => {}),
+        onChange: createEvent(),
       },
     },
     webRequest: {

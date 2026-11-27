@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ProxyIdSchema } from '@schemas/generic'
+import { ProxyControlStateSchema } from '@schemas/proxyControl'
 
 export const SetTabProxyMessageSchema = z.object({
   type: z.literal('setTabProxy'),
@@ -47,4 +48,18 @@ export const NetworkMessageSchema = z.union([
   UnmonitorNetworkMessageSchema,
   IsMonitoredMessageSchema,
   DevtoolsNetworkDataMessageSchema,
+])
+
+export const GetProxyControlMessageSchema = z.object({
+  type: z.literal('getProxyControl'),
+})
+
+export const ProxyControlChangedMessageSchema = z.object({
+  type: z.literal('proxyControlChanged'),
+  state: ProxyControlStateSchema,
+})
+
+export const ProxyControlMessageSchema = z.union([
+  GetProxyControlMessageSchema,
+  ProxyControlChangedMessageSchema,
 ])

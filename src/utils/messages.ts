@@ -1,4 +1,5 @@
-import { TabProxyMessage, NetworkMessage } from '@customTypes/messages'
+import { TabProxyMessage, NetworkMessage, ProxyControlMessage } from '@customTypes/messages'
+import { ProxyControlMessageSchema } from '@schemas/messages'
 
 export function isTabProxyMessage (msg: unknown): msg is TabProxyMessage {
   if (
@@ -44,4 +45,8 @@ export function isNetworkMessage (msg: unknown): msg is NetworkMessage {
     }
   }
   return false
+}
+
+export function isProxyControlMessage (msg: unknown): msg is ProxyControlMessage {
+  return ProxyControlMessageSchema.safeParse(msg).success
 }

@@ -8,6 +8,9 @@ import {
   IsMonitoredMessageSchema,
   DevtoolsNetworkDataMessageSchema,
   NetworkMessageSchema,
+  GetProxyControlMessageSchema,
+  ProxyControlChangedMessageSchema,
+  ProxyControlMessageSchema,
 } from '@schemas/messages'
 
 export type SetTabProxyMessage = z.infer<typeof SetTabProxyMessageSchema>
@@ -18,3 +21,6 @@ export type UnmonitorNetworkMessage = z.infer<typeof UnmonitorNetworkMessageSche
 export type IsMonitoredMessage = z.infer<typeof IsMonitoredMessageSchema>
 export type DevtoolsNetworkDataMessage = z.infer<typeof DevtoolsNetworkDataMessageSchema>
 export type NetworkMessage = z.infer<typeof NetworkMessageSchema>
+export type GetProxyControlMessage = z.infer<typeof GetProxyControlMessageSchema>
+export type ProxyControlChangedMessage = z.infer<typeof ProxyControlChangedMessageSchema>
+export type ProxyControlMessage = z.infer<typeof ProxyControlMessageSchema>
