@@ -44,16 +44,7 @@ input.invalid { border-color: #c44; }
   margin: 4px 0 12px;
 }
 
-.modal-help {
-  font-size: 0.9em;
-  opacity: 0.8;
-  margin-bottom: 8px;
-}
-
 .hidden { display: none; }
-
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 150; }
-.modal.hidden { display: none; }
 
 
 /* remove number input arrows */
@@ -87,22 +78,3 @@ input[type='number'] {
 
   }
 
-/* Interim: keeps the sections not yet rebuilt usable inside the new frame; removed as each section is rebuilt. */
-table { border-collapse: collapse; }
-th, td { border: 1px solid #555; padding: 4px; }
-.modal-content {
-  background: var(--surface);
-  padding: 16px;
-  border: 1px solid #555;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-@media (max-width: 600px) {
-  .modal button {
-    min-width: 100%;
-    font-size: 1em;
-    padding: 12px 0;
-    margin: 12px 0;
-  }
-}

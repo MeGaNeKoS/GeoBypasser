@@ -39,11 +39,11 @@ function setAsideLink (section: string, label: string): HTMLAnchorElement {
 
 export function quickActions (sitesShown: boolean): HTMLElement {
   return buttonGroup(
-    actionButton('Add rule', 'rules', null, { variant: 'primary' }, 'quick-add-rule'),
-    actionButton('Add proxy', 'proxies', null, {}, 'quick-add-proxy'),
+    actionButton('Add rule', 'rules', { variant: 'primary' }, 'quick-add-rule'),
+    actionButton('Add proxy', 'proxies', {}, 'quick-add-proxy'),
     ...(sitesShown ? [addSiteButton('Add site', {}, 'quick-add-site')] : []),
-    actionButton('Import', 'import-export', null, {}, 'quick-import'),
-    actionButton('Browse community rules', 'import-export', null, {}, 'quick-community'),
+    actionButton('Import', 'import-export', {}, 'quick-import'),
+    actionButton('Browse community rules', 'import-export', {}, 'quick-community'),
   )
 }
 
@@ -53,17 +53,17 @@ export function getStartedCard (view: HomeView): HTMLElement {
     element('h3', { class: 'group-label' }, 'Get started'),
     element('ol', { class: 'home-steps' },
       setupStep(1, 'Add a proxy', 'A server your traffic can go through.', proxyAdded, [
-        actionButton('Add proxy', 'proxies', null, { variant: 'primary' }, 'step-1-add-proxy'),
-        actionButton('Import a file', 'proxies', null, {}, 'step-1-import'),
-        actionButton('Browse community rules', 'import-export', null, {}, 'step-1-community'),
+        actionButton('Add proxy', 'proxies', { variant: 'primary' }, 'step-1-add-proxy'),
+        actionButton('Import a file', 'proxies', {}, 'step-1-import'),
+        actionButton('Browse community rules', 'import-export', {}, 'step-1-community'),
       ]),
       setupStep(2, 'Choose what uses it', 'A rule for matching requests, one site, or everything by default.', choiceMade, [
-        actionButton('Add a rule', 'rules', null, { disabled: !proxyAdded }, 'step-2-add-rule'),
+        actionButton('Add a rule', 'rules', { disabled: !proxyAdded }, 'step-2-add-rule'),
         ...(view.sitesShown ? [addSiteButton('Add a site', { disabled: !proxyAdded }, 'step-2-add-site')] : []),
-        actionButton('Set a default', 'defaults', null, { disabled: !proxyAdded }, 'step-2-default'),
+        actionButton('Set a default', 'defaults', { disabled: !proxyAdded }, 'step-2-default'),
       ], proxyAdded ? undefined : 'Add a proxy first.'),
       setupStep(3, 'Check it works', 'Test a proxy. Then open a site and look at the popup.', false, [
-        actionButton('Test a proxy', 'test', null, {}, 'step-3-test'),
+        actionButton('Test a proxy', 'test', {}, 'step-3-test'),
       ]),
     ),
   )
@@ -133,12 +133,12 @@ export function welcomeText (): HTMLElement {
   return element('p', { class: 'home-muted' }, 'Send some of your traffic through a proxy and leave the rest direct.')
 }
 
-function actionButton (label: string, section: string, controlId: string | null, options: ActionOptions, focusKey: string): HTMLButtonElement {
+function actionButton (label: string, section: string, options: ActionOptions, focusKey: string): HTMLButtonElement {
   return button(label, {
     variant: options.variant,
     disabled: options.disabled,
     focusKey,
-    onClick: () => openSection(section, controlId),
+    onClick: () => openSection(section),
   })
 }
 
@@ -154,9 +154,8 @@ function addSiteButton (label: string, options: ActionOptions, focusKey: string)
   })
 }
 
-function openSection (section: string, controlId: string | null): void {
+function openSection (section: string): void {
   location.hash = `#${section}`
-  if (controlId) document.getElementById(controlId)?.click()
 }
 
 function sectionLink (section: string, label: string, focusKey: string): HTMLAnchorElement {

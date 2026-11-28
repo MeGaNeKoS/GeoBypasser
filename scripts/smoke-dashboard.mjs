@@ -24,10 +24,6 @@ export function clickSelector (selector) {
   element.click()
 }
 
-export function isCheckedSelector (selector) {
-  return document.querySelector(selector).checked
-}
-
 export function readAttributeSelector (selector, attribute) {
   return document.querySelector(selector).getAttribute(attribute)
 }
@@ -204,10 +200,6 @@ export function clickRuleRowAction (index, label) {
   const row = document.querySelectorAll('#rulesContent li.row')[index]
   if (!row) throw new Error(`no rule row at ${index}`)
   Array.from(row.querySelectorAll('button')).find(button => button.textContent.trim() === label).click()
-}
-
-export function clickRuleToolbarButton (label) {
-  Array.from(document.querySelectorAll('#rulesContent button')).find(button => button.textContent.trim() === label).click()
 }
 
 export function clickRuleActiveSwitch (index) {
