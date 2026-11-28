@@ -9,7 +9,8 @@ body.popup {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-block-end: var(--space-3);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--border);
 }
 
 .popup-title {
@@ -20,12 +21,17 @@ body.popup {
 
 .popup-body {
   display: grid;
-  gap: var(--space-3);
 }
 
 .popup-section {
   display: grid;
   gap: var(--space-2);
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--border);
+}
+
+.note-block > .button {
+  justify-self: start;
 }
 
 .popup-heading {
@@ -50,23 +56,16 @@ body.popup {
   gap: var(--space-2);
 }
 
-.popup-note {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-2);
-}
-
-.popup-note__title {
-  margin: 0;
-  font-weight: 600;
-}
-
 .monitor-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+}
+
+.monitor-row__label {
+  font-weight: 600;
 }
 
 .popup-rules {
@@ -83,6 +82,12 @@ body.popup {
   min-height: var(--popup-row-h);
   display: flex;
   align-items: center;
+  gap: var(--space-2);
+}
+
+.popup-rule__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .popup--full .popup-rules {

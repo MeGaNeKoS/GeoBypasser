@@ -1,7 +1,8 @@
 import browser from 'webextension-polyfill'
 import { isAndroidUserAgent } from '@utils/env'
+import { iconButton } from '../components/button'
 import { installSprite } from '../icons'
-import { requireElement } from '../dom'
+import { replaceContent, requireElement } from '../dom'
 import { onProxyControlStateChanged, readProxyControlState } from '../proxyControlState'
 import { renderControlWarning } from './popupControl'
 import { readPopupContext } from './popupContext'
@@ -27,5 +28,5 @@ export async function mountPopup (): Promise<void> {
   mountRules(requireElement('rulesBlock'))
 
   requireElement('openDashboard').addEventListener('click', () => void browser.runtime.openOptionsPage())
-  requireElement('closeBtn').addEventListener('click', () => window.close())
+  replaceContent(requireElement('closeSlot'), [iconButton('close', 'Close', () => window.close())])
 }

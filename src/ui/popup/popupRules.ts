@@ -49,9 +49,12 @@ function rulesNodes (rules: unknown, view: RulesView, refresh: () => Promise<voi
 
 function ruleList (rows: PopupRuleRow[], refresh: () => Promise<void>): HTMLUListElement {
   return element('ul', { class: 'popup-rules', 'aria-label': RULES_LEGEND },
-    ...rows.map(row => element('li', {}, switchControl(row.name, row.active, checked => {
-      void setRuleRowActive(row, checked).then(refresh)
-    }))),
+    ...rows.map(row => element('li', {},
+      switchControl(row.name, row.active, checked => {
+        void setRuleRowActive(row, checked).then(refresh)
+      }),
+      element('span', { class: 'popup-rule__name' }, row.name),
+    )),
   )
 }
 

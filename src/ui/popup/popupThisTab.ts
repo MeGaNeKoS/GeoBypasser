@@ -13,6 +13,7 @@ import type { SegmentOption } from '../components/controls'
 import { statusLine } from '../components/feedback'
 import { selectField } from '../components/fields'
 import type { SelectOption } from '../components/fields'
+import { noteBlock } from '../components/note-block'
 import { element, replaceContent } from '../dom'
 import { readProxyControlState } from '../proxyControlState'
 import { hashForSection, TEST_SECTION_ID } from '../shell/routes'
@@ -81,10 +82,6 @@ function thisTabNodes (context: PopupContext, view: ThisTabView, snapshot: ThisT
       proxyList: snapshot.proxyList,
       notInEffect: snapshot.notInEffect,
     })),
-    segmented('Apply to', 'scope', scopeChoices(context.supportsPerTabProxy), view.scope, scope => {
-      view.scope = scope
-      void refresh()
-    }),
     selectField({
       id: PROXY_SELECT_ID,
       name: 'proxy',
@@ -92,6 +89,10 @@ function thisTabNodes (context: PopupContext, view: ThisTabView, snapshot: ThisT
       options: proxyChoices(snapshot.proxyList),
       selected: selectedProxyId(),
       onChange: proxyId => { view.chosenProxyId = proxyId },
+    }),
+    segmented('Apply to', 'scope', scopeChoices(context.supportsPerTabProxy), view.scope, scope => {
+      view.scope = scope
+      void refresh()
     }),
     element('div', { class: 'popup-actions' },
       button('Set', { variant: 'primary', focusKey: 'set-proxy', onClick: () => void applyThenRefresh(view, refresh, planSetProxy(targetNow(), selectedProxyId())) }),
@@ -123,10 +124,9 @@ function proxyChoices (proxyList: unknown): SelectOption[] {
   ]
 }
 
-function chromeNote (host: string | undefined): HTMLDivElement {
-  return element('div', { class: 'popup-note', role: 'note' },
-    element('p', { class: 'popup-note__title' }, 'On Chrome'),
-    element('p', {}, chromeSiteNote(host ?? 'this site')),
+function chromeNote (host: string | undefined): HTMLElement {
+  return noteBlock('On Chrome',
+    element('p', { class: 'note-block__body' }, chromeSiteNote(host ?? 'this site')),
     button('Test in dashboard', { variant: 'quiet', onClick: () => void openDashboardAt(`#${hashForSection(TEST_SECTION_ID)}`) }),
   )
 }
