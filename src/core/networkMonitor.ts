@@ -1,16 +1,19 @@
 import type { NetworkMessage } from '@customTypes/messages'
 import { addRequestToTab, emptyTabUsage, UNKNOWN_ROUTE, type NetworkUsage, type RecordedRoute, type RequestObservation, type TabUsage } from '@utils/networkUsage'
+import { DIRECT_ROUTE } from '@utils/pacRoute'
 
-export type RequestOutcome = Omit<RequestObservation, 'route'>;
+export type RequestOutcome = Omit<RequestObservation, 'route'> & { observedRoute?: string };
 
-type RoutedRequest = { tabId: number; route: RecordedRoute };
+const NO_LISTENER_ROUTE: RecordedRoute = { reason: 'default', route: DIRECT_ROUTE, expected: false };
+
+type RouteCandidate = { precedence: number; route: RecordedRoute };
 
 export type RouteForRequest = (requestUrl: string) => Promise<RecordedRoute>;
 
 export function createNetworkMonitor () {
   const monitoredTabs = new Set<number>()
   const usageByTab = new Map<number, TabUsage>()
-  const routeByRequest = new Map<string, RoutedRequest>()
+  const candidatesByTab = new Map<number, Map<string, RouteCandidate[]>>()
 
   function isTabMonitored (tabId: number) {
     return monitoredTabs.has(tabId)
@@ -19,21 +22,23 @@ export function createNetworkMonitor () {
   function forgetTab (tabId: number) {
     monitoredTabs.delete(tabId)
     usageByTab.delete(tabId)
-    for (const [requestId, routed] of routeByRequest) {
-      if (routed.tabId === tabId) routeByRequest.delete(requestId)
-    }
+    candidatesByTab.delete(tabId)
   }
 
-  function noteRoute (requestId: string, tabId: number, route: RecordedRoute) {
+  function noteRoute (requestId: string, tabId: number, route: RecordedRoute, precedence = 0) {
     if (!monitoredTabs.has(tabId)) return
-    routeByRequest.set(requestId, { tabId, route })
+    const requests = candidatesByTab.get(tabId) ?? new Map<string, RouteCandidate[]>()
+    candidatesByTab.set(tabId, requests)
+    requests.set(requestId, [...(requests.get(requestId) ?? []), { precedence, route }])
   }
 
   function recordRequest (tabId: number, requestId: string, outcome: RequestOutcome) {
-    const route = routeByRequest.get(requestId)?.route ?? UNKNOWN_ROUTE
-    routeByRequest.delete(requestId)
+    const { observedRoute, ...observation } = outcome
+    const requests = candidatesByTab.get(tabId)
+    const candidates = requests?.get(requestId) ?? []
+    requests?.delete(requestId)
     if (!monitoredTabs.has(tabId)) return
-    addRequestToTab(tabUsageFor(tabId), { ...outcome, route })
+    addRequestToTab(tabUsageFor(tabId), { ...observation, route: settleRoute(candidates, observedRoute) })
   }
 
   function tabUsageFor (tabId: number): TabUsage {
@@ -67,6 +72,21 @@ export function createNetworkMonitor () {
   }
 
   return { isTabMonitored, forgetTab, noteRoute, recordRequest, answerNetworkMessage }
+}
+
+function settleRoute (candidates: RouteCandidate[], observedRoute: string | undefined): RecordedRoute {
+  const byPrecedence = [...candidates].sort((a, b) => a.precedence - b.precedence)
+  const preferred = byPrecedence[0]?.route
+  if (observedRoute === undefined) return preferred ? inferredRoute(preferred) : UNKNOWN_ROUTE
+  const matching = byPrecedence.find(candidate => candidate.route.route === observedRoute)
+  if (matching) return matching.route
+  if (preferred) return inferredRoute(preferred)
+  if (observedRoute === DIRECT_ROUTE) return NO_LISTENER_ROUTE
+  return { reason: 'unknown', route: observedRoute, expected: false }
+}
+
+function inferredRoute (route: RecordedRoute): RecordedRoute {
+  return { ...route, inferred: true }
 }
 
 export type NetworkMonitor = ReturnType<typeof createNetworkMonitor>

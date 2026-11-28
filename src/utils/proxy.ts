@@ -9,6 +9,8 @@ import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { supportsProxyOnRequest } from '@utils/env'
 import { addTestURLToPac } from '@utils/pac'
 import { pacRouteFor } from '@utils/pacRoute'
+import type { RuleRef } from '@utils/expectedRoute'
+import type { RecordedRouteReason } from '@utils/networkUsage'
 import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableProxies, usableRules } from '@utils/usable'
 import { isValidFailoverTimeout } from '@utils/validity'
 import { testFailureReason } from '@utils/proxyTestOutcome'
@@ -109,104 +111,126 @@ export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings, lookup
   }
 }
 
+export type ProxyAnswer = Array<{ type: string; host?: string; port?: number }>
+
+export type RouteDecision = {
+  proxyInfo: ProxyAnswer;
+  reason: RecordedRouteReason;
+  rule?: RuleRef;
+};
+
+export type RouteObserver = (requestInfo: Proxy.OnRequestDetailsType, decision: RouteDecision) => void;
+
+const DIRECT_ANSWER: ProxyAnswer = [{ type: 'direct' }]
+
 export function makeProxyHandler (
   config: GeoBypassRuntimeSettings,
+  observe: RouteObserver = () => {},
 ) {
   return async function handleProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
-    for (const rule of usableRules<RuntimeProxyRule>(config.rules)) {
-      const {
-        proxyId,
-        bypassResourceTypes,
-        fallbackDirect,
-        compiledMatch,
-        compiledBypassUrlPatterns,
-        compiledForceProxyUrlPatterns,
-        compiledStaticExtensions,
-        name: ruleName,
-      } = rule
-      if (!isRuleActive(rule)) continue
+    const decision = decideRuleRoute(config, requestInfo)
+    if (!decision) return
+    observe(requestInfo, decision)
+    return decision.proxyInfo
+  }
+}
 
-      const url = requestInfo.url
+function decideRuleRoute (config: GeoBypassRuntimeSettings, requestInfo: Proxy.OnRequestDetailsType): RouteDecision | undefined {
+  for (const rule of usableRules<RuntimeProxyRule>(config.rules)) {
+    const {
+      proxyId,
+      bypassResourceTypes,
+      fallbackDirect,
+      compiledMatch,
+      compiledBypassUrlPatterns,
+      compiledForceProxyUrlPatterns,
+      compiledStaticExtensions,
+      name: ruleName,
+    } = rule
+    if (!isRuleActive(rule)) continue
 
-      // --- Main match ---
-      if (compiledMatch && !matchPatternList(url, compiledMatch)) continue
-      console.info(`[${APP_NAME}Proxy] Rule "${ruleName}" matched for ${url}`)
+    const url = requestInfo.url
 
-      // --- Force proxy match ---
-      if (compiledForceProxyUrlPatterns && matchPatternList(url, compiledForceProxyUrlPatterns)) {
-        if (proxyId === DIRECT_PROXY_ID) {
-          console.info(`[${APP_NAME}Proxy] Force direct connection for ${url} (rule "${ruleName}")`)
-          return [{ type: 'direct' }]
-        }
-        const proxy = resolveProxy(config, proxyId)
-        if (proxy) {
-          console.info(
-            `[${APP_NAME}Proxy] Force proxy: Using ${proxy.type} proxy for ${url} -> ${proxy.host}:${proxy.port}`)
-          return [
-            proxyInfoFor(proxy),
-            ...(fallbackDirect ? [{ type: 'direct' }] : []),
-          ]
-        } else {
-          console.warn(`[${APP_NAME}Proxy] Force proxy: No proxy found for rule "${ruleName}"`)
-        }
-        return
-      }
+    if (compiledMatch && !matchPatternList(url, compiledMatch)) continue
+    console.info(`[${APP_NAME}Proxy] Rule "${ruleName}" matched for ${url}`)
 
-      if (!isInRuleScope(requestInfo, rule)) {
-        console.info(`[${APP_NAME}Proxy] Outside the scope of rule "${ruleName}", direct connection for ${url}`)
-        return [{ type: 'direct' }]
-      }
-
-      // --- Bypass by URL ---
-      if (compiledBypassUrlPatterns && matchPatternList(url, compiledBypassUrlPatterns)) {
-        console.info(`[${APP_NAME}Proxy] Bypassed by URL pattern for rule "${ruleName}" and url ${url}`)
-        return [{ type: 'direct' }]
-      }
-
-      // --- Bypass by request type ---
-      if (bypassResourceTypes && bypassResourceTypes.includes(requestInfo.type)) {
-        console.info(
-          `[${APP_NAME}Proxy] Bypassed by request type "${requestInfo.type}" for rule "${ruleName}" and url ${url}`)
-        return [{ type: 'direct' }]
-      }
-
-      // --- Bypass by static extension ---
-      if (compiledStaticExtensions) {
-        try {
-          compiledStaticExtensions.lastIndex = 0
-          if (compiledStaticExtensions.test(new URL(url).pathname)) {
-            console.info(`[${APP_NAME}Proxy] Bypassed by static extension for rule "${ruleName}" and url ${url}`)
-            return [{ type: 'direct' }]
-          }
-        } catch (e) {
-          console.error(`[${APP_NAME}Proxy] Error parsing URL for static extensions:`, e)
-        }
-      }
-      // --- Direct connection ---
+    if (compiledForceProxyUrlPatterns && matchPatternList(url, compiledForceProxyUrlPatterns)) {
       if (proxyId === DIRECT_PROXY_ID) {
-        console.info(`[${APP_NAME}Proxy] Using direct connection for ${url} (rule "${ruleName}")`)
-        return [{ type: 'direct' }]
+        console.info(`[${APP_NAME}Proxy] Force direct connection for ${url} (rule "${ruleName}")`)
+        return ruleDecision(config, rule, 'rule', DIRECT_ANSWER)
       }
-
-      // --- Use proxy as per rule ---
       const proxy = resolveProxy(config, proxyId)
       if (proxy) {
         console.info(
-          `[${APP_NAME}Proxy] Using ${proxy.type} proxy for ${url} -> ${proxy.host}:${proxy.port} (rule "${ruleName}")`)
-
-        return [
-          proxyInfoFor(proxy),
-          ...(fallbackDirect ? [{ type: 'direct' }] : []),
-        ]
-
+          `[${APP_NAME}Proxy] Force proxy: Using ${proxy.type} proxy for ${url} -> ${proxy.host}:${proxy.port}`)
+        return ruleDecision(config, rule, 'rule', proxyAnswer(proxy, fallbackDirect))
       } else {
-        console.warn(`[${APP_NAME}Proxy] No proxy found for rule "${ruleName}"`)
+        console.warn(`[${APP_NAME}Proxy] Force proxy: No proxy found for rule "${ruleName}"`)
       }
-      return
+      return undefined
     }
-    // If no rule matches, will fall through and not return proxy info
-    console.warn(`[${APP_NAME}Proxy] No matching rule for ${requestInfo.url}`)
+
+    if (!isInRuleScope(requestInfo, rule)) {
+      console.info(`[${APP_NAME}Proxy] Outside the scope of rule "${ruleName}", direct connection for ${url}`)
+      return ruleDecision(config, rule, 'bypass', DIRECT_ANSWER)
+    }
+
+    if (compiledBypassUrlPatterns && matchPatternList(url, compiledBypassUrlPatterns)) {
+      console.info(`[${APP_NAME}Proxy] Bypassed by URL pattern for rule "${ruleName}" and url ${url}`)
+      return ruleDecision(config, rule, 'bypass', DIRECT_ANSWER)
+    }
+
+    if (bypassResourceTypes && bypassResourceTypes.includes(requestInfo.type)) {
+      console.info(
+        `[${APP_NAME}Proxy] Bypassed by request type "${requestInfo.type}" for rule "${ruleName}" and url ${url}`)
+      return ruleDecision(config, rule, 'bypass', DIRECT_ANSWER)
+    }
+
+    if (compiledStaticExtensions) {
+      try {
+        compiledStaticExtensions.lastIndex = 0
+        if (compiledStaticExtensions.test(new URL(url).pathname)) {
+          console.info(`[${APP_NAME}Proxy] Bypassed by static extension for rule "${ruleName}" and url ${url}`)
+          return ruleDecision(config, rule, 'staticExtension', DIRECT_ANSWER)
+        }
+      } catch (e) {
+        console.error(`[${APP_NAME}Proxy] Error parsing URL for static extensions:`, e)
+      }
+    }
+
+    if (proxyId === DIRECT_PROXY_ID) {
+      console.info(`[${APP_NAME}Proxy] Using direct connection for ${url} (rule "${ruleName}")`)
+      return ruleDecision(config, rule, 'rule', DIRECT_ANSWER)
+    }
+
+    const proxy = resolveProxy(config, proxyId)
+    if (proxy) {
+      console.info(
+        `[${APP_NAME}Proxy] Using ${proxy.type} proxy for ${url} -> ${proxy.host}:${proxy.port} (rule "${ruleName}")`)
+      return ruleDecision(config, rule, 'rule', proxyAnswer(proxy, fallbackDirect))
+    } else {
+      console.warn(`[${APP_NAME}Proxy] No proxy found for rule "${ruleName}"`)
+    }
+    return undefined
   }
+  console.warn(`[${APP_NAME}Proxy] No matching rule for ${requestInfo.url}`)
+  return undefined
+}
+
+function ruleDecision (
+  config: GeoBypassRuntimeSettings,
+  rule: RuntimeProxyRule,
+  reason: RecordedRouteReason,
+  proxyInfo: ProxyAnswer,
+): RouteDecision {
+  return { proxyInfo, reason, rule: { index: config.rules.indexOf(rule), name: rule.name } }
+}
+
+function proxyAnswer (proxy: ProxyListItem, fallbackDirect: boolean | undefined): ProxyAnswer {
+  return [
+    proxyInfoFor(proxy),
+    ...(fallbackDirect ? DIRECT_ANSWER : []),
+  ]
 }
 
 export function makeDefaultProxyHandler (config: GeoBypassSettings) {

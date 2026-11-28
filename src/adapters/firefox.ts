@@ -2,7 +2,9 @@ import browser, { Proxy } from 'webextension-polyfill'
 import type { NetworkMonitor } from '@core/networkMonitor'
 import type { KeepAlivePorts, KeepAliveTabListeners } from '@core/keepAlive'
 import type { RoutingPorts } from '@core/routing'
+import { WebRequestProxySchema } from '@schemas/webRequestProxy'
 import { pageHostFor } from '@utils/networkUsage'
+import { DIRECT_ROUTE, routeOfProxyInfo } from '@utils/pacRoute'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { saveTabProxyMap } from '@utils/storage'
 
@@ -31,6 +33,13 @@ export function onFirefoxStorageChanged (listener: StorageChangedListener) {
   browser.storage.onChanged.addListener(listener)
 }
 
+function observedRouteOf (details: unknown): string | undefined {
+  const parsed = WebRequestProxySchema.safeParse(details)
+  if (!parsed.success) return undefined
+  const { proxyInfo } = parsed.data
+  return proxyInfo ? routeOfProxyInfo(proxyInfo) : DIRECT_ROUTE
+}
+
 export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
   browser.webRequest.onCompleted.addListener(
     details => {
@@ -43,6 +52,7 @@ export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
         sentBytes: details.requestSize,
         receivedBytes: details.responseSize,
         receivedSizeKnown: true,
+        observedRoute: observedRouteOf(details),
       })
     },
     { urls: ['<all_urls>'] },
@@ -60,6 +70,7 @@ export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
         sentBytes: 0,
         receivedBytes: 0,
         receivedSizeKnown: true,
+        observedRoute: observedRouteOf(details),
       })
     },
     { urls: ['<all_urls>'] },
@@ -102,7 +113,7 @@ function removeKeepAliveListeners (listeners: KeepAliveTabListeners) {
   browser.tabs.onRemoved.removeListener(listeners.onRemoved)
 }
 
-export function firefoxRoutingPorts (): RoutingPorts {
+export function firefoxRoutingPorts (): Omit<RoutingPorts, 'noteRoute'> {
   return {
     proxyRequests: {
       add: (listener, filter) => browser.proxy.onRequest.addListener(listener, filter),

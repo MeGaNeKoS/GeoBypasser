@@ -15,7 +15,7 @@ import type { StoredSections } from '@utils/storage'
 export type FirefoxBackgroundPorts = {
   readStoredSections: () => Promise<StoredSections>;
   readStoredTabProxyMap: () => Promise<Record<number, ProxyId>>;
-  routingPorts: RoutingPorts;
+  routingPorts: Omit<RoutingPorts, 'noteRoute'>;
   keepAlivePorts: KeepAlivePorts;
   setKeepAliveListeners: (listeners: KeepAliveTabListeners | undefined) => void;
   registerProxyAuth: (listener: (details: AuthChallenge) => Promise<ProxyAuthResponse>) => void;
@@ -28,7 +28,7 @@ export type FirefoxBackgroundPorts = {
 
 export function startFirefoxBackground (ports: FirefoxBackgroundPorts) {
   const networkMonitor = createNetworkMonitor()
-  const routing = createRouting(ports.routingPorts)
+  const routing = createRouting({ ...ports.routingPorts, noteRoute: networkMonitor.noteRoute })
   const keepAlive = createKeepAlive(ports.keepAlivePorts)
   const configChangePorts: ConfigChangePorts = {
     routing,

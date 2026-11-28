@@ -1,12 +1,12 @@
-import { createNetworkMonitor } from '@core/networkMonitor'
-import type { NetworkUsage, RecordedRoute, RequestObservation } from '@utils/networkUsage'
+import { createNetworkMonitor, type RequestOutcome } from '@core/networkMonitor'
+import type { NetworkUsage, RecordedRoute } from '@utils/networkUsage'
 
 const TAB_ID = 7
 const REQUEST_ID = 'request-1'
 const URL = 'https://media.example.com/video/clip'
-const ROUTE: RecordedRoute = { reason: 'default', route: 'DIRECT', expected: false }
+const ROUTE: RecordedRoute = { reason: 'rule', route: 'PROXY good.lan:8080', expected: false, rule: { index: 0, name: 'media' } }
 
-function outcome (): Omit<RequestObservation, 'route'> {
+function outcome (): RequestOutcome {
   return {
     pageHost: 'page.example',
     requestUrl: URL,
@@ -32,12 +32,15 @@ describe('network monitor without a monitored tab', () => {
     expect(usageOf(monitor)).toEqual({})
   })
 
-  it('ignores a noted route for a tab that was never monitored', () => {
+  it('drops a route noted before the tab was monitored', () => {
     const monitor = createNetworkMonitor()
-
     monitor.noteRoute(REQUEST_ID, TAB_ID, ROUTE)
+    monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
 
-    expect(monitor.answerNetworkMessage({ type: 'isTabNetworkMonitored', tabId: TAB_ID })).toBe(false)
+    monitor.recordRequest(TAB_ID, REQUEST_ID, { ...outcome(), observedRoute: ROUTE.route })
+
+    const host = usageOf(monitor)[TAB_ID]['page.example']['media.example.com']
+    expect(Object.values(host.routes)).toEqual([{ route: { reason: 'unknown', route: ROUTE.route, expected: false }, count: 1 }])
   })
 
   it('stops recording once the tab is unmonitored', () => {

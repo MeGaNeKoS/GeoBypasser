@@ -1,14 +1,16 @@
-import { createNetworkMonitor } from '@core/networkMonitor'
-import type { RecordedRoute, RequestObservation } from '@utils/networkUsage'
-import type { NetworkUsage } from '@utils/networkUsage'
+import { createNetworkMonitor, type RequestOutcome } from '@core/networkMonitor'
+import type { NetworkUsage, RecordedRoute } from '@utils/networkUsage'
 
 const TAB_ID = 7
 const REQUEST_ID = 'request-1'
 const PAGE_HOST = 'page.example'
 const URL = 'https://media.example.com/video/clip'
-const RULE_ROUTE: RecordedRoute = { reason: 'rule', route: 'PROXY good.lan:8080', expected: false, rule: { index: 0, name: 'media' } }
+const RULE_PROXY = 'PROXY good.lan:8080'
+const RULE_ROUTE: RecordedRoute = { reason: 'rule', route: RULE_PROXY, expected: false, rule: { index: 0, name: 'media' } }
+const TAB_ROUTE: RecordedRoute = { reason: 'tab', route: RULE_PROXY, expected: false }
+const DIRECT_DEFAULT_ROUTE: RecordedRoute = { reason: 'default', route: 'DIRECT', expected: false }
 
-function outcome (overrides: Partial<Omit<RequestObservation, 'route'>> = {}): Omit<RequestObservation, 'route'> {
+function outcome (overrides: Partial<RequestOutcome> = {}): RequestOutcome {
   return {
     pageHost: PAGE_HOST,
     requestUrl: URL,
@@ -43,14 +45,74 @@ describe('network monitor recording', () => {
     expect(host.received).toBe(4096)
   })
 
-  it('records the route noted for the request id', () => {
+  it('records the noted route as observed when its proxy is the one the request used', () => {
+    const monitor = monitorTab()
+
+    monitor.noteRoute(REQUEST_ID, TAB_ID, RULE_ROUTE)
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: RULE_PROXY }))
+
+    const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
+    expect(Object.values(host.routes)).toEqual([{ route: RULE_ROUTE, count: 1 }])
+  })
+
+  it('marks the noted route inferred when no observed route is given', () => {
     const monitor = monitorTab()
 
     monitor.noteRoute(REQUEST_ID, TAB_ID, RULE_ROUTE)
     monitor.recordRequest(TAB_ID, REQUEST_ID, outcome())
 
     const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
+    expect(Object.values(host.routes)).toEqual([{ route: { ...RULE_ROUTE, inferred: true }, count: 1 }])
+  })
+
+  it('marks the noted route inferred when the observed route is a different proxy', () => {
+    const monitor = monitorTab()
+
+    monitor.noteRoute(REQUEST_ID, TAB_ID, RULE_ROUTE)
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: 'DIRECT' }))
+
+    const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
+    expect(Object.values(host.routes)).toEqual([{ route: { ...RULE_ROUTE, inferred: true }, count: 1 }])
+  })
+
+  it('settles on the lowest precedence route that matches the observed route, not the arrival order', () => {
+    const monitor = monitorTab()
+
+    monitor.noteRoute(REQUEST_ID, TAB_ID, RULE_ROUTE, 2)
+    monitor.noteRoute(REQUEST_ID, TAB_ID, TAB_ROUTE, 0)
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: RULE_PROXY }))
+
+    const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
+    expect(Object.values(host.routes)).toEqual([{ route: TAB_ROUTE, count: 1 }])
+  })
+
+  it('settles on the route matching the observed proxy over a higher precedence route that does not match', () => {
+    const monitor = monitorTab()
+
+    monitor.noteRoute(REQUEST_ID, TAB_ID, DIRECT_DEFAULT_ROUTE, 0)
+    monitor.noteRoute(REQUEST_ID, TAB_ID, RULE_ROUTE, 2)
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: RULE_PROXY }))
+
+    const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
     expect(Object.values(host.routes)).toEqual([{ route: RULE_ROUTE, count: 1 }])
+  })
+
+  it('records a direct request that no handler answered as the default route', () => {
+    const monitor = monitorTab()
+
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: 'DIRECT' }))
+
+    const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
+    expect(Object.values(host.routes)).toEqual([{ route: DIRECT_DEFAULT_ROUTE, count: 1 }])
+  })
+
+  it('records an observed proxy that no handler answered as an unknown route to that proxy', () => {
+    const monitor = monitorTab()
+
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: RULE_PROXY }))
+
+    const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
+    expect(Object.values(host.routes)).toEqual([{ route: { reason: 'unknown', route: RULE_PROXY, expected: false }, count: 1 }])
   })
 
   it('records an unknown route for a request with no noted route', () => {
@@ -66,7 +128,7 @@ describe('network monitor recording', () => {
     const monitor = monitorTab()
 
     monitor.noteRoute(REQUEST_ID, TAB_ID, RULE_ROUTE)
-    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome())
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: RULE_PROXY }))
     monitor.recordRequest(TAB_ID, REQUEST_ID, outcome())
 
     const routes = Object.values(usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com'].routes)

@@ -4,13 +4,18 @@ import type { TabProxyMessage } from '@customTypes/messages'
 import type { Proxy } from 'webextension-polyfill'
 import { getAllMatchUrls } from '@utils/generic'
 import { generatePacScript } from '@utils/pac'
+import { routeOfProxyInfo } from '@utils/pacRoute'
 import {
   makeDefaultProxyHandler,
   makeDomainProxyHandler,
   makeProxyHandler,
   makeTabProxyHandler,
+  ProxyAnswer,
+  RouteDecision,
+  RouteObserver,
   TabLookup,
 } from '@utils/proxy'
+import type { RecordedRoute } from '@utils/networkUsage'
 import { APP_NAME } from '@constant/defaults'
 
 export type ProxyRequestListener = (details: Proxy.OnRequestDetailsType) => void
@@ -23,6 +28,7 @@ export type RoutingPorts = {
   };
   lookupTab: TabLookup;
   persistTabProxyMap: (map: Record<number, ProxyId>) => unknown;
+  noteRoute: (requestId: string, tabId: number, route: RecordedRoute, precedence: number) => void;
 }
 
 type ProxyHandlerSlots = {
@@ -34,12 +40,44 @@ type ProxyHandlerSlots = {
 
 const PROXY_HANDLER_SLOTS = ['tab', 'domain', 'main', 'default'] as const
 
+type FixedReasonSlot = 'tab' | 'domain' | 'default'
+
+const FIXED_REASON_BY_SLOT: Record<FixedReasonSlot, RouteDecision['reason']> = {
+  tab: 'tab',
+  domain: 'site',
+  default: 'default',
+}
+
 export function createRouting (ports: RoutingPorts) {
   const tabProxyMap: Record<number, ProxyId> = {}
   const handlers: ProxyHandlerSlots = {}
 
   function persistTabProxyMap () {
     ports.persistTabProxyMap(tabProxyMap)
+  }
+
+  function observerFor (slot: typeof PROXY_HANDLER_SLOTS[number]): RouteObserver {
+    return (requestInfo, decision) => {
+      if (requestInfo.requestId === undefined || requestInfo.tabId === undefined) return
+      ports.noteRoute(requestInfo.requestId, requestInfo.tabId, {
+        reason: decision.reason,
+        route: routeOfProxyInfo(decision.proxyInfo[0]),
+        expected: false,
+        rule: decision.rule,
+      }, PROXY_HANDLER_SLOTS.indexOf(slot))
+    }
+  }
+
+  function withFixedReason (
+    slot: FixedReasonSlot,
+    handler: (requestInfo: Proxy.OnRequestDetailsType) => Promise<ProxyAnswer | undefined>,
+  ): ProxyRequestListener {
+    const observe = observerFor(slot)
+    return async requestInfo => {
+      const proxyInfo = await handler(requestInfo)
+      if (proxyInfo) observe(requestInfo, { proxyInfo, reason: FIXED_REASON_BY_SLOT[slot] })
+      return proxyInfo
+    }
   }
 
   function attach (config: GeoBypassRuntimeSettings, changedKeys: string[] = []) {
@@ -53,20 +91,20 @@ export function createRouting (ports: RoutingPorts) {
     const urls = getAllMatchUrls(config)
 
     if (!handlers.tab) {
-      handlers.tab = makeTabProxyHandler(config, tabProxyMap)
+      handlers.tab = withFixedReason('tab', makeTabProxyHandler(config, tabProxyMap))
     }
 
     if (!handlers.domain) {
-      handlers.domain = makeDomainProxyHandler(config, ports.lookupTab)
+      handlers.domain = withFixedReason('domain', makeDomainProxyHandler(config, ports.lookupTab))
     }
 
     if (!handlers.main || changedKeys.includes('rules')) {
-      handlers.main = urls.length > 0 ? makeProxyHandler(config) : undefined
+      handlers.main = urls.length > 0 ? makeProxyHandler(config, observerFor('main')) : undefined
     }
     if (changedKeys.includes('defaultProxy')) {
-      handlers.default = config.defaultProxy ? makeDefaultProxyHandler(config) : undefined
+      handlers.default = config.defaultProxy ? withFixedReason('default', makeDefaultProxyHandler(config)) : undefined
     } else if (!handlers.default && config.defaultProxy) {
-      handlers.default = makeDefaultProxyHandler(config)
+      handlers.default = withFixedReason('default', makeDefaultProxyHandler(config))
     }
 
     if (handlers.tab) ports.proxyRequests.add(handlers.tab, { urls: ['<all_urls>'] })

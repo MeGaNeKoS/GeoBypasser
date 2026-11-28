@@ -12,6 +12,7 @@ const RecordedRouteSchema: z.ZodType<RecordedRoute> = z.object({
   route: z.string(),
   expected: z.boolean(),
   rule: RuleRefSchema.optional(),
+  inferred: z.boolean().optional(),
 })
 
 const RouteTallySchema: z.ZodType<RouteTally> = z.object({

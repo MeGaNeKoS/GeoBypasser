@@ -2,14 +2,15 @@ import type { GeoBypassRuntimeSettings } from '@customTypes/settings'
 import type { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { resolveProxy } from '@utils/proxy'
-import { pacRouteFor } from '@utils/pacRoute'
+import { DIRECT_ROUTE, pacRouteFor } from '@utils/pacRoute'
 import { matchPatternSource } from '@utils/pacPattern'
 import { compileStaticExtensions } from '@utils/validity'
 import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableRules } from '@utils/usable'
 import browser from 'webextension-polyfill'
 
+export { DIRECT_ROUTE }
+
 const PAC_HEADER = 'function FindProxyForURL(url, host) {'
-export const DIRECT_ROUTE = 'DIRECT'
 const PAC_PATH_EXPRESSION = 'url.replace(/^[a-z]+:\\/\\/[^\\/]*/i, "").replace(/[?#].*$/, "")'
 // Chrome gives the PAC script only scheme://host:port/ for https addresses, so a path check can only see http.
 const PAC_HTTP_PREFIX = 'http://'

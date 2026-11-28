@@ -7,6 +7,7 @@ export type RecordedRoute = {
   route: string;
   expected: boolean;
   rule?: RuleRef;
+  inferred?: boolean;
 };
 
 export type RequestObservation = {
