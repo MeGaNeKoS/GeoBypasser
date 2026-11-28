@@ -126,7 +126,3 @@ export function chromeSiteNote (domain: string): string {
 }
 
 export const FIREFOX_ONLY_NOTE = 'Per tab proxies and Test proxy here are Firefox only.'
-
-export function monitorHintFor (supportsPerTabProxy: boolean): string | undefined {
-  return supportsPerTabProxy ? undefined : 'Keep DevTools open while monitoring.'
-}

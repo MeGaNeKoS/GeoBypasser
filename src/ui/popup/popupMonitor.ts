@@ -1,7 +1,5 @@
-import { monitorHintFor } from '@utils/popupView'
 import { switchControl } from '../components/controls'
 import { element, replaceContent } from '../dom'
-import { icon } from '../icons'
 import { readTabNetworkMonitored, setTabMonitoring } from '../networkMonitorState'
 import type { PopupContext } from './popupContext'
 
@@ -18,6 +16,5 @@ export async function mountMonitorRow (slot: HTMLElement, context: PopupContext)
     element('span', { class: 'monitor-row__label' }, MONITOR_LABEL),
     switchControl(MONITOR_LABEL, monitored, checked => void setTabMonitoring(tabId, checked)),
   )
-  const hint = monitorHintFor(context.supportsPerTabProxy)
-  replaceContent(slot, [row, ...(hint === undefined ? [] : [element('p', { class: 'help' }, icon('info'), hint)])])
+  replaceContent(slot, [row])
 }

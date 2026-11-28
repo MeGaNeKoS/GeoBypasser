@@ -1,5 +1,4 @@
 import { mountBar } from './browser-bar'
-import { mountDevtools } from './devtools'
 import { requireElement } from '@ui/dom'
 import { installSprite } from '@ui/icons'
 import { mountPopup } from './popup'
@@ -12,7 +11,6 @@ type PageMount = (root: HTMLElement, store: Store<PrototypeState>) => void
 const PAGES: Record<string, PageMount | undefined> = {
   dashboard: mountDashboard,
   popup: mountPopup,
-  devtools: mountDevtools,
 }
 
 function applyToDocument (state: PrototypeState): void {

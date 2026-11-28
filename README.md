@@ -15,7 +15,7 @@ graph TD
 - Domain-based overrides, which assign a proxy to a website
 - Rules that match requests by URL pattern, with bypass and force patterns
 - Optional keep-alive monitors for proxies
-- Network monitoring for a tab, with a usage tree in the dashboard and a DevTools panel that shows the monitoring state
+- Network monitoring for a tab, turned on from the popup and read as a request log in the dashboard under Network
 - Import and export of rules, proxies, keep-alive monitors, and settings, with a review step before anything is written
 
 ## Browser differences
@@ -38,7 +38,7 @@ The popup is for the tab you are looking at.
 - **This tab** shows the active tab's domain, the proxy in effect for it, and the proxy select with an "Apply to" choice (This tab on Firefox, This site on both browsers).
 - **Set** applies the selected proxy to the chosen scope. **Clear** removes the override for that scope.
 - **Test proxy** runs a short connectivity test on the selected proxy (Firefox only).
-- **Monitor this tab** starts network monitoring for the tab. Monitoring runs only while it is on, and the DevTools panel shows whether it is on.
+- **Monitor this tab** starts network monitoring for the tab. Monitoring runs only while it is on.
 - **Rules** lists the rules, with a switch to turn each one on or off.
 - **Dashboard** opens the full settings page.
 
@@ -53,7 +53,7 @@ The dashboard opens from the popup or the browser's extension page. It has these
 - **Keep-alive** holds the keep-alive monitors.
 - **Defaults** holds the fallback to direct connection and the test URL.
 - **Test** runs a connectivity test on a saved or custom proxy.
-- **Network** shows the monitored tabs as a collapsible usage tree, refreshed automatically.
+- **Network** shows the request log for monitored tabs, grouped by host, refreshed automatically.
 - **Import and export** imports and exports the configuration.
 - **About** shows the version and the project links.
 

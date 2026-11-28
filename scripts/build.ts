@@ -18,9 +18,6 @@ const PUBLIC: string[] = [
   'assets/popup.html',
   'assets/dashboard.css',
   'assets/popup.css',
-  'assets/devtools.html',
-  'assets/devtools_panel.html',
-  'assets/devtools_panel.css',
   'assets/icons/',
 ]
 
@@ -80,10 +77,8 @@ async function bundleScripts (browser: string) {
   await esbuild.build({
     entryPoints: {
       background: `src/background.${browser}.ts`,
-      devtools: 'src/devtools.ts',
       dashboard: 'src/dashboard.ts',
       popup: 'src/popup.ts',
-      devtoolsPanel: 'src/devtoolsPanel.ts',
       ...devOnlyEntryPoints(),
     },
     outdir: DIST_DIR,

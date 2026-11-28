@@ -1,17 +1,15 @@
 import { element, replaceContent } from '@ui/dom'
 import { button } from '@ui/components/button'
-import { banner } from '@ui/components/feedback'
 import { switchControl } from '@ui/components/controls'
 import { stateBody } from '@ui/components/state-body'
 import { usageTree } from '@ui/components/tree'
 import { networkTree } from '../sample-data'
 import type { SectionContext } from './section-context'
 
-const DEVTOOLS_NOTE = 'Keep DevTools open while monitoring.'
 const CLEAR_FOCUS_KEY = 'clear-usage'
 
 export function networkSection (context: SectionContext): HTMLElement {
-  const { browser, listState } = context.store.get()
+  const { listState } = context.store.get()
   return element('section', { class: 'stack' },
     element('header', { class: 'list-section__header' },
       element('div', { class: 'list-section__header-text' },
@@ -19,10 +17,9 @@ export function networkSection (context: SectionContext): HTMLElement {
         element('p', { class: 'help' }, 'Requests this browser sent and received, grouped by domain.'),
       ),
     ),
-    browser === 'chrome' ? banner({ tone: 'info', text: DEVTOOLS_NOTE }) : null,
     stateBody(listState, {
       emptyTitle: 'No traffic recorded yet.',
-      emptyText: 'Turn on Monitor for a tab from the popup.',
+      emptyText: 'Open the page you want to inspect and turn on Monitor this tab in the popup.',
       errorTitle: 'Could not read usage from the extension.',
     }, () => [usagePanel(context)]),
   )

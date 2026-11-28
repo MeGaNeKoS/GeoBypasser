@@ -4,7 +4,6 @@ import {
   defaultPopupScope,
   emptyRuleListText,
   hostForTabUrl,
-  monitorHintFor,
   needsFixingLine,
   popupControlWarning,
   popupRuleRows,
@@ -141,10 +140,5 @@ describe('popup copy for control, tests, and Chrome', () => {
 
   it('names the domain in the Chrome site note', () => {
     expect(chromeSiteNote('video.example.com')).toContain('requests to video.example.com and its subdomains')
-  })
-
-  it('asks for DevTools to stay open only where monitoring needs it', () => {
-    expect(monitorHintFor(false)).toBe('Keep DevTools open while monitoring.')
-    expect(monitorHintFor(true)).toBeUndefined()
   })
 })

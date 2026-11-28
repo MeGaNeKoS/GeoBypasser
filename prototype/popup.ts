@@ -6,7 +6,7 @@ import { SAVE_FAILED_TEXT } from './components/save-failure'
 import { popupNotRouting, ROUTING_AGAIN_TEXT, routingRestored } from './components/not-routing'
 import { popupThisTab } from './popup-this-tab'
 import { popupRules, type Rerender } from './popup-rules'
-import type { Browser, PrototypeState } from './model'
+import type { PrototypeState } from './model'
 import type { Store } from './store'
 
 export function mountPopup (root: HTMLElement, store: Store<PrototypeState>): void {
@@ -48,17 +48,16 @@ function popupBody (state: PrototypeState, rerender: Rerender): Node[] {
   if (state.listState === 'error') return [statusLine('Could not read this tab.', 'danger')]
   return [
     popupThisTab(state.browser, state.proxyControl),
-    monitorRow(state.browser),
+    monitorRow(),
     popupRules(state.listState, rerender),
   ]
 }
 
-function monitorRow (browser: Browser): HTMLElement {
+function monitorRow (): HTMLElement {
   return element('section', { class: 'popup__block popup__monitor' },
     element('div', { class: 'popup__monitor-row' },
       element('span', { class: 'field__label' }, 'Monitor this tab'),
       switchControl('Monitor this tab', false, undefined, { field: 'monitor' }),
     ),
-    browser === 'chrome' ? element('p', { class: 'help' }, 'Keep DevTools open while monitoring.') : null,
   )
 }

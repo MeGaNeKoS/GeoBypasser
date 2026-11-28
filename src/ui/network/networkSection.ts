@@ -1,6 +1,6 @@
 import type { ProxyRule } from '@customTypes/proxy'
 import { supportsProxyOnRequest } from '@utils/env'
-import { formatCount, requestLogPages, type RequestLogPage, type RequestLogRow } from '@utils/requestLog'
+import { requestLogPages, type RequestLogPage, type RequestLogRow } from '@utils/requestLog'
 import {
   ruleFormForSelection,
   ruleFormSkippingHost,
@@ -11,7 +11,6 @@ import {
   type LogSelection,
   type SkipRule,
 } from '@utils/requestLogRule'
-import { webTabsOf } from '@utils/webTabs'
 import { getConfig } from '@utils/storage'
 import { button } from '../components/button'
 import { switchControl } from '../components/controls'
@@ -22,12 +21,12 @@ import { banner, skeletonRows, stateBlock } from '../components/feedback'
 import { element, replaceContent, requireElement } from '../dom'
 import { NETWORK_SECTION_ID } from '../shell/routes'
 import { openRuleEditor } from '../rules/ruleSheet'
-import { onNetworkMonitoringChanged, onOpenTabsChanged, readOpenTabs, readTabNetworkMonitored, setTabMonitoring } from '../networkMonitorState'
+import { onNetworkMonitoringChanged } from '../networkMonitorState'
 import { clearNetworkUsage, readNetworkUsage } from './networkStore'
 import { logToolbar } from './logToolbar'
 import { requestLogPageGroup } from './requestLogPage'
 import { expansionKey, type LogRowActions } from './requestLogTable'
-import { tabsCard, type TabMonitorRow } from './tabsCard'
+import { refreshInBackground } from './liveRefresh'
 
 const CONTAINER_ID = 'networkContent'
 const HEADING = 'Network'
@@ -37,11 +36,11 @@ const CREATE_RULE_LABEL = 'Create rule from selection'
 const SELECT_HOST_HINT = 'Select a host first.'
 const AUTO_REFRESH_LABEL = 'Auto refresh'
 const AUTO_REFRESH_INTERVAL_MS = 5000
-const OPEN_TABS_DEBOUNCE_MS = 250
 const LOADING_ROW_COUNT = 4
 const LOAD_ERROR_TITLE = 'Could not read usage from the extension.'
-const NO_TRAFFIC_TITLE = 'No traffic recorded yet. Turn on a tab above, or use Monitor this tab in the popup.'
+const NO_TRAFFIC_TITLE = 'No traffic recorded yet. Open the page you want to inspect and turn on Monitor this tab in the popup.'
 const CLEAR_QUESTION = 'Clear all usage?'
+const LIVE_REFRESH_FAILED_TEXT = 'Could not refresh the Network section; it keeps its last view.'
 const REFRESH_KEY = 'refresh-network'
 const CLEAR_FAILED_TEXT = 'Could not clear network usage.'
 const TRY_AGAIN_LABEL = 'Try again'
@@ -54,7 +53,6 @@ const COPY_JSON_KEY = 'copy-network-json'
 
 type ReadyView = {
   kind: 'ready';
-  tabs: TabMonitorRow[];
   pages: RequestLogPage[];
   rules: ProxyRule[];
   proxyList: unknown;
@@ -74,11 +72,7 @@ let clearFailed = false;
 let autoRefresh = false;
 let autoRefreshTimer: ReturnType<typeof setInterval> | undefined;
 
-let stopWatchingOpenTabs: (() => void) | undefined;
-let openTabsDebounceTimer: ReturnType<typeof setTimeout> | undefined;
-
 export async function renderNetworkSection (focusKey?: string): Promise<void> {
-  stopWatchingOpenTabs ??= onOpenTabsChanged(refreshAfterOpenTabsChange);
   if (view.kind === 'loading') paint(focusKey);
   view = await readView();
   paint(focusKey);
@@ -86,12 +80,9 @@ export async function renderNetworkSection (focusKey?: string): Promise<void> {
 
 async function readView (): Promise<NetworkView> {
   try {
-    const [usage, tabs, config] = await Promise.all([readNetworkUsage(), readOpenTabs(), getConfig()]);
-    const webTabs = webTabsOf(tabs);
-    const monitored = await Promise.all(webTabs.map(tab => readTabNetworkMonitored(tab.id)));
+    const [usage, config] = await Promise.all([readNetworkUsage(), getConfig()]);
     return {
       kind: 'ready',
-      tabs: webTabs.map((tab, index) => ({ ...tab, monitored: monitored[index] === true })),
       pages: requestLogPages(usage, config.proxyList),
       rules: config.rules,
       proxyList: config.proxyList,
@@ -121,7 +112,6 @@ function bodyNodes (): Node[] {
   if (view.kind === 'loading') return [toolbarNode(undefined), loadingCard()];
   if (view.kind === 'error') return [toolbarNode(undefined), loadErrorBlock()];
   return [
-    tabsCard(view.tabs, toggleMonitoring),
     ...(view.chrome ? [banner({ tone: 'info', text: CHROME_NOTE })] : []),
     toolbarNode(view),
     ...logNodes(view),
@@ -161,14 +151,8 @@ function createRuleButton (ready: ReadyView | undefined, hasSelection: boolean):
 }
 
 function logNodes (ready: ReadyView): Node[] {
-  if (ready.pages.length === 0) return [stateBlock({ title: emptyLogTitle(ready) })];
+  if (ready.pages.length === 0) return [stateBlock({ title: NO_TRAFFIC_TITLE })];
   return ready.pages.map(page => requestLogPageGroup(page, rowActionsFor(ready, page.page, selectionOnPage(selection, page.page))));
-}
-
-function emptyLogTitle (ready: ReadyView): string {
-  const monitoring = ready.tabs.filter(tab => tab.monitored).length;
-  if (monitoring === 0) return NO_TRAFFIC_TITLE;
-  return `Monitoring ${formatCount(monitoring, 'tab')}. Nothing recorded yet. Load or reload the page.`;
 }
 
 function rowActionsFor (ready: ReadyView, page: string, onPage: LogSelection): LogRowActions {
@@ -199,10 +183,6 @@ function toggleExpanded (key: string): void {
   if (expandedRows.has(key)) expandedRows.delete(key);
   else expandedRows.add(key);
   void renderNetworkSection(`details-${key}`);
-}
-
-function toggleMonitoring (tabId: number, monitored: boolean): void {
-  void setTabMonitoring(tabId, monitored).then(() => renderNetworkSection(`monitor-tab-${tabId}`));
 }
 
 function createRuleFromSelection (ready: ReadyView, chosen: LogSelection): void {
@@ -302,17 +282,8 @@ function setAutoRefresh (enabled: boolean): void {
 }
 
 function refreshWhenShown (): void {
-  if (!requireElement(NETWORK_SECTION_ID).classList.contains('active')) {
-    stopWatchingOpenTabs?.();
-    stopWatchingOpenTabs = undefined;
-    return;
-  }
-  void renderNetworkSection();
-}
-
-function refreshAfterOpenTabsChange (): void {
-  clearTimeout(openTabsDebounceTimer);
-  openTabsDebounceTimer = setTimeout(refreshWhenShown, OPEN_TABS_DEBOUNCE_MS);
+  if (!requireElement(NETWORK_SECTION_ID).classList.contains('active')) return;
+  refreshInBackground(() => renderNetworkSection(), LIVE_REFRESH_FAILED_TEXT);
 }
 
 onNetworkMonitoringChanged(refreshWhenShown);

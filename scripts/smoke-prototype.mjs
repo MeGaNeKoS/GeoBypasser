@@ -7,7 +7,7 @@ const PROTOTYPE_DIR = join(ROOT, 'prototype')
 const STYLESHEET_LINK = /<link rel="stylesheet" href="([^"]+)">/g
 const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 
-export const PROTOTYPE_PAGES = ['index.html', 'popup.html', 'devtools.html']
+export const PROTOTYPE_PAGES = ['index.html', 'popup.html']
 
 export function prototypeUrl (page) {
   return pathToFileURL(join(PROTOTYPE_DIR, page)).href
