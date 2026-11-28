@@ -1,6 +1,8 @@
 import { parseGitHubTreeEntries } from '@schemas/githubTree'
-import { checkbox } from '../components/controls'
-import { draftOf, openSheet } from '../components/sheet'
+import { button } from '../components/button'
+import { draftOf, draftValues, openSheet } from '../components/sheet'
+import type { Draft, Fault } from '../components/sheet'
+import { element } from '../dom'
 import { importConfigFromUrl } from './configImport'
 import type { ImportReport } from './configImport'
 
@@ -16,10 +18,21 @@ const GITHUB_REPOSITORY_URL = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)(?:\/tre
 const JSON_SUFFIX = '.json'
 const NO_FILES_MESSAGE = 'No rules files were found in that folder.'
 const READ_FAILED_MESSAGE = 'Could not read one of the chosen rules files.'
+const CHOOSE_FILES_TITLE = 'Choose files'
+const CONTINUE_LABEL = 'Continue'
+const FILE_FIELD = 'file'
+const NO_FILE_CHOSEN_MESSAGE = 'Select at least one file.'
+const ROOT_FOLDER_NAME = '/'
+const FOLDER_CLASS = 'choose-files__folder'
 
 type RepositoryFile = {
   label: string;
   url: string;
+}
+
+type RepositoryFolder = {
+  name: string;
+  files: RepositoryFile[];
 }
 
 export function parseGitHubRepositoryUrl (value: string): GitHubRepository | null {
@@ -35,15 +48,92 @@ export async function openRepositoryRules (repository: GitHubRepository, report:
     report({ messages: [NO_FILES_MESSAGE], summary: null })
     return
   }
-  const chosenUrls = new Set<string>()
   openSheet({
-    title: 'Choose rules',
-    saveLabel: 'Import selected',
+    title: CHOOSE_FILES_TITLE,
+    saveLabel: CONTINUE_LABEL,
     draft: draftOf({}),
-    render: () => files.map(file => checkbox(file.label, false, checked => setChosen(chosenUrls, file.url, checked))),
-    validate: () => [],
-    save: () => { void importChosen(files.filter(file => chosenUrls.has(file.url)), report) },
+    render: () => chooserNodes(repository, files),
+    validate: draft => chosenFaults(draft),
+    save: draft => { void importChosen(filesNamed(files, draftValues(draft, FILE_FIELD)), report) },
   })
+}
+
+function chosenFaults (draft: Draft): Fault[] {
+  return draftValues(draft, FILE_FIELD).length === 0 ? [{ field: FILE_FIELD, message: NO_FILE_CHOSEN_MESSAGE }] : []
+}
+
+function filesNamed (files: RepositoryFile[], urls: string[]): RepositoryFile[] {
+  return files.filter(file => urls.includes(file.url))
+}
+
+function chooserNodes (repository: GitHubRepository, files: RepositoryFile[]): Node[] {
+  const counter = element('p', { class: 'help', 'aria-live': 'polite' })
+  const list = element('div', { class: 'choose-files__folders' },
+    ...groupByFolder(files).map(folder => folderGroup(folder)),
+  )
+  const sync = (): void => syncSelection(list, counter)
+  list.addEventListener('change', sync)
+  sync()
+  return [
+    element('p', { class: 'help' }, `${repository.owner}/${repository.repo}`),
+    element('div', { class: 'choose-files__bar' },
+      button('Select all', { variant: 'quiet', onClick: () => { setFiles(list, true); sync() } }),
+      button('Unselect all', { variant: 'quiet', onClick: () => { setFiles(list, false); sync() } }),
+      counter,
+    ),
+    list,
+  ]
+}
+
+function groupByFolder (files: RepositoryFile[]): RepositoryFolder[] {
+  const folders = new Map<string, RepositoryFile[]>()
+  for (const file of files) {
+    const name = folderNameOf(file.label)
+    folders.set(name, [...(folders.get(name) ?? []), file])
+  }
+  return Array.from(folders, ([name, folderFiles]) => ({ name, files: folderFiles }))
+}
+
+function folderNameOf (label: string): string {
+  const cut = label.lastIndexOf('/')
+  return cut === -1 ? ROOT_FOLDER_NAME : label.slice(0, cut)
+}
+
+function fileNameOf (label: string): string {
+  return label.slice(label.lastIndexOf('/') + 1)
+}
+
+function folderGroup (folder: RepositoryFolder): HTMLFieldSetElement {
+  const folderBox = element('input', { type: 'checkbox' })
+  const group = element('fieldset', { class: FOLDER_CLASS },
+    element('legend', {}, element('label', { class: 'checkbox' }, folderBox, element('span', { class: 'mono' }, folder.name))),
+    ...folder.files.map(fileRow),
+  )
+  folderBox.addEventListener('change', () => setFiles(group, folderBox.checked))
+  return group
+}
+
+function fileRow (file: RepositoryFile): HTMLLabelElement {
+  return element('label', { class: 'checkbox' },
+    element('input', { type: 'checkbox', name: FILE_FIELD, value: file.url }),
+    element('span', { class: 'mono' }, fileNameOf(file.label)),
+  )
+}
+
+function syncSelection (list: HTMLElement, counter: HTMLElement): void {
+  counter.textContent = `${fileBoxesOf(list).filter(box => box.checked).length} selected`
+  for (const group of Array.from(list.querySelectorAll<HTMLFieldSetElement>(`.${FOLDER_CLASS}`))) {
+    const folderBox = group.querySelector<HTMLInputElement>('legend input')
+    if (folderBox) folderBox.checked = fileBoxesOf(group).every(box => box.checked)
+  }
+}
+
+function setFiles (root: ParentNode, checked: boolean): void {
+  for (const box of fileBoxesOf(root)) box.checked = checked
+}
+
+function fileBoxesOf (root: ParentNode): HTMLInputElement[] {
+  return Array.from(root.querySelectorAll<HTMLInputElement>(`input[name="${FILE_FIELD}"]`))
 }
 
 async function listJsonFiles (repository: GitHubRepository): Promise<RepositoryFile[]> {
@@ -63,11 +153,6 @@ function folderPathOf (prefix: string): string {
 
 function rawUrlOf (owner: string, repo: string, path: string): string {
   return `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${path}`
-}
-
-function setChosen (chosenUrls: Set<string>, url: string, checked: boolean): void {
-  if (checked) chosenUrls.add(url)
-  else chosenUrls.delete(url)
 }
 
 async function importChosen (files: RepositoryFile[], report: (result: ImportReport) => void): Promise<void> {

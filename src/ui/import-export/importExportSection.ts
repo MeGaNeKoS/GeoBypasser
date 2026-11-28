@@ -3,14 +3,12 @@ import { textField } from '../components/fields'
 import { statusLine } from '../components/feedback'
 import { importNotesBanner } from '../components/import-notes'
 import { sectionHeading } from '../components/section-heading'
-import { draftOf, draftValue, faultFor, openSheet } from '../components/sheet'
-import type { Fault } from '../components/sheet'
-import { element, replaceContent, requireElement } from '../dom'
-import { IMPORT_EXPORT_SECTION_ID } from '../shell/routes'
+import { element, focusableWithKey, replaceContent, requireElement } from '../dom'
+import { showImportFailure } from '../review/reviewSheet'
+import { hashForSection, IMPORT_EXPORT_SECTION_ID } from '../shell/routes'
 import { importConfigFromUrl, importConfigText } from './configImport'
 import type { ImportReport } from './configImport'
 import { openExportSheet } from './exportSheet'
-import { showImportFailure } from '../review/reviewSheet'
 import { COMMUNITY_RULES, openRepositoryRules, parseGitHubRepositoryUrl } from './repositoryImport'
 import type { GitHubRepository } from './repositoryImport'
 
@@ -19,12 +17,16 @@ const HEADING = 'Import and export'
 const HELP = 'Backup or restore configuration and import community rules.'
 const CONFIG_INPUT_ID = 'configImportInput'
 const URL_FIELD = 'url'
+const URL_ACTION_KEY = 'import-url'
+const COMMUNITY_KEY = 'import-community'
 const JSON_ADDRESS_PATTERN = /\.json$/
-const INVALID_URL_MESSAGE = 'Enter a direct link to a .json file, or a GitHub repository or folder.'
+const URL_HELP = 'A direct link to a .json file, or a GitHub repository or folder.'
 const IMPORT_FAILED_MESSAGE = 'Could not import the configuration.'
 const LIST_FAILED_MESSAGE = 'Could not load the list of rules from GitHub.'
 
 let lastResult: ImportReport | null = null
+let addressDraft = ''
+let addressFault: string | null = null
 
 export function renderImportExportSection (): void {
   replaceContent(requireElement(IMPORT_EXPORT_SECTION_ID), [
@@ -37,8 +39,18 @@ export function renderImportExportSection (): void {
   renderCard()
 }
 
-function renderCard (): void {
-  replaceContent(requireElement(CARDS_ID), [importCard(), exportCard()])
+export function startCommunityRules (): void {
+  window.addEventListener('hashchange', openCommunityOnceShown, { once: true })
+  location.hash = `#${hashForSection(IMPORT_EXPORT_SECTION_ID)}`
+}
+
+function openCommunityOnceShown (): void {
+  focusableWithKey(document.body, COMMUNITY_KEY)?.focus()
+  openCommunity()
+}
+
+function renderCard (focusKey?: string): void {
+  replaceContent(requireElement(CARDS_ID), [importCard(), exportCard()], focusKey)
 }
 
 function exportCard (): HTMLElement {
@@ -52,8 +64,8 @@ function importCard (): HTMLElement {
   return element('div', { class: 'settings-card' },
     element('h3', {}, 'Import'),
     fileRow(),
-    row('From a URL', 'A direct link to a .json file, or a GitHub repository or folder.', button('Enter address', { onClick: openUrlSheet, focusKey: 'import-url' })),
-    row('Community rules', 'Choose rules from the community repository.', button('Choose files', { onClick: openCommunity, focusKey: 'import-community' })),
+    urlRow(),
+    row('Community rules', 'Choose rules from the community repository.', button('Browse', { onClick: openCommunity, focusKey: COMMUNITY_KEY })),
     ...resultNodes(lastResult),
   )
 }
@@ -70,6 +82,40 @@ function fileRow (): HTMLElement {
     button('Choose file', { onClick: () => input.click(), focusKey: 'import-file' }),
     input,
   )
+}
+
+function urlRow (): HTMLElement {
+  return element('div', { class: 'import-url' },
+    element('strong', {}, 'From a URL'),
+    element('div', { class: 'import-url__entry' },
+      textField({
+        name: URL_FIELD,
+        label: 'Address',
+        value: addressDraft,
+        type: 'url',
+        mono: true,
+        placeholder: 'https://example.com/config.json',
+        fault: addressFault ?? undefined,
+        focusKey: URL_FIELD,
+        onInput: value => {
+          addressDraft = value
+        },
+      }),
+      button('Import', { onClick: submitAddress, focusKey: URL_ACTION_KEY }),
+    ),
+    element('p', { class: 'help' }, URL_HELP),
+  )
+}
+
+function submitAddress (): void {
+  const address = addressDraft.trim()
+  addressFault = isImportableAddress(address) ? null : URL_HELP
+  renderCard(URL_FIELD)
+  if (addressFault === null) importFromAddress(address)
+}
+
+function focusAddressField (): void {
+  focusableWithKey(requireElement(CARDS_ID), URL_FIELD)?.focus()
 }
 
 function row (title: string, help: string, action: Node, ...extra: Node[]): HTMLElement {
@@ -119,30 +165,6 @@ function failureMessage (error: unknown): string {
   return error instanceof Error ? error.message : IMPORT_FAILED_MESSAGE
 }
 
-function openUrlSheet (): void {
-  openSheet({
-    title: 'Import from a URL',
-    saveLabel: 'Import',
-    draft: draftOf({ [URL_FIELD]: '' }),
-    render: (draft, faults) => [textField({
-      name: URL_FIELD,
-      label: 'Address',
-      value: draftValue(draft, URL_FIELD),
-      type: 'url',
-      mono: true,
-      placeholder: 'https://example.com/config.json',
-      fault: faultFor(faults, URL_FIELD),
-      focusKey: URL_FIELD,
-    })],
-    validate: draft => urlFaults(draftValue(draft, URL_FIELD)),
-    save: draft => importFromAddress(draftValue(draft, URL_FIELD)),
-  })
-}
-
-function urlFaults (value: string): Fault[] {
-  return isImportableAddress(value) ? [] : [{ field: URL_FIELD, message: INVALID_URL_MESSAGE }]
-}
-
 function isImportableAddress (value: string): boolean {
   if (JSON_ADDRESS_PATTERN.test(value)) return isHttpAddress(value)
   return parseGitHubRepositoryUrl(value) !== null
@@ -159,11 +181,11 @@ function isHttpAddress (value: string): boolean {
 
 function importFromAddress (address: string): void {
   if (JSON_ADDRESS_PATTERN.test(address)) {
-    void runImport(() => importConfigFromUrl(address), openUrlSheet)
+    void runImport(() => importConfigFromUrl(address), focusAddressField)
     return
   }
   const repository = parseGitHubRepositoryUrl(address)
-  if (repository) openRepository(repository, openUrlSheet)
+  if (repository) openRepository(repository, focusAddressField)
 }
 
 function openCommunity (): void {

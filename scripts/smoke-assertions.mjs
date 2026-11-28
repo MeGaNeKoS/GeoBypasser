@@ -1,5 +1,5 @@
 import { canon, CREDENTIAL_PROXY, FIXTURE, serveImportFile, SET_ASIDE_EDIT_INDEXES, SET_ASIDE_PROXY, SET_ASIDE_RULE, sleep, STORAGE_WAIT_MS, UI_SETTLE_MS, URL_IMPORT_FILE, waitFor } from './smoke-fixture.mjs'
-import { clickKeepAliveActiveFor, clickKeepAliveDeleteSelected, clickKeepAliveFocusKey, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, clickSiteRowAction, confirmKeepAliveInlineDelete, confirmRuleInlineDelete, confirmSiteInlineDelete, fillAndSaveOpenKeepAliveSheet, keepAliveSheetFieldsReady, fillAndSaveOpenRuleSheet, fillAndSaveOpenSiteSheet, fillAndSaveOpenUrlSheet, clickReviewImport, isReviewSheetOpen, isSheetOpen, openImportUrlSheet, openNewKeepAliveSheet, openNewRuleSheet, openNewSiteSheet, proxyHostMarkedInvalid, readLocalStorage, readReviewSheetText, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectKeepAliveRowFor, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
+import { clickKeepAliveActiveFor, clickKeepAliveDeleteSelected, clickKeepAliveFocusKey, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, clickSiteRowAction, confirmKeepAliveInlineDelete, confirmRuleInlineDelete, confirmSiteInlineDelete, fillAndSaveOpenKeepAliveSheet, keepAliveSheetFieldsReady, fillAndSaveOpenRuleSheet, fillAndSaveOpenSiteSheet, clickReviewImport, importFromUrlField, isReviewSheetOpen, isSheetOpen,openNewKeepAliveSheet, openNewRuleSheet, openNewSiteSheet, proxyHostMarkedInvalid, readLocalStorage, readReviewSheetText, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectKeepAliveRowFor, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
 
 const PROXY_LABEL_AFTER_EDIT = 'edited in proxies'
 
@@ -174,8 +174,7 @@ export async function removeSetAsideEntries (run, failures) {
 async function importUrlThroughReview (run, failures, url) {
   await run(clickSelector, ['[data-tab="impexp"]'])
   await sleep(UI_SETTLE_MS)
-  await run(openImportUrlSheet)
-  await run(fillAndSaveOpenUrlSheet, [url])
+  await run(importFromUrlField, [url])
   await waitFor(() => run(isReviewSheetOpen), STORAGE_WAIT_MS, 'the Review sheet for the URL import')
   if (!(await run(readReviewSheetText)).includes('url refused rule')) {
     failures.push('the Review sheet did not name the refused URL import rule')

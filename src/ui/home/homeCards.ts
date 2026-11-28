@@ -8,6 +8,7 @@ import type { Child } from '../dom'
 import { icon } from '../icons'
 import { SITE_SECTION_ID, hashForSection, setAsideOnlyHashFor } from '../shell/routes'
 import { openSiteEditor } from '../sites/siteSheet'
+import { startCommunityRules } from '../import-export/importExportSection'
 
 type ActionOptions = {
   variant?: ButtonVariant
@@ -43,7 +44,7 @@ export function quickActions (sitesShown: boolean): HTMLElement {
     actionButton('Add proxy', 'proxies', {}, 'quick-add-proxy'),
     ...(sitesShown ? [addSiteButton('Add site', {}, 'quick-add-site')] : []),
     actionButton('Import', 'import-export', {}, 'quick-import'),
-    actionButton('Browse community rules', 'import-export', {}, 'quick-community'),
+    communityButton('quick-community'),
   )
 }
 
@@ -55,7 +56,7 @@ export function getStartedCard (view: HomeView): HTMLElement {
       setupStep(1, 'Add a proxy', 'A server your traffic can go through.', proxyAdded, [
         actionButton('Add proxy', 'proxies', { variant: 'primary' }, 'step-1-add-proxy'),
         actionButton('Import a file', 'proxies', {}, 'step-1-import'),
-        actionButton('Browse community rules', 'import-export', {}, 'step-1-community'),
+        communityButton('step-1-community'),
       ]),
       setupStep(2, 'Choose what uses it', 'A rule for matching requests, one site, or everything by default.', choiceMade, [
         actionButton('Add a rule', 'rules', { disabled: !proxyAdded }, 'step-2-add-rule'),
@@ -140,6 +141,10 @@ function actionButton (label: string, section: string, options: ActionOptions, f
     focusKey,
     onClick: () => openSection(section),
   })
+}
+
+function communityButton (focusKey: string): HTMLButtonElement {
+  return button('Browse community rules', { focusKey, onClick: startCommunityRules })
 }
 
 function addSiteButton (label: string, options: ActionOptions, focusKey: string): HTMLButtonElement {

@@ -566,6 +566,46 @@
   gap: var(--space-1);
 }
 
+.import-url {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.import-url__entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+.choose-files__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.choose-files__bar .help {
+  margin-inline-start: auto;
+}
+
+.choose-files__folders {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.choose-files__folder {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choose-files__folder > .checkbox {
+  padding-inline-start: var(--space-4);
+}
+
 .note-block {
   display: grid;
   gap: var(--space-1);

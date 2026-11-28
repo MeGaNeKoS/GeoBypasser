@@ -77,13 +77,11 @@ export function readLocalStorage () {
   return (globalThis.browser ?? globalThis.chrome).storage.local.get(null)
 }
 
-export function openImportUrlSheet () {
-  document.querySelector('[data-focus-key="import-url"]').click()
-}
-
-export function fillAndSaveOpenUrlSheet (url) {
-  document.querySelector('dialog.sheet input[name="url"]').value = url
-  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Import').click()
+export function importFromUrlField (url) {
+  const field = document.querySelector('#importExportCards input[name="url"]')
+  field.value = url
+  field.dispatchEvent(new Event('input', { bubbles: true }))
+  document.querySelector('#importExportCards [data-focus-key="import-url"]').click()
 }
 
 export function refuseProxySave () {

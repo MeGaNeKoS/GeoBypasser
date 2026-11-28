@@ -1,5 +1,5 @@
 import { serveImportFile, STORAGE_WAIT_MS, UI_SETTLE_MS, sleep, waitFor } from './smoke-fixture.mjs'
-import { clickReviewImport, fillAndSaveOpenUrlSheet, isReviewSheetOpen, openImportUrlSheet, readLocalStorage, readReviewSettingLabels, setReviewSettingImported } from './smoke-dashboard.mjs'
+import { clickReviewImport, importFromUrlField, isReviewSheetOpen, readLocalStorage, readReviewSettingLabels, setReviewSettingImported } from './smoke-dashboard.mjs'
 
 const CHANGE_CHECK_URL = 'https://settings-check.example/'
 const CHANGE_CHECK_RULE = 'settings check rule'
@@ -33,8 +33,7 @@ function expectedSettingsAfterChoices (before) {
 }
 
 async function importSettingsThroughReview (run, failures, settingsUrl, decisions) {
-  await run(openImportUrlSheet)
-  await run(fillAndSaveOpenUrlSheet, [settingsUrl])
+  await run(importFromUrlField, [settingsUrl])
   await waitFor(() => run(isReviewSheetOpen), STORAGE_WAIT_MS, 'the Review sheet for the settings file')
   await chooseSettingChanges(run, failures, decisions)
   await run(clickReviewImport)
