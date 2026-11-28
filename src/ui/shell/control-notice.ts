@@ -39,6 +39,6 @@ function warningBanner (state: NotInEffectState): HTMLDivElement {
   })
 }
 
-async function openExtensionsPage (): Promise<void> {
+export async function openExtensionsPage (): Promise<void> {
   await browser.tabs.create({ url: EXTENSIONS_PAGE_URL })
 }

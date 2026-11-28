@@ -258,6 +258,35 @@ async function setTabProxyFromPopup (session) {
   console.log(`popup set tab ${tabId} to proxy-good; tabProxyMap holds it`)
 }
 
+async function flipRuleFromPopup () {
+  await evaluate(clickFirstPopupRuleSwitch)
+  await waitFor(async () => (await evaluate(readGoodRuleActive)) === false, STORAGE_WAIT_MS, 'the popup rule switch to turn "good rule" off in storage')
+  await evaluate(clickPopupRuleFilter, ['inactive'])
+  await waitFor(async () => (await evaluate(popupRuleSwitchCount)) > 0, STEP_TIMEOUT_MS, 'the inactive rule list in the popup')
+  await evaluate(clickFirstPopupRuleSwitch)
+  await waitFor(async () => (await evaluate(readGoodRuleActive)) === true, STORAGE_WAIT_MS, 'the popup rule switch to turn "good rule" back on in storage')
+  console.log('popup turned "good rule" off and back on; storage holds it active again')
+}
+
+function clickFirstPopupRuleSwitch () {
+  document.querySelector('.popup-rules [role="switch"]').click()
+  return true
+}
+
+function clickPopupRuleFilter (value) {
+  document.querySelector(`input[name="ruleFilter"][value="${value}"]`).click()
+  return true
+}
+
+function popupRuleSwitchCount () {
+  return document.querySelectorAll('.popup-rules [role="switch"]').length
+}
+
+async function readGoodRuleActive () {
+  const { rules = [] } = await browser.storage.local.get('rules')
+  return rules.find(rule => rule?.name === 'good rule')?.active
+}
+
 async function runFirefoxSmoke (settings) {
   prepareSmokeDist(settings.dist)
   resetProfile()
@@ -295,6 +324,7 @@ async function runFirefoxSmoke (settings) {
   await checkMixedOverrideInDashboard({ run: evaluate, reopenDashboard: () => navigate(`${second.origin}dashboard.html`) }, failures)
   await runStep('popup clears a mixed case override for the tab it is opened beside', () => checkPopupClearOnMixedTab(second), failures)
   await setTabProxyFromPopup(second)
+  await runStep('popup flips a rule off and back on, and storage follows', () => flipRuleFromPopup(), failures)
   await checkComponentTestPage(second)
   await checkPrototypePages()
 }
@@ -408,9 +438,11 @@ function popupProxyListReady () {
 
 async function setTabProxy (proxyId) {
   const { id } = await browser.tabs.getCurrent()
-  document.getElementById('scopeSelect').value = 'tab'
-  document.getElementById('proxySelect').value = proxyId
-  document.getElementById('setProxy').click()
+  document.querySelector('input[name="scope"][value="tab"]').click()
+  const select = document.getElementById('proxySelect')
+  select.value = proxyId
+  select.dispatchEvent(new Event('change'))
+  document.querySelector('[data-focus-key="set-proxy"]').click()
   return id
 }
 

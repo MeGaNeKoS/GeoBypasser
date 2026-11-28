@@ -40,12 +40,12 @@ export async function tabLoadStatus (tabId) {
 }
 
 export async function readPopupDomain () {
-  return document.getElementById('activeDomain').textContent
+  return document.querySelector('.popup-host').textContent
 }
 
 export async function clickSiteClearInPopup () {
-  document.getElementById('scopeSelect').value = 'site'
-  document.getElementById('clearProxy').click()
+  document.querySelector('input[name="scope"][value="site"]').click()
+  document.querySelector('[data-focus-key="clear-proxy"]').click()
   return true
 }
 

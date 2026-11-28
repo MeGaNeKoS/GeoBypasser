@@ -4,53 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoBypass</title>
+  <link rel="stylesheet" href="ui/styles/tokens.css">
+  <link rel="stylesheet" href="ui/styles/base.css">
+  <link rel="stylesheet" href="ui/styles/components.css">
   <link rel="stylesheet" href="popup.css">
 </head>
-<body>
-  <header>
-    <h1>GeoBypass</h1>
-    <button id="closeBtn">X</button>
+<body class="popup">
+  <header class="popup-header">
+    <h1 class="popup-title">GeoBypass</h1>
+    <button id="openDashboard" class="button button--quiet" type="button">Dashboard</button>
+    <button id="closeBtn" class="button button--quiet" type="button" aria-label="Close">X</button>
   </header>
-  <div>Active Tab: <span id="activeDomain">-</span></div>
-  <div>Current Proxy: <span id="currentProxy">None</span></div>
-
-  <div id="controls">
-    <select id="proxySelect"></select>
-
-    <div id="mainControls" class="control-group">
-      <div id="actionButtons" class="control-group">
-        <button id="setProxy">Set Proxy</button>
-        <button id="clearProxy">Clear Proxy</button>
-      </div>
-      <span id="connector">for</span>
-      <select id="scopeSelect">
-        <option value="tab">Tab</option>
-        <option value="site">Site</option>
-      </select>
-    </div>
-  </div>
-
-  <div id="actions">
-    <button id="testProxy">Test Proxy</button>
-    <div id="monitorGroup">
-      <button id="toggleMonitor">Monitor Tab</button>
-      <span id="monitorHint" class="note hidden" title="Chrome may require the DevTools window to be open for monitoring">?</span>
-    </div>
-    <span id="status"></span>
-  </div>
-
-  <div id="ruleSection">
-    <div id="ruleHeader">
-      <button data-list="active" class="active">Active</button>
-      <button data-list="inactive">Inactive</button>
-    </div>
-    <ul id="ruleList"></ul>
-  </div>
-
-  <footer>
-    <a href="#" id="openDashboard">Open Dashboard</a>
-  </footer>
-
+  <main class="popup-body">
+    <div id="controlBanner"></div>
+    <section id="thisTab" class="popup-section" aria-label="This tab"></section>
+    <section id="monitorRow" class="popup-section"></section>
+    <section id="rulesBlock" class="popup-section" aria-label="Rules"></section>
+  </main>
   <script src="popup.js"></script>
 </body>
 </html>

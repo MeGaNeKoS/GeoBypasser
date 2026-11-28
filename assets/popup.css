@@ -1,193 +1,90 @@
-html, body {
+body.popup {
+  width: var(--popup-w);
   margin: 0;
-  padding: 0;
-  font-family: Montserrat, sans-serif;
-  background-color: #111;
-  color: #eee;
+  padding: var(--space-3);
+  font: var(--control-font) var(--font-ui);
 }
 
-body {
-  width: 100vw;
-  max-width: 350px;
-  min-width: 200px;
-  margin: 0 auto;
-  padding: 10px;
-  box-sizing: border-box;
-  font-size: 0.95rem;
-  text-align: center;
-}
-
-body.mobile-popup {
-  font-size: 1rem;
-}
-
-.note {
-  font-size: 0.8em;
-  opacity: 0.8;
-  margin-left: 4px;
-  cursor: help;
-}
-
-.hidden {
-  display: none;
-}
-
-header {
+.popup-header {
   display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+}
+
+.popup-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.popup-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.popup-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.popup-heading {
+  margin: 0;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+}
+
+.popup-host {
+  margin: 0;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.popup-using {
+  margin: 0;
+}
+
+.popup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.popup-note {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+}
+
+.popup-note__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.monitor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  gap: var(--space-2);
 }
 
-h1 {
-  font-size: 16px;
+.popup-rules {
+  display: grid;
+  gap: var(--space-1);
+  max-height: calc(5.5 * var(--popup-row-h));
   margin: 0;
-}
-
-#closeBtn {
-  width: auto;
-  padding: 2px 6px;
-  font-size: 14px;
-  align-self: flex-start;
-  margin-left: auto;
-  background: transparent;
-  border: none;
-  color: #aaa;
-  cursor: pointer;
-}
-
-#closeBtn:hover {
-  color: red;
-}
-
-select {
-  background: #222;
-  color: #eee;
-  border: 1px solid #555;
-  padding: 4px 8px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-button {
-  background: #222;
-  color: #eee;
-  border: 1px solid #555;
-  padding: 4px 8px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #eee;
-  color: #222;
-}
-
-#controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.control-group {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-#mainControls {
-  display: flex;
-  flex-direction: row;     /* 👈 horizontal layout */
-  align-items: center;     /* 👈 align items vertically */
-  gap: 8px;                /* 👈 space between children */
-}
-
-#actionButtons {
-  display: flex;
-  gap: 4px;
-}
-
-#connector {
-  margin: 0 2px;
-}
-
-#monitorGroup {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-#actions {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  margin-top: 8px;
-}
-
-#ruleSection {
-  margin-top: 8px;
-  border-top: 1px solid #555;
-  padding-top: 6px;
-}
-
-#ruleHeader {
-  display: flex;
-  gap: 4px;
-  justify-content: center;
-  margin-bottom: 4px;
-}
-
-#ruleHeader button.active {
-  background: #eee;
-  color: #222;
-}
-
-#ruleList {
-  list-style: none;
   padding: 0;
-  margin: 0;
-  max-height: calc(1.6em * 5);
   overflow-y: auto;
-  text-align: left;
+  list-style: none;
 }
 
-#ruleList li {
+.popup-rules li {
+  min-height: var(--popup-row-h);
   display: flex;
   align-items: center;
-  gap: 4px;
 }
 
-#ruleList li input[type="checkbox"] {
-  flex-shrink: 0;
-  position: sticky;
-  left: 0;
-}
-
-footer {
-  border-top: 1px solid #555;
-  margin-top: 8px;
-  padding-top: 6px;
-  text-align: center;
-}
-
-@media (max-width: 400px) {
-  body {
-    width: 100%;
-    padding: 5px;
-  }
-  .control-group {
-    flex-direction: column;
-  }
-  #actionButtons {
-    width: 100%;
-    justify-content: space-between;
-  }
-  button, select {
-    width: 100%;
-    box-sizing: border-box;
-  }
-  #actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.popup--full .popup-rules {
+  max-height: none;
 }
