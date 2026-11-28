@@ -8,12 +8,20 @@ const TAB_ID = 4
 const REQUEST_ID = 'req-1'
 const URL = 'https://cdn.example.com/a/file.bin'
 const DOCUMENT_URL = 'https://page.example/home'
+const PAGE_URL = 'https://page.example/home'
+const PAGE_ORIGIN = 'https://page.example'
+const NEXT_PAGE_URL = 'https://next.example/'
+const NEXT_PAGE_ORIGIN = 'https://next.example'
 const EXPECTED_RULE_ROUTE: RecordedRoute = { reason: 'rule', route: 'PROXY good.lan:8080', expected: true, rule: { index: 0, name: 'cdn' } }
 
-type Listener = (details: unknown) => void
+type Listener = (...args: unknown[]) => void
 
 function fire (event: { _listeners: Listener[] }, details: unknown) {
   event._listeners.forEach(listener => listener(details))
+}
+
+function fireWithArgs (event: { _listeners: Listener[] }, args: unknown[]) {
+  event._listeners.forEach(listener => listener(...args))
 }
 
 function header (name: string, value: string) {
@@ -52,9 +60,47 @@ function completedDetails (responseHeaders: { name: string; value: string }[]) {
 
 describe('Chrome network adapter', () => {
   beforeEach(() => {
-    for (const event of [browser.webRequest.onBeforeSendHeaders, browser.webRequest.onCompleted, browser.webRequest.onErrorOccurred]) {
+    for (const event of [
+      browser.webRequest.onBeforeRequest,
+      browser.webRequest.onBeforeSendHeaders,
+      browser.webRequest.onCompleted,
+      browser.webRequest.onErrorOccurred,
+      browser.tabs.onUpdated,
+    ]) {
       event._listeners.length = 0
     }
+  })
+
+  it('groups a cross host image under the top level page of the tab when it has no document', async () => {
+    const { monitor } = setUp()
+    fire(browser.webRequest.onBeforeRequest, { tabId: TAB_ID, requestId: 'page', url: PAGE_URL, type: 'main_frame' })
+
+    fire(browser.webRequest.onCompleted, { ...completedDetails([]), documentUrl: undefined, initiator: PAGE_ORIGIN })
+    await flushPromises()
+
+    expect(Object.keys(usageOf(monitor)[TAB_ID])).toEqual(['page.example'])
+    expect(Object.keys(usageOf(monitor)[TAB_ID]['page.example'])).toEqual(['cdn.example.com'])
+  })
+
+  it('groups a request under the page URL of a tab URL change over the document of its frame', async () => {
+    const { monitor } = setUp()
+    fireWithArgs(browser.tabs.onUpdated, [TAB_ID, { url: PAGE_URL }, {}])
+
+    fire(browser.webRequest.onCompleted, { ...completedDetails([]), documentUrl: 'https://frame.example/' })
+    await flushPromises()
+
+    expect(Object.keys(usageOf(monitor)[TAB_ID])).toEqual(['page.example'])
+  })
+
+  it('groups the requests of a new page under its host after a main frame request for it', async () => {
+    const { monitor } = setUp()
+    fire(browser.webRequest.onBeforeRequest, { tabId: TAB_ID, requestId: 'first', url: PAGE_URL, type: 'main_frame' })
+    fire(browser.webRequest.onBeforeRequest, { tabId: TAB_ID, requestId: 'next', url: NEXT_PAGE_URL, type: 'main_frame' })
+
+    fire(browser.webRequest.onCompleted, { ...completedDetails([]), documentUrl: undefined, initiator: NEXT_PAGE_ORIGIN })
+    await flushPromises()
+
+    expect(Object.keys(usageOf(monitor)[TAB_ID])).toEqual(['next.example'])
   })
 
   it('records the request Content-Length as sent and the response Content-Length as received', async () => {

@@ -15,6 +15,7 @@ export function createNetworkMonitor (broadcastMonitoring: (tabId: number, monit
   const monitoredTabs = new Set<number>()
   const usageByTab = new Map<number, TabUsage>()
   const candidatesByTab = new Map<number, Map<string, RouteCandidate[]>>()
+  const topLevelPageUrlByTab = new Map<number, string>()
 
   function isTabMonitored (tabId: number) {
     return monitoredTabs.has(tabId)
@@ -24,7 +25,17 @@ export function createNetworkMonitor (broadcastMonitoring: (tabId: number, monit
     const wasMonitored = monitoredTabs.delete(tabId)
     usageByTab.delete(tabId)
     candidatesByTab.delete(tabId)
+    topLevelPageUrlByTab.delete(tabId)
     if (wasMonitored) broadcastMonitoring(tabId, false)
+  }
+
+  function noteTopLevelPage (tabId: number, pageUrl: string) {
+    if (!monitoredTabs.has(tabId)) return
+    topLevelPageUrlByTab.set(tabId, pageUrl)
+  }
+
+  function topLevelPageUrlOf (tabId: number): string | undefined {
+    return topLevelPageUrlByTab.get(tabId)
   }
 
   function noteRoute (requestId: string, tabId: number, route: RecordedRoute, precedence = 0) {
@@ -75,7 +86,7 @@ export function createNetworkMonitor (broadcastMonitoring: (tabId: number, monit
     }
   }
 
-  return { isTabMonitored, forgetTab, noteRoute, recordRequest, answerNetworkMessage }
+  return { isTabMonitored, forgetTab, noteRoute, noteTopLevelPage, topLevelPageUrlOf, recordRequest, answerNetworkMessage }
 }
 
 function settleRoute (candidates: RouteCandidate[], observedRoute: string | undefined): RecordedRoute {

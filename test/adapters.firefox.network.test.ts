@@ -7,13 +7,18 @@ import type { NetworkUsage, PathNode, RecordedRoute, RouteTally } from '@utils/n
 const TAB_ID = 3
 const URL = 'https://cdn.example.com/a/file.bin'
 const DOCUMENT_URL = 'https://page.example/home'
+const PAGE_URL = 'https://page.example/home'
 const RULE_PROXY_ROUTE: RecordedRoute = { reason: 'rule', route: 'PROXY 127.0.0.1:18081', expected: false, rule: { index: 0, name: 'cdn' } }
 const DIRECT_DEFAULT_ROUTE: RecordedRoute = { reason: 'default', route: 'DIRECT', expected: false }
 
-type Listener = (details: unknown) => void
+type Listener = (...args: unknown[]) => void
 
 function fire (event: { _listeners: Listener[] }, details: unknown) {
   event._listeners.forEach(listener => listener(details))
+}
+
+function fireWithArgs (event: { _listeners: Listener[] }, args: unknown[]) {
+  event._listeners.forEach(listener => listener(...args))
 }
 
 function usageOf (monitor: ReturnType<typeof createNetworkMonitor>): NetworkUsage {
@@ -22,9 +27,32 @@ function usageOf (monitor: ReturnType<typeof createNetworkMonitor>): NetworkUsag
 
 describe('Firefox network adapter', () => {
   beforeEach(() => {
-    for (const event of [browser.webRequest.onCompleted, browser.webRequest.onErrorOccurred]) {
+    for (const event of [browser.webRequest.onBeforeRequest, browser.webRequest.onCompleted, browser.webRequest.onErrorOccurred, browser.tabs.onUpdated]) {
       event._listeners.length = 0
     }
+  })
+
+  it('groups a cross host image under the top level page of the tab when it has no document', () => {
+    const monitor = createNetworkMonitor(() => undefined)
+    monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
+    registerFirefoxNetworkMonitor(monitor)
+    fire(browser.webRequest.onBeforeRequest, { tabId: TAB_ID, requestId: 'page', url: PAGE_URL, type: 'main_frame' })
+
+    fire(browser.webRequest.onCompleted, { ...completedDetails('req-9'), documentUrl: undefined })
+
+    expect(Object.keys(usageOf(monitor)[TAB_ID])).toEqual(['page.example'])
+    expect(Object.keys(usageOf(monitor)[TAB_ID]['page.example'])).toEqual(['cdn.example.com'])
+  })
+
+  it('groups a request under the page URL of a tab URL change over the document of its frame', () => {
+    const monitor = createNetworkMonitor(() => undefined)
+    monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
+    registerFirefoxNetworkMonitor(monitor)
+    fireWithArgs(browser.tabs.onUpdated, [TAB_ID, { url: PAGE_URL }, {}])
+
+    fire(browser.webRequest.onCompleted, { ...completedDetails('req-10'), documentUrl: 'https://frame.example/' })
+
+    expect(Object.keys(usageOf(monitor)[TAB_ID])).toEqual(['page.example'])
   })
 
   it('keeps a request whose path segments are named constructor and __proto__', () => {

@@ -3,11 +3,11 @@ import type { NetworkMonitor } from '@core/networkMonitor'
 import type { KeepAlivePorts, KeepAliveTabListeners } from '@core/keepAlive'
 import type { RoutingPorts } from '@core/routing'
 import { WebRequestProxySchema } from '@schemas/webRequestProxy'
-import { pageHostFor } from '@utils/networkUsage'
 import { DIRECT_ROUTE, routeOfProxyInfo } from '@utils/pacRoute'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { saveTabProxyMap } from '@utils/storage'
 import { APP_NAME } from '@constant/defaults'
+import { pageHostOfRequest, registerTopLevelPageTracking } from './topLevelPages'
 
 export { readStoredSections, getTabProxyMap as readStoredTabProxyMap } from '@utils/storage'
 
@@ -42,10 +42,11 @@ function observedRouteOf (details: unknown): string | undefined {
 }
 
 export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
+  registerTopLevelPageTracking(monitor)
   browser.webRequest.onCompleted.addListener(
     details => {
       monitor.recordRequest(details.tabId, details.requestId, {
-        pageHost: pageHostFor(details.url, details.documentUrl),
+        pageHost: pageHostOfRequest(monitor, details),
         requestUrl: details.url,
         resourceType: details.type,
         statusCode: details.statusCode,
@@ -63,7 +64,7 @@ export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
   browser.webRequest.onErrorOccurred.addListener(
     details => {
       monitor.recordRequest(details.tabId, details.requestId, {
-        pageHost: pageHostFor(details.url, details.documentUrl),
+        pageHost: pageHostOfRequest(monitor, details),
         requestUrl: details.url,
         resourceType: details.type,
         error: details.error,

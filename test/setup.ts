@@ -25,6 +25,7 @@ const browser: any = {
     },
     webRequest: {
       onAuthRequired: createEvent(),
+      onBeforeRequest: createEvent(),
       onBeforeSendHeaders: createEvent(),
       onCompleted: createEvent(),
       onErrorOccurred: createEvent(),

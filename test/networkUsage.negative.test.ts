@@ -28,7 +28,16 @@ describe('network usage that is not recorded', () => {
   })
 
   it('falls back to the request host when the document url does not parse', () => {
-    expect(pageHostFor('https://cdn.example.com/x', 'not a url')).toBe('cdn.example.com')
+    expect(pageHostFor({ requestUrl: 'https://cdn.example.com/x', resourceType: 'image', documentUrl: 'not a url' })).toBe('cdn.example.com')
+  })
+
+  it('falls back to the document host when the tab page url does not parse', () => {
+    expect(pageHostFor({
+      requestUrl: 'https://cdn.example.com/x',
+      resourceType: 'image',
+      tabPageUrl: 'not a url',
+      documentUrl: 'https://page.example/',
+    })).toBe('page.example')
   })
 })
 

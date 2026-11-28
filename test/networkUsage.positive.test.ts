@@ -140,12 +140,36 @@ describe('network usage for a page', () => {
 })
 
 describe('page host of a request', () => {
-  it('uses the host of the document that made the request', () => {
-    expect(pageHostFor('https://cdn.example.com/x', 'https://page.example/')).toBe('page.example')
+  const CDN_REQUEST = 'https://cdn.example.com/x'
+
+  it('uses the top level page of the tab over the document and initiator', () => {
+    expect(pageHostFor({
+      requestUrl: CDN_REQUEST,
+      resourceType: 'image',
+      tabPageUrl: 'https://page.example/home',
+      documentUrl: 'https://frame.example/',
+      initiator: 'https://initiator.example',
+    })).toBe('page.example')
   })
 
-  it('uses the request host when the request has no document', () => {
-    expect(pageHostFor('https://cdn.example.com/x', undefined)).toBe('cdn.example.com')
+  it('uses the host of the document that made the request when the tab page is unknown', () => {
+    expect(pageHostFor({ requestUrl: CDN_REQUEST, resourceType: 'image', documentUrl: 'https://page.example/' })).toBe('page.example')
+  })
+
+  it('uses the initiator origin when neither the tab page nor the document is known', () => {
+    expect(pageHostFor({ requestUrl: CDN_REQUEST, resourceType: 'image', initiator: 'https://page.example' })).toBe('page.example')
+  })
+
+  it('uses the request host when nothing names the page', () => {
+    expect(pageHostFor({ requestUrl: CDN_REQUEST, resourceType: 'image' })).toBe('cdn.example.com')
+  })
+
+  it('uses the request host for a main frame request even when the tab page is another host', () => {
+    expect(pageHostFor({
+      requestUrl: 'https://next.example/',
+      resourceType: 'main_frame',
+      tabPageUrl: 'https://page.example/home',
+    })).toBe('next.example')
   })
 })
 

@@ -1,8 +1,8 @@
 import browser, { Types, WebRequest } from 'webextension-polyfill'
 import type { NetworkMonitor, RequestOutcome, RouteForRequest } from '@core/networkMonitor'
 import type { ProxyControlState } from '@customTypes/proxyControl'
-import { pageHostFor } from '@utils/networkUsage'
 import { APP_NAME } from '@constant/defaults'
+import { pageHostOfRequest, registerTopLevelPageTracking } from './topLevelPages'
 
 export { readStoredSections } from '@utils/storage'
 
@@ -70,6 +70,7 @@ function contentLengthBytes (headers: WebRequest.HttpHeaders | undefined): numbe
 }
 
 export function registerChromeNetworkMonitor (monitor: NetworkMonitor, routeFor: RouteForRequest) {
+  registerTopLevelPageTracking(monitor)
   const sentBytesByRequest = new Map<string, number>()
   const takeSentBytes = (requestId: string) => {
     const bytes = sentBytesByRequest.get(requestId) ?? 0
@@ -96,7 +97,7 @@ export function registerChromeNetworkMonitor (monitor: NetworkMonitor, routeFor:
     details => {
       const receivedBytes = contentLengthBytes(details.responseHeaders)
       recordWithExpectedRoute(details.tabId, details.requestId, details.url, {
-        pageHost: pageHostFor(details.url, details.documentUrl),
+        pageHost: pageHostOfRequest(monitor, details),
         requestUrl: details.url,
         resourceType: details.type,
         statusCode: details.statusCode,
@@ -113,7 +114,7 @@ export function registerChromeNetworkMonitor (monitor: NetworkMonitor, routeFor:
   browser.webRequest.onErrorOccurred.addListener(
     details => {
       recordWithExpectedRoute(details.tabId, details.requestId, details.url, {
-        pageHost: pageHostFor(details.url, details.documentUrl),
+        pageHost: pageHostOfRequest(monitor, details),
         requestUrl: details.url,
         resourceType: details.type,
         error: details.error,

@@ -56,6 +56,16 @@ export type NetworkUsage = Record<string, TabUsage>;
 
 export const UNKNOWN_ROUTE: RecordedRoute = { reason: 'unknown', route: '', expected: false };
 
+export const MAIN_FRAME_RESOURCE_TYPE = 'main_frame';
+
+export type RequestPageSource = {
+  requestUrl: string;
+  resourceType: string;
+  tabPageUrl?: string;
+  documentUrl?: string;
+  initiator?: string;
+};
+
 const FAILED_STATUS_FROM = 400;
 const UNITS = ['KB', 'MB', 'GB', 'TB'];
 const BYTES_PER_UNIT = 1024;
@@ -64,8 +74,12 @@ export function emptyTabUsage (): TabUsage {
   return Object.create(null);
 }
 
-export function pageHostFor (requestUrl: string, documentUrl: string | undefined): string {
-  return hostOf(documentUrl ?? '') || hostOf(requestUrl);
+export function pageHostFor (source: RequestPageSource): string {
+  if (source.resourceType === MAIN_FRAME_RESOURCE_TYPE) return hostOf(source.requestUrl);
+  return hostOf(source.tabPageUrl ?? '')
+    || hostOf(source.documentUrl ?? '')
+    || hostOf(source.initiator ?? '')
+    || hostOf(source.requestUrl);
 }
 
 export function addRequestToTab (tab: TabUsage, observation: RequestObservation): void {
