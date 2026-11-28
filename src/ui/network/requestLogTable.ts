@@ -26,6 +26,7 @@ type TableContext = {
 
 const SELECT_COLUMN_TITLE = ''
 const ACTION_COLUMN_TITLE = 'Action'
+const ACTION_COLUMN_CLASS = 'log-action'
 const DATA_COLUMN_TITLES = ['Host', 'Types', 'Results', 'Route', 'Bytes']
 const RESULT_ICONS: Record<ResultKind, IconName> = {
   ok: 'check',
@@ -41,13 +42,17 @@ const CODE_BREAK_AFTER = /(?<=_|::)/
 export function requestLogTable (rows: RequestLogRow[], actions: LogRowActions): HTMLTableElement {
   const context: TableContext = { actions, showActions: rows.some(row => actions.skipRuleFor(row) !== undefined) }
   return element('table', { class: 'log-table' },
-    element('thead', {}, element('tr', {}, ...headerTitles(context).map(title => element('th', { scope: 'col' }, title)))),
+    element('thead', {}, element('tr', {}, ...headerTitles(context).map(title => element('th', { scope: 'col', ...columnClass(title) }, title)))),
     element('tbody', {}, ...rows.flatMap(row => logRowPair(row, context))),
   )
 }
 
 export function routeText (line: RouteLine): string {
   return line.expected ? `${EXPECTED_PREFIX}${line.label}` : line.label
+}
+
+function columnClass (title: string): { class?: string } {
+  return title === ACTION_COLUMN_TITLE ? { class: ACTION_COLUMN_CLASS } : {}
 }
 
 function headerTitles (context: TableContext): string[] {
@@ -87,7 +92,7 @@ function logRow (row: RequestLogRow, context: TableContext, key: string): HTMLTa
     element('td', { 'data-label': 'Route' }, routeList(row.routes)),
     element('td', { class: 'num', 'data-label': 'Bytes' }, bytesCell(row, actions.chrome)),
     context.showActions
-      ? element('td', { 'data-label': ACTION_COLUMN_TITLE }, rule ? skipButton(row, rule, actions) : null)
+      ? element('td', { class: ACTION_COLUMN_CLASS, 'data-label': ACTION_COLUMN_TITLE }, rule ? skipButton(row, rule, actions) : null)
       : null,
   )
 }

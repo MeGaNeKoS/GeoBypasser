@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill'
-import { NetworkMonitoringChangedMessageSchema } from '@schemas/messages'
+import { NetworkMonitoringChangedMessageSchema, NetworkUsageChangedMessageSchema } from '@schemas/messages'
 
 export async function readTabNetworkMonitored (tabId: number): Promise<unknown> {
   try {
@@ -11,6 +11,12 @@ export async function readTabNetworkMonitored (tabId: number): Promise<unknown> 
 
 export async function setTabMonitoring (tabId: number, monitored: boolean): Promise<void> {
   await browser.runtime.sendMessage({ type: monitored ? 'monitorTabNetwork' : 'unmonitorTabNetwork', tabId }).catch(() => {})
+}
+
+export function onNetworkUsageChanged (listener: () => void): void {
+  browser.runtime.onMessage.addListener((message: unknown) => {
+    if (NetworkUsageChangedMessageSchema.safeParse(message).success) listener()
+  })
 }
 
 export function onNetworkMonitoringChanged (listener: (change: { tabId: number; monitored: boolean }) => void): void {

@@ -89,6 +89,11 @@ export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
   )
 }
 
+export function broadcastFirefoxNetworkUsageChanged (): void {
+  void browser.runtime.sendMessage({ type: 'networkUsageChanged' })
+    .catch(() => console.debug(`[${APP_NAME}BG] No extension page is listening for network usage changes`))
+}
+
 export function broadcastFirefoxNetworkMonitoring (tabId: number, monitored: boolean): void {
   void browser.runtime.sendMessage({ type: 'networkMonitoringChanged', tabId, monitored })
     .catch(() => console.debug(`[${APP_NAME}BG] No extension page is listening for network monitoring changes`))

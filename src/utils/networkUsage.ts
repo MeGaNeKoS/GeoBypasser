@@ -1,6 +1,6 @@
 import type { ExpectedRoute, RouteReason, RuleRef } from './expectedRoute'
 
-export type RecordedRouteReason = RouteReason | 'tab' | 'unknown' | 'failed'
+export type RecordedRouteReason = RouteReason | 'tab' | 'unknown' | 'failed' | 'outsideScope'
 
 export type RecordedRoute = {
   reason: RecordedRouteReason;

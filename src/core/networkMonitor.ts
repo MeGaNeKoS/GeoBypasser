@@ -11,7 +11,10 @@ type RouteCandidate = { precedence: number; route: RecordedRoute };
 
 export type RouteForRequest = (requestUrl: string) => Promise<RecordedRoute>;
 
-export function createNetworkMonitor (broadcastMonitoring: (tabId: number, monitored: boolean) => void) {
+export function createNetworkMonitor (
+  broadcastMonitoring: (tabId: number, monitored: boolean) => void,
+  notifyUsageChanged: () => void = () => {},
+) {
   const monitoredTabs = new Set<number>()
   const usageByTab = new Map<number, TabUsage>()
   const candidatesByTab = new Map<number, Map<string, RouteCandidate[]>>()
@@ -53,6 +56,7 @@ export function createNetworkMonitor (broadcastMonitoring: (tabId: number, monit
     if (!monitoredTabs.has(tabId)) return
     const route = failedBeforeRoute ? FAILED_BEFORE_ROUTE : expectedRoute ?? routeOfRequest(observation.error, settleRoute(candidates, observedRoute))
     addRequestToTab(tabUsageFor(tabId), { ...observation, route })
+    notifyUsageChanged()
   }
 
   function tabUsageFor (tabId: number): TabUsage {

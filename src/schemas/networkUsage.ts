@@ -25,7 +25,7 @@ const tally = z.number().int().nonnegative()
 const RuleRefSchema = z.object({ index: tally, name: z.string() })
 
 const RecordedRouteSchema: z.ZodType<RecordedRoute> = z.object({
-  reason: z.enum(['tab', 'site', 'rule', 'bypass', 'staticExtension', 'default', 'unknown', 'failed']),
+  reason: z.enum(['tab', 'site', 'rule', 'bypass', 'outsideScope', 'staticExtension', 'default', 'unknown', 'failed']),
   route: z.string(),
   expected: z.boolean(),
   rule: RuleRefSchema.optional(),

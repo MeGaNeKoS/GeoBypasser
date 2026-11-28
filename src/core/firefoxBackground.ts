@@ -8,6 +8,7 @@ import { isNetworkMessage, isTabProxyMessage, isTestProxyMessage } from '@utils/
 import { answerTestProxyMessage } from '@core/proxyTest'
 import { runProxyTest } from '@utils/proxy'
 import { createNetworkMonitor, type NetworkMonitor } from '@core/networkMonitor'
+import { createUsageChangeBroadcast } from '@core/usageChangeBroadcast'
 import { createRouting, type RoutingPorts } from '@core/routing'
 import { createReadinessGate, type ReadinessGate } from '@core/readinessGate'
 import type { StoredSections } from '@utils/storage'
@@ -21,6 +22,7 @@ export type FirefoxBackgroundPorts = {
   registerProxyAuth: (listener: (details: AuthChallenge) => Promise<ProxyAuthResponse>) => void;
   registerNetworkMonitor: (monitor: NetworkMonitor) => void;
   broadcastNetworkMonitoring: (tabId: number, monitored: boolean) => void;
+  broadcastNetworkUsageChanged: () => void;
   onRuntimeMessage: (listener: (message: unknown) => unknown) => void;
   onTabRemoved: (listener: (tabId: number) => void) => void;
   onProxyError: (listener: (error: Proxy.OnErrorErrorType) => void) => void;
@@ -28,7 +30,10 @@ export type FirefoxBackgroundPorts = {
 };
 
 export function startFirefoxBackground (ports: FirefoxBackgroundPorts) {
-  const networkMonitor = createNetworkMonitor(ports.broadcastNetworkMonitoring)
+  const networkMonitor = createNetworkMonitor(
+    ports.broadcastNetworkMonitoring,
+    createUsageChangeBroadcast(ports.broadcastNetworkUsageChanged, (run, afterMs) => setTimeout(run, afterMs)),
+  )
   const routing = createRouting({ ...ports.routingPorts, noteRoute: networkMonitor.noteRoute })
   const keepAlive = createKeepAlive(ports.keepAlivePorts)
   const configChangePorts: ConfigChangePorts = {

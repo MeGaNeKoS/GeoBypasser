@@ -21,7 +21,7 @@ import { banner, skeletonRows, stateBlock } from '../components/feedback'
 import { element, replaceContent, requireElement } from '../dom'
 import { NETWORK_SECTION_ID } from '../shell/routes'
 import { openRuleEditor } from '../rules/ruleSheet'
-import { onNetworkMonitoringChanged } from '../networkMonitorState'
+import { onNetworkMonitoringChanged, onNetworkUsageChanged } from '../networkMonitorState'
 import { clearNetworkUsage, readNetworkUsage } from './networkStore'
 import { logToolbar } from './logToolbar'
 import { requestLogPageGroup } from './requestLogPage'
@@ -287,3 +287,4 @@ function refreshWhenShown (): void {
 }
 
 onNetworkMonitoringChanged(refreshWhenShown);
+onNetworkUsageChanged(refreshWhenShown);

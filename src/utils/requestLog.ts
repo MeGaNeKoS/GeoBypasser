@@ -87,8 +87,15 @@ export function routeLabel (route: RecordedRoute, proxies: ProxyListItem[]): str
 }
 
 function directLabel (route: RecordedRoute): string {
-  if (route.reason !== 'bypass') return DIRECT_TEXT;
-  return `${DIRECT_TEXT}, skipped by rule '${route.rule?.name ?? ''}'`;
+  const ruleName = route.rule?.name ?? '';
+  switch (route.reason) {
+    case 'bypass':
+      return `${DIRECT_TEXT}, skipped by rule '${ruleName}'`;
+    case 'outsideScope':
+      return `${DIRECT_TEXT}, outside rule '${ruleName}' limits`;
+    default:
+      return DIRECT_TEXT;
+  }
 }
 
 function proxiedLabel (route: RecordedRoute, proxies: ProxyListItem[]): string {
@@ -168,6 +175,7 @@ function reasonPhrase (route: RecordedRoute): string | undefined {
   switch (route.reason) {
     case 'rule':
     case 'bypass':
+    case 'outsideScope':
       return `by rule '${route.rule?.name ?? ''}'`;
     case 'site':
       return 'by site proxy';

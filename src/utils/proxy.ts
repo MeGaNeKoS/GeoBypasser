@@ -170,7 +170,7 @@ function decideRuleRoute (config: GeoBypassRuntimeSettings, requestInfo: Proxy.O
 
     if (!isInRuleScope(requestInfo, rule)) {
       console.info(`[${APP_NAME}Proxy] Outside the scope of rule "${ruleName}", direct connection for ${url}`)
-      return ruleDecision(config, rule, 'bypass', DIRECT_ANSWER)
+      return ruleDecision(config, rule, 'outsideScope', DIRECT_ANSWER)
     }
 
     if (compiledBypassUrlPatterns && matchPatternList(url, compiledBypassUrlPatterns)) {

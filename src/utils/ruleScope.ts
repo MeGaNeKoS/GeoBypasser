@@ -1,7 +1,9 @@
 import { getHostname, isHostOrSubdomain } from '@utils/generic'
+import { MAIN_FRAME_RESOURCE_TYPE } from '@utils/networkUsage'
 
 export type ScopedRequest = {
   type: string
+  url?: string
   tabId: number
   documentUrl?: string
 }
@@ -29,9 +31,14 @@ function isOnListedPage (request: ScopedRequest, listedHostnames: string[] | und
   return pageHostname !== null && listedHostnames.some(entry => isHostOrSubdomain(pageHostname, domainOf(entry)))
 }
 
-function pageHostnameOf ({ tabId, documentUrl }: ScopedRequest): string | null {
-  if (tabId === NO_TAB_ID || documentUrl === undefined) return null
-  return getHostname(documentUrl)
+function pageHostnameOf (request: ScopedRequest): string | null {
+  const pageUrl = pageUrlOf(request)
+  if (request.tabId === NO_TAB_ID || pageUrl === undefined) return null
+  return getHostname(pageUrl)
+}
+
+function pageUrlOf ({ type, url, documentUrl }: ScopedRequest): string | undefined {
+  return type === MAIN_FRAME_RESOURCE_TYPE ? url : documentUrl
 }
 
 function domainOf (entry: string): string {

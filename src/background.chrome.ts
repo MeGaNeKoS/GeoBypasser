@@ -2,6 +2,7 @@ import { startChromeBackground } from '@core/chromeBackground'
 import { readStoredSections } from '@adapters/chrome'
 import {
   broadcastChromeNetworkMonitoring,
+  broadcastChromeNetworkUsageChanged,
   broadcastChromeProxyControl,
   onChromeProxyLevelChanged,
   onChromeRuntimeMessage,
@@ -24,5 +25,6 @@ startChromeBackground({
   onStorageChanged: onChromeStorageChanged,
   registerNetworkMonitor: registerChromeNetworkMonitor,
   broadcastNetworkMonitoring: broadcastChromeNetworkMonitoring,
+  broadcastNetworkUsageChanged: broadcastChromeNetworkUsageChanged,
   onTabRemoved: onChromeTabRemoved,
 })

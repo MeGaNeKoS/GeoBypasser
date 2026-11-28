@@ -45,6 +45,11 @@ export async function broadcastChromeProxyControl (state: ProxyControlState) {
     .catch(() => console.debug(`[${APP_NAME}BG] No extension page is listening for the proxy control state`))
 }
 
+export function broadcastChromeNetworkUsageChanged (): void {
+  void browser.runtime.sendMessage({ type: 'networkUsageChanged' })
+    .catch(() => console.debug(`[${APP_NAME}BG] No extension page is listening for network usage changes`))
+}
+
 export function broadcastChromeNetworkMonitoring (tabId: number, monitored: boolean): void {
   void browser.runtime.sendMessage({ type: 'networkMonitoringChanged', tabId, monitored })
     .catch(() => console.debug(`[${APP_NAME}BG] No extension page is listening for network monitoring changes`))

@@ -4,6 +4,7 @@ import { createProxyControl, isGetProxyControlMessage, type ProxyControlPorts } 
 import { createPacRouting, type PacPorts } from '@core/routing'
 import { applySectionChanges, createConfigState, type ConfigState, type StorageChanges } from '@core/config'
 import { createNetworkMonitor, type NetworkMonitor, type RouteForRequest } from '@core/networkMonitor'
+import { createUsageChangeBroadcast } from '@core/usageChangeBroadcast'
 import { createReadinessGate, type ReadinessGate } from '@core/readinessGate'
 import type { StoredSections } from '@utils/storage'
 import { isNetworkMessage, isTestProxyMessage } from '@utils/messages'
@@ -23,6 +24,7 @@ export type ChromeBackgroundPorts = {
   onStorageChanged: (listener: (changes: StorageChanges, areaName: string) => Promise<void>) => void;
   registerNetworkMonitor: (monitor: NetworkMonitor, routeFor: RouteForRequest) => void;
   broadcastNetworkMonitoring: (tabId: number, monitored: boolean) => void;
+  broadcastNetworkUsageChanged: () => void;
   onTabRemoved: (listener: (tabId: number) => void) => void;
 };
 
@@ -52,7 +54,10 @@ export function startChromeBackground (ports: ChromeBackgroundPorts) {
     await gate.whenReady(context => reapplyPacForSectionChanges(context, changes, areaName))
   })
 
-  const networkMonitor = createNetworkMonitor(ports.broadcastNetworkMonitoring)
+  const networkMonitor = createNetworkMonitor(
+    ports.broadcastNetworkMonitoring,
+    createUsageChangeBroadcast(ports.broadcastNetworkUsageChanged, (run, afterMs) => setTimeout(run, afterMs)),
+  )
   ports.registerNetworkMonitor(networkMonitor, requestUrl => configGate.whenReady(config => expectedRecordedRoute(expectedRoute(config.settings, requestUrl))))
   ports.onRuntimeMessage(message => {
     if (isNetworkMessage(message)) return Promise.resolve(networkMonitor.answerNetworkMessage(message))

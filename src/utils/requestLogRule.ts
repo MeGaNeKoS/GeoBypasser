@@ -14,13 +14,20 @@ export type SkipRule = { index: number; name: string };
 export function skippableRuleOf (row: RequestLogRow, rules: ProxyRule[]): SkipRule | undefined {
   for (const line of row.routes) {
     if (line.reason !== 'rule' || line.ruleId === undefined || line.ruleName === undefined) continue
-    if (rules[line.ruleId]?.name === line.ruleName) return { index: line.ruleId, name: line.ruleName }
+    const rule = rules[line.ruleId]
+    if (rule?.name !== line.ruleName) continue
+    if (neverProxiesHost(rule, row.host)) continue
+    return { index: line.ruleId, name: line.ruleName }
   }
   return undefined
 }
 
 export function hostMatchPattern (host: string): string {
   return `*://${host}/*`
+}
+
+function neverProxiesHost (rule: ProxyRule, host: string): boolean {
+  return (rule.bypassUrlPatterns ?? []).includes(hostMatchPattern(host))
 }
 
 export function ruleFormForSelection (selection: LogSelection, perTypeRules: boolean): RuleForm {

@@ -130,9 +130,14 @@
   white-space: nowrap;
 }
 
+.log-action {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .result {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-1);
 }
 
@@ -143,6 +148,7 @@
 .result .icon {
   width: var(--icon-size);
   height: var(--icon-size);
+  margin-top: calc((1lh - var(--icon-size)) / 2);
 }
 
 .result--ok {

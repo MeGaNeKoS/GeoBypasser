@@ -56,3 +56,11 @@ describe('rule from a request log selection, negative cases', () => {
     expect(form.name).toBe(PAGE)
   })
 })
+
+describe('no skip is offered for a host the rule already never proxies', () => {
+  it('offers no skip when the rule bypass list already names the host', () => {
+    const rule = { name: 'cdn', bypassUrlPatterns: [`*://${HOST}/*`] } as ProxyRule
+
+    expect(skippableRuleOf(rowRoutedBy(ruleRoute(0, 'cdn')), [rule])).toBeUndefined()
+  })
+})

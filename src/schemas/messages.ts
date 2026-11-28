@@ -34,6 +34,10 @@ export const IsMonitoredMessageSchema = z.object({
   tabId: z.number(),
 })
 
+export const NetworkUsageChangedMessageSchema = z.object({
+  type: z.literal('networkUsageChanged'),
+})
+
 export const NetworkMonitoringChangedMessageSchema = z.object({
   type: z.literal('networkMonitoringChanged'),
   tabId: z.number(),

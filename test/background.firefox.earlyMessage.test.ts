@@ -36,6 +36,7 @@ function firefoxPortsWithDeferredTabMap () {
     registerProxyAuth: () => {},
     registerNetworkMonitor: () => {},
     broadcastNetworkMonitoring: () => {},
+    broadcastNetworkUsageChanged: () => {},
     onRuntimeMessage: listener => { runtimeListeners.push(listener) },
     onTabRemoved: () => {},
     onProxyError: () => {},
