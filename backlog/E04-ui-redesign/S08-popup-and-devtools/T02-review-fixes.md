@@ -1,5 +1,5 @@
 ---
-status: done
+status: open
 owner: extension
 depends_on: [E04/S08/T01]
 ---
@@ -21,3 +21,5 @@ From the designer's review of `E04/S08` (and the reviewer's walk, added below wh
 9. The panel error line carries the warning icon.
 11. Flipping a rule from the keyboard keeps focus in the list: the rule leaves the filtered list, so focus moves to the next row's switch, or the previous one, or the filter when the list is empty. Checked with real keys in both browsers.
 10. The panel's off state reads "Network monitoring is off for this tab. Turn on Monitor this tab in the popup.", with no icon colour.
+
+Open: item 10 and `E04/S08` criterion 5 are covered by unit tests only. They close when the owner opens DevTools on a tab and sees the off state, the on state, and the change when Monitor is toggled.
