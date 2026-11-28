@@ -1,5 +1,6 @@
 import type { RuleForm } from '@utils/ruleDraft'
 import { nonBlank } from '@utils/ruleDraft'
+import { isValidStaticExtensions } from '@utils/validity'
 
 export type TuningPhrase = {
   text: string;
@@ -17,7 +18,7 @@ export function tuningPhrasesOf (form: RuleForm): TuningPhrase[] {
     countPhrase(nonBlank(form.bypassUrlPatterns).length, 'skips', 'host', 'hosts', false),
     countPhrase(nonBlank(form.forceProxyUrlPatterns).length, 'forces', 'host', 'hosts', false),
     ...resourceTypePhrases(form),
-    form.staticExtensions.trim() !== '' ? { text: 'skips files', firefoxOnly: false } : undefined,
+    staticExtensionsPhrase(form.staticExtensions),
     countPhrase(nonBlank(form.proxyOnlyPageHostnames).length, 'on', 'site', 'sites', true),
   ]
   return candidates.filter((phrase): phrase is TuningPhrase => phrase !== undefined)
@@ -39,6 +40,11 @@ export function resourceTypeHelpOf (form: RuleForm): string {
 export function chromeIgnoresLimits (form: RuleForm): boolean {
   const onlyTypesTicked = form.resourceTypeMode === 'only' && form.onlyResourceTypes.length > 0
   return onlyTypesTicked || nonBlank(form.proxyOnlyPageHostnames).length > 0
+}
+
+function staticExtensionsPhrase (value: string): TuningPhrase | undefined {
+  const isSet = value.trim() !== ''
+  return isSet && isValidStaticExtensions(value) ? { text: 'skips files', firefoxOnly: false } : undefined
 }
 
 function resourceTypePhrases (form: RuleForm): TuningPhrase[] {

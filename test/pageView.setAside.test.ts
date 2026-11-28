@@ -37,6 +37,6 @@ describe('set aside rows carry the reasons and the stored text', () => {
   it('shows the ignored static extensions note on a usable rule with an invalid staticExtensions value', () => {
     const [row] = ruleRows([{ ...goodRule, staticExtensions: '/(/' }], [goodProxy])
     expect(row.invalid).toBe(false)
-    expect(row.ignoredNote).toBe('Static extensions is not a valid pattern, so it is ignored. The rule still works.')
+    expect(row.ignoredNote).toBe("'Never proxy files matching' is not a valid pattern, so it is ignored. The rule still works.")
   })
 })

@@ -1,4 +1,4 @@
-import { element, replaceContent } from '../dom'
+import { element, focusableWithKey, replaceContent } from '../dom'
 import { icon } from '../icons'
 import { button } from './button'
 import { badge, banner, skeletonRows, stateBlock, statusLine } from './feedback'
@@ -94,11 +94,6 @@ function successorFocusKey (rows: ListRow[], removedIds: string[]): string {
   const survivor = rows.slice(firstRemoved).find(row => !removed.has(row.id))
     ?? rows.slice(0, firstRemoved).reverse().find(row => !removed.has(row.id))
   return survivor ? deleteFocusKey(survivor.id) : LIST_HEADING_FOCUS_KEY
-}
-
-function focusByKey (root: Element, key: string): void {
-  Array.from(root.querySelectorAll<HTMLElement>('[data-focus-key]'))
-    .find(node => node.dataset.focusKey === key)?.focus()
 }
 
 function selectionFor (title: string): Set<string> {
@@ -259,7 +254,7 @@ class ListRegion {
 
   private remove (ids: string[]): void {
     const section = this.node.closest('section')
-    if (section) focusByKey(section, successorFocusKey(this.options.rows, ids))
+    if (section) focusableWithKey(section, successorFocusKey(this.options.rows, ids))?.focus()
     this.pendingRemoval = null
     this.selected.clear()
     this.options.onRemove(ids)

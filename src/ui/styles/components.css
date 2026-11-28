@@ -768,13 +768,17 @@
 
 .type-grid__options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(max-content, 1fr));
   gap: var(--space-1) var(--space-3);
+}
+
+.type-grid__options .checkbox {
+  white-space: nowrap;
 }
 
 @container (min-width: 479px) {
   .type-grid__options {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(max-content, 1fr));
   }
 }
 
@@ -790,6 +794,10 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+.rule-group__title .badge {
+  text-transform: none;
 }
 
 .disclosure__body:has(> .rule-group) {

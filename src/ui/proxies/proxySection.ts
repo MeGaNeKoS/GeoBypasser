@@ -122,6 +122,8 @@ function rowFor (list: ProxyListItem[], row: ProxyRow): ListRow {
         ...(row.invalid ? [setAsideBadge()] : []),
         ...(row.ignoredNote === undefined ? [] : [ignoredSettingBadge()]),
       ),
+      ...(row.invalid ? [setAsideReason(row.faults)] : []),
+      ...(row.ignoredNote === undefined ? [] : [ignoredSettingReason(row.ignoredNote)]),
       element('div', { class: 'row__meta' },
         element('span', { class: 'badge' }, row.type),
         element('code', { class: 'mono' }, `${row.host}:${row.port}`),
@@ -132,8 +134,6 @@ function rowFor (list: ProxyListItem[], row: ProxyRow): ListRow {
         element('span', { class: 'help' }, 'Notify if down'),
         switchControl('Notify if down', row.notifyIfDown, checked => void setNotify(key, checked), { focusKey: `switch-${key}` }),
       ),
-      ...(row.invalid ? [setAsideReason(row.faults)] : []),
-      ...(row.ignoredNote === undefined ? [] : [ignoredSettingReason(row.ignoredNote)]),
       ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
     ],
     actions: [

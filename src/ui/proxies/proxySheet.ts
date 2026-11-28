@@ -100,7 +100,8 @@ function notifyField (form: ProxyForm): HTMLElement {
   return switchField({
     label: 'Notify if down',
     control: switchControl('Notify if down', form.notifyIfDown, undefined, { field: 'notifyIfDown' }),
-    help: supportsProxyOnRequest ? NOTIFY_HELP : element('span', {}, badge('firefox'), ' ', NOTIFY_HELP),
+    badge: supportsProxyOnRequest ? undefined : badge('firefox'),
+    help: NOTIFY_HELP,
   })
 }
 

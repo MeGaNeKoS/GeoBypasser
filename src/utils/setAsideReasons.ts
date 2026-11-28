@@ -6,13 +6,13 @@ import { isValidFailoverTimeout, isValidProxyId, isValidStaticExtensions } from 
 
 const PROXY_ID_FAULT = 'This proxy has no internal id, so rules and sites cannot use it. Open Fix and save to repair it.'
 const FAILOVER_TIMEOUT_IGNORED_NOTE = 'Failover timeout is not a whole number of seconds, 1 or more, so the default is used.'
-const STATIC_EXTENSIONS_IGNORED_NOTE = 'Static extensions is not a valid pattern, so it is ignored. The rule still works.'
+const STATIC_EXTENSIONS_IGNORED_NOTE = "'Never proxy files matching' is not a valid pattern, so it is ignored. The rule still works."
 
 const PROXY_FIELD_STATEMENTS: Record<string, string> = {
   type: 'Type is not HTTP or SOCKS5.',
   host: 'Host is missing.',
-  port: 'Port is not valid.',
-  failoverTimeout: 'Failover timeout is not valid.',
+  port: 'Port is not a number from 1 to 65535.',
+  failoverTimeout: FAILOVER_TIMEOUT_IGNORED_NOTE,
 }
 
 export function proxyReasons (entry: unknown): string[] {
@@ -24,14 +24,15 @@ export function proxyReasons (entry: unknown): string[] {
 export function ruleReasons (entry: unknown): string[] {
   const rule = storedRuleOf(entry)
   const formFaults = ruleFormFaults(ruleFormOf(rule)).map(fault => fault.message)
-  return [...formFaults, ...unknownResourceTypeReasons(rule)]
+  return [...formFaults, ...unknownResourceTypesOf(entry).map(type => `Unknown resource type: ${type}.`)]
 }
 
-function unknownResourceTypeReasons (rule: Record<string, unknown> | undefined): string[] {
+export function unknownResourceTypesOf (entry: unknown): string[] {
+  const rule = storedRuleOf(entry)
   const types = new Set([...listOf(rule?.bypassResourceTypes), ...listOf(rule?.proxyOnlyResourceTypes)])
   return [...types]
     .filter(type => !WEB_REQUEST_RESOURCE_TYPES.some(known => known === type))
-    .map(type => `Unknown resource type: ${String(type)}.`)
+    .map(String)
 }
 
 function listOf (value: unknown): unknown[] {

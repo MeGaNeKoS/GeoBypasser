@@ -1,4 +1,4 @@
-import { element, replaceContent } from '../dom'
+import { element, focusableWithKey, replaceContent } from '../dom'
 import { icon } from '../icons'
 import { button, iconButton, linkButton } from './button'
 
@@ -141,8 +141,7 @@ export function openSheet (spec: SheetSpec): HTMLDialogElement {
     if (opener?.isConnected) return opener
     const key = opener?.dataset.focusKey
     if (!key || !openerScope?.isConnected) return null
-    return Array.from(openerScope.querySelectorAll<HTMLElement>('[data-focus-key]'))
-      .find(node => node.dataset.focusKey === key) ?? null
+    return focusableWithKey(openerScope, key) ?? null
   }
 
   dialog.append(

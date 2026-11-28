@@ -91,6 +91,7 @@ function resourceTypeGroup (form: RuleForm, faults: Fault[], chrome: boolean): H
       modeFault ? element('p', { class: 'field__error' }, modeFault) : null,
     ),
     bothListsBanner(form),
+    unknownTypesNote(faults),
     element('div', { 'data-show-when': 'resourceTypeMode=never' },
       typeGrid('neverResourceTypes', 'Types that connect directly', form.neverResourceTypes)),
     element('div', { 'data-show-when': 'resourceTypeMode=only' },
@@ -102,6 +103,13 @@ function resourceTypeGroup (form: RuleForm, faults: Fault[], chrome: boolean): H
     }),
     chrome ? element('p', { class: 'help' }, FILES_CHROME_NOTE) : null,
   )
+}
+
+export const UNKNOWN_TYPES_FIELD = 'unknownResourceTypes'
+
+function unknownTypesNote (faults: Fault[]): HTMLElement | null {
+  const message = faults.find(fault => fault.field === UNKNOWN_TYPES_FIELD)?.message
+  return message ? element('p', { class: 'field__error' }, message) : null
 }
 
 function bothListsBanner (form: RuleForm): HTMLElement | null {

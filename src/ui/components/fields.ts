@@ -74,6 +74,7 @@ export function selectField (options: SelectFieldOptions): HTMLDivElement {
 
 export type SwitchFieldOptions = {
   label: string;
+  badge?: HTMLElement;
   control: HTMLElement;
   help?: Child;
   showWhen?: string;
@@ -82,7 +83,7 @@ export type SwitchFieldOptions = {
 export function switchField (options: SwitchFieldOptions): HTMLDivElement {
   return element('div', { class: 'field field--switch', 'data-show-when': options.showWhen },
     element('div', { class: 'field__switch-row' },
-      element('span', { class: 'field__label' }, options.label),
+      element('span', { class: 'field__label' }, options.label, options.badge ?? null),
       options.control,
     ),
     options.help === undefined ? null : element('p', { class: 'help' }, options.help),

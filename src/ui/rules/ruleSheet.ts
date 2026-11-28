@@ -8,9 +8,10 @@ import { selectField, switchField, textField } from '../components/fields'
 import { patternList } from '../components/pattern-list'
 import { element } from '../dom'
 import { faultRowsOf, ruleFormFaults } from '@utils/ruleFaults'
+import { unknownResourceTypesOf } from '@utils/setAsideReasons'
 import { ruleFormOf, ruleListSavingAt, ruleListWithNew, storedRuleOf } from '@utils/ruleDraft'
 import type { ResourceTypeMode, RuleForm } from '@utils/ruleDraft'
-import { fineTuningDisclosure } from './ruleFineTuning'
+import { UNKNOWN_TYPES_FIELD, fineTuningDisclosure } from './ruleFineTuning'
 import { changeRuleList } from './ruleStore'
 
 export type RuleEntry = { raw: unknown; position: number; invalid: boolean };
@@ -33,7 +34,7 @@ export function openRuleEditor (options: RuleEditorOptions): void {
     title: options.entry ? 'Edit rule' : 'Add rule',
     saveLabel: 'Save',
     draft: draftOf({ ...form }),
-    initialFaults: options.entry?.invalid ? ruleFormFaults(form) : undefined,
+    initialFaults: initialFaultsOf(options.entry, form),
     render: (draft, faults) => renderFields(formFromDraft(draft), faults, options.proxyList),
     validate: draft => ruleFormFaults(formFromDraft(draft)),
     save: draft => {
@@ -42,6 +43,21 @@ export function openRuleEditor (options: RuleEditorOptions): void {
         .then(saved => options.onSaved(saved))
     },
   })
+}
+
+function initialFaultsOf (entry: RuleEntry | undefined, form: RuleForm): Fault[] | undefined {
+  const unknownTypes = unknownResourceTypesOf(entry?.raw)
+  const unknownFaults = unknownTypes.length === 0 ? [] : [unknownTypesFault(unknownTypes)]
+  const formFaults = entry?.invalid ? ruleFormFaults(form) : []
+  const faults = [...formFaults, ...unknownFaults]
+  return faults.length === 0 ? undefined : faults
+}
+
+function unknownTypesFault (types: string[]): Fault {
+  return {
+    field: UNKNOWN_TYPES_FIELD,
+    message: `This rule stores a type this version does not know: ${types.join(', ')}. Saving removes it.`,
+  }
 }
 
 function listWithSaved (list: ProxyRule[], form: RuleForm, entry: RuleEntry | undefined): ProxyRule[] | undefined {

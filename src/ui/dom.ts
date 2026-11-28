@@ -39,12 +39,12 @@ export function replaceContent (container: Element, children: Node[], focusKey?:
   focusableWithKey(container, restoreKey)?.focus()
 }
 
-function focusableWithKey (container: Element, key: string): HTMLElement | undefined {
+export function focusableWithKey (container: Element, key: string): HTMLElement | undefined {
   return Array.from(container.querySelectorAll<HTMLElement>('[data-focus-key]'))
     .find(node => node.dataset.focusKey === key)
 }
 
-function focusedKey (): string | undefined {
+export function focusedKey (): string | undefined {
   const active = document.activeElement
   return active instanceof HTMLElement ? active.dataset.focusKey : undefined
 }

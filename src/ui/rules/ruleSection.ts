@@ -3,7 +3,7 @@ import { getConfig } from '@utils/storage'
 import { ruleRows } from '@utils/pageView'
 import { ruleFormOf, storedRuleOf } from '@utils/ruleDraft'
 import { exportedRules } from '@utils/ruleExport'
-import { ruleKeyAt } from '@utils/ruleKeys'
+import { ruleKeyAt, ruleKeysOf, rowFocusKeyAfterChange } from '@utils/ruleKeys'
 import { button } from '../components/button'
 import { lockedSwitchText, switchControl } from '../components/controls'
 import { banner } from '../components/feedback'
@@ -11,7 +11,7 @@ import { ignoredSettingBadge, ignoredSettingReason, listSection, setAsideBadge, 
 import type { ListRow } from '../components/list-section'
 import { nothingLeftToFix, setAsideBanners } from '../components/set-aside-view'
 import type { SetAsideViewOptions } from '../components/set-aside-view'
-import { element, replaceContent, requireElement } from '../dom'
+import { element, focusedKey, replaceContent, requireElement } from '../dom'
 import type { Child } from '../dom'
 import { downloadJsonFile } from '../download'
 import { isSetAsideOnlyHash } from '../shell/routes'
@@ -35,18 +35,26 @@ type FocusHandoff = { position: number; control: 'switch' | 'edit' }
 
 let notices: string[] = []
 let focusHandoff: FocusHandoff | null = null
+let renderedKeys: string[] = []
 
 export async function renderRuleSection (setAsideOnly = false): Promise<void> {
   const container = requireElement(RULES_CONTAINER_ID)
   const config = await getConfig()
-  const focusKey = takeFocusKey(config.rules)
+  const keys = ruleKeysOf(config.rules)
+  const focusKey = takeFocusKey(keys) ?? changedRowFocusKey(keys)
+  renderedKeys = keys
   replaceContent(container, [element('div', { class: 'stack' }, noticeBanner(), ruleSection(config.rules, config.proxyList, setAsideOnly))], focusKey)
 }
 
-function takeFocusKey (list: ProxyRule[]): string | undefined {
+function takeFocusKey (keys: string[]): string | undefined {
   const handoff = focusHandoff
   focusHandoff = null
-  return handoff ? `${handoff.control}-${ruleKeyAt(list, handoff.position)}` : undefined
+  return handoff ? `${handoff.control}-${keys[handoff.position]}` : undefined
+}
+
+function changedRowFocusKey (keys: string[]): string | undefined {
+  const focused = focusedKey()
+  return focused === undefined ? undefined : rowFocusKeyAfterChange(focused, renderedKeys, keys)
 }
 
 function rerender (): void {
