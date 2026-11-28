@@ -27,6 +27,7 @@
   flex-direction: column;
   gap: var(--space-3);
   margin-top: var(--space-5);
+  overflow-x: auto;
 }
 
 .log-page__head {
@@ -43,6 +44,7 @@
 
 .log-table {
   width: 100%;
+  min-width: 48rem;
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
@@ -58,6 +60,17 @@
 .log-table th {
   color: var(--text-muted);
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.log-table .mono,
+.log-table .muted {
+  display: block;
+}
+
+.log-table .result,
+.log-table td button {
+  white-space: nowrap;
 }
 
 .log-table .num {
