@@ -145,10 +145,10 @@ export type NavCounts = {
 export function navCounts (source: SetAsideSource): NavCounts {
   const setAside = setAsideCounts(source)
   return {
-    proxies: { count: usableProxies(source.proxyList).length, needsFixing: setAside.proxies },
-    rules: { count: usableRules(source.rules).length, needsFixing: setAside.rules },
-    sites: { count: Object.keys(usableOverrides(source.perWebsiteOverride)).length, needsFixing: setAside.sites },
-    keepAlive: { count: Object.keys(usableKeepAliveRules(source.keepAliveRules)).length, needsFixing: setAside.keepAlive },
+    proxies: { count: countEntries(source.proxyList), needsFixing: setAside.proxies },
+    rules: { count: countEntries(source.rules), needsFixing: setAside.rules },
+    sites: { count: countEntries(source.perWebsiteOverride), needsFixing: setAside.sites },
+    keepAlive: { count: countEntries(source.keepAliveRules), needsFixing: setAside.keepAlive },
   }
 }
 

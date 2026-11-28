@@ -6,7 +6,7 @@ import { exportedRules } from '@utils/ruleExport'
 import { button } from '../components/button'
 import { lockedSwitchText, switchControl } from '../components/controls'
 import { banner } from '../components/feedback'
-import { ignoredSettingNotes, listSection, setAsideNotes } from '../components/list-section'
+import { ignoredSettingBadge, ignoredSettingReason, listSection, setAsideBadge, setAsideReason } from '../components/list-section'
 import type { ListRow } from '../components/list-section'
 import { nothingLeftToFix, setAsideBanners } from '../components/set-aside-view'
 import type { SetAsideViewOptions } from '../components/set-aside-view'
@@ -97,14 +97,19 @@ function rowFor (list: ProxyRule[], row: RuleRow, proxyList: unknown): ListRow {
     name,
     setAside: row.invalid,
     body: [
-      element('p', {}, element('strong', {}, name), ' via ', row.proxyLabel),
-      ...(row.invalid ? setAsideNotes(row.faults) : []),
-      ...(row.ignoredNote === undefined ? [] : ignoredSettingNotes(row.ignoredNote)),
+      element('div', { class: 'row__title' },
+        row.invalid
+          ? lockedSwitchText(name)
+          : switchControl(`Active: ${name}`, row.active, checked => void setActive(row.index, checked), { focusKey: `switch-${key}` }),
+        element('strong', {}, name),
+        ...(row.invalid ? [setAsideBadge()] : []),
+        ...(row.ignoredNote === undefined ? [] : [ignoredSettingBadge()]),
+        element('span', {}, 'via ', row.proxyLabel),
+      ),
+      ...(row.invalid ? [setAsideReason(row.faults)] : []),
+      ...(row.ignoredNote === undefined ? [] : [ignoredSettingReason(row.ignoredNote)]),
       ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
-      element('p', { class: 'help' }, ...patternsAndTuningOf(row.rule.match, stored)),
-      row.invalid
-        ? lockedSwitchText(name)
-        : switchControl(`Active: ${name}`, row.active, checked => void setActive(row.index, checked), { focusKey: `switch-${key}` }),
+      element('div', { class: 'rule-row__match' }, ...matchNodesOf(row.rule.match, stored)),
     ],
     actions: [
       button(row.invalid ? 'Fix' : 'Edit', {
@@ -126,11 +131,13 @@ function matchLineOf (patterns: unknown): string {
   return `${String(patterns[0])}${more}`
 }
 
-function patternsAndTuningOf (patterns: unknown, stored: ProxyRule | undefined): Child[] {
+function matchNodesOf (patterns: unknown, stored: ProxyRule | undefined): Child[] {
   const patternLine = matchLineOf(patterns)
   const tuning = stored ? rowTuningNodes(ruleFormOf(stored)) : []
-  if (tuning.length === 0) return [patternLine]
-  return [patternLine, patternLine ? ' ' : null, ...tuning]
+  return [
+    patternLine === '' ? null : element('code', { class: 'mono' }, patternLine),
+    tuning.length === 0 ? null : element('p', { class: 'help' }, ...tuning),
+  ]
 }
 
 function openEditor (entry: RuleEntry | undefined, proxyList: unknown): void {

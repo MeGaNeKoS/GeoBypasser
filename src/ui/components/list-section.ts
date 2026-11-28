@@ -17,20 +17,12 @@ export function setAsideReason (reasons: string[]): HTMLParagraphElement {
   return element('p', { class: 'help set-aside__reason' }, reasons.join(' '))
 }
 
-export function setAsideNotes (reasons: string[]): Node[] {
-  return [setAsideBadge(), setAsideReason(reasons)]
-}
-
 export function ignoredSettingBadge (): HTMLSpanElement {
   return badge('ignored')
 }
 
 export function ignoredSettingReason (note: string): HTMLParagraphElement {
   return element('p', { class: 'help set-aside__reason' }, note)
-}
-
-export function ignoredSettingNotes (note: string): Node[] {
-  return [ignoredSettingBadge(), ignoredSettingReason(note)]
 }
 
 export type ListRow = {

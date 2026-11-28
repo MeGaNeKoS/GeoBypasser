@@ -7,7 +7,7 @@ const offRule = { ...activeRule, name: 'off', active: false }
 const brokenRule = { name: 'broken', match: [], proxyId: 'p1', active: true }
 
 describe('navCounts', () => {
-  it('counts the usable entries of each counted section and the entries set aside', () => {
+  it('counts every entry of each counted section, set aside entries included, and the entries set aside', () => {
     const counts = navCounts({
       proxyList: [tokyo, brokenProxy],
       rules: [activeRule, offRule, brokenRule],
@@ -19,10 +19,10 @@ describe('navCounts', () => {
     })
 
     expect(counts).toEqual({
-      proxies: { count: 1, needsFixing: 1 },
-      rules: { count: 2, needsFixing: 1 },
-      sites: { count: 1, needsFixing: 1 },
-      keepAlive: { count: 1, needsFixing: 1 },
+      proxies: { count: 2, needsFixing: 1 },
+      rules: { count: 3, needsFixing: 1 },
+      sites: { count: 2, needsFixing: 1 },
+      keepAlive: { count: 2, needsFixing: 1 },
     })
   })
 })
