@@ -1,6 +1,6 @@
 import type { ProxyListItem } from '@customTypes/proxy'
 import { refuseConfigFile } from '@utils/importFiles'
-import { applyImportDecisions, defaultDecisions, describeAdded, reviewImport } from '@utils/importReview'
+import { applyImportDecisions, defaultDecisions, describePlanned, reviewImport } from '@utils/importReview'
 import type { ReviewTargets } from '@utils/importReview'
 
 const office: ProxyListItem = { id: 'p1', label: 'Office', type: 'http', proxyDNS: false, host: 'office.lan', port: 8080 }
@@ -86,6 +86,6 @@ describe('applying decisions leaves stored data alone unless told otherwise', ()
 
 describe('the status line after an import with nothing added', () => {
   it('says nothing was imported', () => {
-    expect(describeAdded({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 0 })).toBe('Nothing was imported')
+    expect(describePlanned({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 0 })).toBe('Nothing new to add')
   })
 })

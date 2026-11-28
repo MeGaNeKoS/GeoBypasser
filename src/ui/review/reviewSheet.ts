@@ -1,5 +1,5 @@
 import type { ImportDecisions, ImportReview, ReviewDuplicate, DuplicateResolution } from '@utils/importReview'
-import { defaultDecisions, describeAdded } from '@utils/importReview'
+import { defaultDecisions, describePlanned } from '@utils/importReview'
 import type { ImportNote } from '@utils/importFiles'
 import type { SettingChange } from '@utils/importFiles'
 import { element } from '../dom'
@@ -33,7 +33,7 @@ export function askImportReview (review: ImportReview): Promise<ImportDecisions 
 
 function reviewBody (review: ImportReview, decisions: ImportDecisions): Node[] {
   return [
-    element('p', { class: 'help' }, describeAdded(review.adds)),
+    element('p', { class: 'help' }, describePlanned(review.adds)),
     ...noteGroup('Refused', review.notes.refused),
     ...noteGroup('Ignored', review.notes.ignored),
     ...review.duplicates.map(duplicate => duplicateChoice(duplicate, decisions)),

@@ -1,7 +1,7 @@
 import type { ProxyListItem } from '@customTypes/proxy'
 import { refuseConfigFile } from '@utils/importFiles'
 import type { ImportNote } from '@utils/importFiles'
-import { applyImportDecisions, defaultDecisions, describeAdded, reviewImport } from '@utils/importReview'
+import { applyImportDecisions, defaultDecisions, describePlanned, reviewImport } from '@utils/importReview'
 import type { ReviewTargets } from '@utils/importReview'
 
 const office: ProxyListItem = { id: 'p1', label: 'Office', type: 'http', proxyDNS: false, host: 'office.lan', port: 8080 }
@@ -86,8 +86,8 @@ describe('import review counts and offers', () => {
   })
 
   it('describes what was added in the status line', () => {
-    expect(describeAdded({ proxies: 1, rules: 4, keepAliveRules: 2, siteOverrides: 0 })).toBe('Imported 4 rules, 1 proxy, 2 keep-alive rules')
-    expect(describeAdded({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 1 })).toBe('Imported 1 site')
+    expect(describePlanned({ proxies: 1, rules: 4, keepAliveRules: 2, siteOverrides: 0 })).toBe('To add: 4 rules, 1 proxy, 2 keep-alive rules')
+    expect(describePlanned({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 1 })).toBe('To add: 1 site')
   })
 })
 
