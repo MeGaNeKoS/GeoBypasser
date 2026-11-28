@@ -118,7 +118,7 @@ function rowFor (row: KeepAliveRow): ListRow {
       button(row.invalid ? 'Fix' : 'Edit', {
         focusKey: `edit-${row.proxyId}`,
         onClick: () => void openKeepAliveEditor({
-          entry: { proxyId: row.proxyId, rule: row.raw, needsReview: row.invalid },
+          entry: { proxyId: row.proxyId, rule: row.raw, needsReview: row.invalid || row.ignoredNote !== undefined },
           onSaved: rerender,
         }),
       }),
