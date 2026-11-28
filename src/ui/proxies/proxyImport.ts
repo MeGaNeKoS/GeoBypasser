@@ -3,10 +3,8 @@ import { parseImportJson, refuseProxyItems } from '@utils/importFiles'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
 import { applyImportedProxy, duplicateIndexOf } from '@utils/proxyDraft'
 import type { DuplicateChoice } from '@utils/proxyDraft'
-import { segmented } from '../components/controls'
+import { askDuplicateChoice } from '../components/duplicate-sheet'
 import type { SegmentOption } from '../components/controls'
-import { draftOf, draftValue, openSheet } from '../components/sheet'
-import { element } from '../dom'
 import { readProxyList, saveProxyList } from './proxyStore'
 
 const NOT_JSON_MESSAGE = 'Proxies were not imported: the file is not valid JSON.'
@@ -33,23 +31,15 @@ export async function importProxyFile (file: File): Promise<string[]> {
 async function applyOne (list: ProxyListItem[], proxy: ProxyListItem): Promise<ProxyListItem[]> {
   const duplicateIndex = duplicateIndexOf(list, proxy)
   if (duplicateIndex === undefined) return applyImportedProxy(list, { proxy, copyId: crypto.randomUUID() })
-  const choice = await askDuplicateChoice(proxy)
+  const choice = await askProxyDuplicateChoice(proxy)
   return applyImportedProxy(list, { proxy, duplicateIndex, choice, copyId: crypto.randomUUID() })
 }
 
-function askDuplicateChoice (proxy: ProxyListItem): Promise<DuplicateChoice> {
-  return new Promise(resolve => {
-    openSheet({
-      title: 'Proxy already in the list',
-      saveLabel: 'Apply',
-      draft: draftOf({ choice: 'skip' }),
-      render: draft => [
-        element('p', {}, `${proxy.host}:${proxy.port} is already in the list.`),
-        segmented('What to do', 'choice', DUPLICATE_OPTIONS, draftValue(draft, 'choice') as DuplicateChoice),
-      ],
-      validate: () => [],
-      save: draft => resolve(draftValue(draft, 'choice') as DuplicateChoice),
-      closed: () => resolve('skip'),
-    })
+function askProxyDuplicateChoice (proxy: ProxyListItem): Promise<DuplicateChoice> {
+  return askDuplicateChoice<DuplicateChoice>({
+    title: 'Proxy already in the list',
+    message: `${proxy.host}:${proxy.port} is already in the list.`,
+    options: DUPLICATE_OPTIONS,
+    skip: 'skip',
   })
 }

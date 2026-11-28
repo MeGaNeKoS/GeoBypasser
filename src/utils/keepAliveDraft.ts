@@ -68,7 +68,10 @@ export function newKeepAliveForm (): KeepAliveForm {
   return { proxyId: '', active: true, tabUrls: [], testProxyUrl: '' }
 }
 
+export class KeepAliveRuleTakenError extends Error {}
+
 export function keepAliveMapAfterSave (map: KeepAliveMap, form: KeepAliveForm, previousProxyId: string | undefined): KeepAliveMap {
+  if (form.proxyId !== previousProxyId && map[form.proxyId] !== undefined) throw new KeepAliveRuleTakenError(form.proxyId)
   const others = Object.entries(map).filter(([proxyId]) => proxyId !== previousProxyId)
   const stored = previousProxyId === undefined ? undefined : map[previousProxyId]
   return { ...Object.fromEntries(others), [form.proxyId]: mergeEditedFields(stored, entryOf(form), KEEP_ALIVE_FORM_FIELDS) }

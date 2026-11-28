@@ -1,4 +1,4 @@
-import { keepAliveFormFaults, keepAliveFormOf, keepAliveMapAfterSave, keepAliveMapWithout, keepAliveRuleFaults, keepAliveStoredFaults, newKeepAliveForm } from '@utils/keepAliveDraft'
+import { KeepAliveRuleTakenError, keepAliveFormFaults, keepAliveFormOf, keepAliveMapAfterSave, keepAliveMapWithout, keepAliveRuleFaults, keepAliveStoredFaults, newKeepAliveForm } from '@utils/keepAliveDraft'
 
 describe('a new keep-alive form', () => {
   it('starts with no proxy, no tab URL patterns, and Active on', () => {
@@ -42,6 +42,14 @@ describe('saving a keep-alive rule into the stored map', () => {
     const map = { 'proxy-a': { active: true, tabUrls: ['a.example'], note: 'kept' } }
     expect(keepAliveMapAfterSave(map, { proxyId: 'proxy-b', active: true, tabUrls: ['b.example'], testProxyUrl: '' }, 'proxy-a'))
       .toEqual({ 'proxy-b': { active: true, tabUrls: ['b.example'], note: 'kept' } })
+  })
+
+  it('refuses to save a rule onto a proxy that another rule already uses', () => {
+    const map = { 'proxy-a': { active: true, tabUrls: ['a.example'] }, 'proxy-b': { active: false, tabUrls: ['b.example'] } }
+    expect(() => keepAliveMapAfterSave(map, { proxyId: 'proxy-b', active: true, tabUrls: ['c.example'], testProxyUrl: '' }, 'proxy-a'))
+      .toThrow(KeepAliveRuleTakenError)
+    expect(() => keepAliveMapAfterSave(map, { proxyId: 'proxy-a', active: true, tabUrls: ['c.example'], testProxyUrl: '' }, undefined))
+      .toThrow(KeepAliveRuleTakenError)
   })
 
   it('stores the test URL only when one is given', () => {
