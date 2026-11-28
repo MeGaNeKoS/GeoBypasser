@@ -6,7 +6,7 @@ import { switchControl } from '../components/controls'
 import { switchField } from '../components/fields'
 import { inlineConfirm } from '../components/inline-confirm'
 import { sectionHeading } from '../components/section-heading'
-import { skeletonRows, stateBlock } from '../components/feedback'
+import { banner, skeletonRows, stateBlock } from '../components/feedback'
 import { usageTree } from '../components/tree'
 import { element, replaceContent, requireElement } from '../dom'
 import { NETWORK_SECTION_ID } from '../shell/routes'
@@ -22,7 +22,10 @@ const LOAD_ERROR_TITLE = 'Could not read usage from the extension.'
 const EMPTY_TITLE = 'No traffic recorded yet. Turn on Monitor for a tab from the popup.'
 const CLEAR_QUESTION = 'Clear all usage?'
 const REFRESH_KEY = 'refresh-network'
+const CLEAR_FAILED_TEXT = 'Could not clear network usage.'
+const TRY_AGAIN_LABEL = 'Try again'
 const CLEAR_KEY = 'clear-network'
+const TRY_AGAIN_KEY = 'try-again-clear-network'
 const RETRY_KEY = 'retry-network'
 const AUTO_REFRESH_KEY = 'auto-refresh-network'
 
@@ -33,6 +36,7 @@ type NetworkView =
 
 let view: NetworkView = { kind: 'loading' }
 let clearPending = false
+let clearFailed = false
 let autoRefresh = false
 let autoRefreshTimer: ReturnType<typeof setInterval> | undefined
 
@@ -60,6 +64,7 @@ function networkContent (): Node[] {
     element('div', { class: 'stack' },
       sectionHeading(HEADING),
       supportsProxyOnRequest ? null : element('p', { class: 'help' }, CHROME_NOTE),
+      clearFailed ? clearFailedBanner() : null,
       element('div', { class: 'settings-card' },
         buttonGroup(refreshButton(), clearControl()),
         switchField({
@@ -70,6 +75,14 @@ function networkContent (): Node[] {
       ),
     ),
   ]
+}
+
+function clearFailedBanner (): HTMLDivElement {
+  return banner({
+    tone: 'danger',
+    text: CLEAR_FAILED_TEXT,
+    action: button(TRY_AGAIN_LABEL, { focusKey: TRY_AGAIN_KEY, onClick: () => void confirmClear() }),
+  })
 }
 
 function usageBody (): Node {
@@ -124,8 +137,13 @@ function cancelClear (): void {
 
 async function confirmClear (): Promise<void> {
   clearPending = false
-  await clearNetworkStats().catch(() => undefined)
-  await renderNetworkSection(REFRESH_KEY)
+  try {
+    await clearNetworkStats()
+    clearFailed = false
+  } catch {
+    clearFailed = true
+  }
+  await renderNetworkSection(clearFailed ? TRY_AGAIN_KEY : REFRESH_KEY)
 }
 
 function setAutoRefresh (enabled: boolean): void {

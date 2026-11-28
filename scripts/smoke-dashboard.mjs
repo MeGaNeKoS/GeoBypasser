@@ -158,6 +158,11 @@ export function openNewKeepAliveSheet () {
   Array.from(document.querySelectorAll('#keepAliveContent button')).find(button => button.textContent.trim() === 'Add keep-alive rule').click()
 }
 
+export function keepAliveSheetFieldsReady () {
+  return document.querySelector('dialog.sheet[open] select[name="proxyId"]') !== null
+    && document.querySelector('dialog.sheet[open] input[name="tabUrls"]') !== null
+}
+
 export function fillAndSaveOpenKeepAliveSheet (proxyId, tabUrl) {
   document.querySelector('dialog.sheet select[name="proxyId"]').value = proxyId
   document.querySelector('dialog.sheet input[name="tabUrls"]').value = tabUrl
