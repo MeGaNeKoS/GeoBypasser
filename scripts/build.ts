@@ -25,6 +25,7 @@ const SHARED_STYLES_DIR = path.resolve('src/ui/styles')
 const SHARED_STYLES_DEST = path.join(DIST_DIR, 'ui', 'styles')
 const COMPONENT_TEST_PAGE = 'assets/component-test.html'
 const COMPONENT_TEST_ENTRY = 'src/ui/test-page/component-test.ts'
+const COMPONENT_TEST_STYLE = 'component-test.css'
 
 // Parse command-line arguments
 const args = process.argv.slice(2)
@@ -36,6 +37,10 @@ function devOnlyPages (): string[] {
 
 function devOnlyEntryPoints (): Record<string, string> {
   return minify ? {} : { componentTest: COMPONENT_TEST_ENTRY }
+}
+
+function sharedStyleIsShipped (source: string): boolean {
+  return !minify || path.basename(source) !== COMPONENT_TEST_STYLE
 }
 
 async function cleanDist () {
@@ -56,7 +61,7 @@ async function copyFiles (browser: string) {
     const destination = path.join(DIST_DIR, path.basename(asset))
     await fs.copy(asset, destination)
   }
-  await fs.copy(SHARED_STYLES_DIR, SHARED_STYLES_DEST)
+  await fs.copy(SHARED_STYLES_DIR, SHARED_STYLES_DEST, { filter: sharedStyleIsShipped })
   console.log(`Files copied for ${browser}.`)
 }
 
