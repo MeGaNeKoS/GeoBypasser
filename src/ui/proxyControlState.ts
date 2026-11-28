@@ -15,6 +15,7 @@ export async function readProxyControlState (): Promise<ProxyControlState | unde
 }
 
 export function onProxyControlStateChanged (listener: (state: ProxyControlState) => void): void {
+  if (supportsProxyOnRequest) return
   browser.runtime.onMessage.addListener((message: unknown) => {
     const changed = ProxyControlChangedMessageSchema.safeParse(message)
     if (!changed.success) return

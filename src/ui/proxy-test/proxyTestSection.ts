@@ -32,7 +32,9 @@ const BUSY_TEXT = 'Testing…'
 const CONNECTED_PREFIX = 'Connected through '
 const FAILED_LABEL = 'Failed:'
 const BLOCKED_REASON = 'Tests cannot run while GeoBypass does not control proxy settings.'
-const TIMEOUTS_NOTE = 'Tests time out after 5 seconds, or 30 for an HTTP proxy with a username.'
+const RESULT_LINE_CLASS = 'result-line'
+const RESULT_LINE_DANGER_CLASS = 'result-line--danger'
+const TIMEOUTS_NOTE ='Tests time out after 5 seconds, or 30 for an HTTP proxy with a username.'
 const TYPE_OPTIONS: SegmentOption<ProxyType>[] = [
   { value: 'http', label: 'HTTP' },
   { value: 'socks', label: 'SOCKS5' },
@@ -192,14 +194,14 @@ function resultPanel (testable: boolean): HTMLElement {
 function outcomeLine (current: ProxyTestOutcome): HTMLParagraphElement {
   const panel = proxyTestPanelOf(current)
   if (panel.kind === 'connected') {
-    return element('p', { role: 'status' }, icon('check'), CONNECTED_PREFIX, element('span', { class: 'mono' }, panel.proxy))
+    return element('p', { role: 'status', class: RESULT_LINE_CLASS }, icon('check'), CONNECTED_PREFIX, element('span', { class: 'mono' }, panel.proxy))
   }
   if (panel.kind === 'failed') {
-    return element('p', { role: 'status' }, icon('alert'), element('span', { class: 'result-label--danger' }, FAILED_LABEL), ` ${panel.reason}`)
+    return element('p', { role: 'status', class: `${RESULT_LINE_CLASS} ${RESULT_LINE_DANGER_CLASS}` }, icon('alert'), element('span', { class: 'result-label--danger' }, FAILED_LABEL), ` ${panel.reason}`)
   }
   return element('p', { role: 'status' }, panel.kind === 'busy' ? BUSY_TEXT : IDLE_TEXT)
 }
 
 function blockedLine (): HTMLParagraphElement {
-  return element('p', { role: 'status', tabindex: '-1', 'data-focus-key': BLOCKED_REASON_FOCUS_KEY }, icon('alert'), BLOCKED_REASON)
+  return element('p', { role: 'status', class: RESULT_LINE_CLASS, tabindex: '-1', 'data-focus-key': BLOCKED_REASON_FOCUS_KEY }, icon('alert'), BLOCKED_REASON)
 }

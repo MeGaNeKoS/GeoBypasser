@@ -123,6 +123,14 @@
   list-style: disc;
 }
 
+.result-line .icon {
+  margin-right: var(--space-2);
+}
+
+.result-line--danger .icon {
+  stroke: var(--danger);
+}
+
 .result-label--danger {
   color: var(--danger);
   font-weight: 600;
