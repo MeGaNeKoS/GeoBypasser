@@ -1,4 +1,4 @@
-import { isBareHostname } from '@utils/validity'
+import { isBareHostname, isChosenProxyId } from '@utils/validity'
 
 export type SiteMap = Record<string, string>
 
@@ -18,7 +18,7 @@ const PROXY_FAULT = 'No proxy is chosen for this site.'
 export function siteFormFaults (form: SiteForm): SiteFault[] {
   return [
     ...(isBareHostname(form.domain) ? [] : [{ field: 'domain' as const, message: DOMAIN_FAULT }]),
-    ...(form.proxyId !== '' ? [] : [{ field: 'proxyId' as const, message: PROXY_FAULT }]),
+    ...(isChosenProxyId(form.proxyId) ? [] : [{ field: 'proxyId' as const, message: PROXY_FAULT }]),
   ]
 }
 

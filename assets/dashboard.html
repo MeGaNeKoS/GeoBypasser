@@ -53,34 +53,7 @@
       <div id="overrideContent"></div>
     </section>
     <section id="keepalive" class="tab">
-      <h2>Keep-Alive Rules</h2>
-      <p class="section-help">Ping URLs periodically to keep proxies active.</p>
-      <div class="table-scroll" role="region" aria-label="Keep-alive rule list" tabindex="0">
-      <table id="keepAliveTable">
-        <thead>
-          <tr><th>Active</th><th>Proxy</th><th>List of URLs</th><th>Test URL</th><th class="select-col">Select</th><th class="action-col"></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      </div>
-      <button id="addKeepAliveRule">Add Rule</button>
-      <button id="exportKeepAliveSelected" class="export-selected">Export Selected</button>
-      <button id="deleteKeepAliveSelected" class="delete-selected">Delete Selected</button>
-      <button id="exportKeepAliveAll">Export All</button>
-      <input type="file" id="importKeepAlive" style="display:none">
-      <button id="importKeepAliveBtn">Import Rules</button>
-      <div id="keepAliveModal" class="modal hidden">
-        <div class="modal-content">
-          <h3 id="keepAliveModalTitle">Add Keep-Alive Rule</h3>
-          <p class="modal-help">Regularly fetch URLs through this proxy to keep it alive.</p>
-          <label>Proxy <select id="keepAliveProxy"></select></label><br>
-          <label>List of URLs <span id="keepAlivePatternsDisplay"></span> <button id="editKeepAlivePatterns">Edit</button><input type="hidden" id="keepAlivePatterns"></label><br>
-          <label>Test URL <input type="text" id="keepAliveTestUrl"></label><br>
-          <label>Active <input type="checkbox" id="keepAliveActive" checked></label><br>
-          <button id="saveKeepAlive">Save</button>
-          <button id="cancelKeepAlive">Cancel</button>
-        </div>
-      </div>
+      <div id="keepAliveContent"></div>
     </section>
     <section id="network" class="tab">
       <h2>Network Usage</h2>
@@ -189,19 +162,6 @@
         <li><a href="https://www.patreon.com/c/__meganeko__" target="_blank" rel="noopener">Support on Patreon</a></li>
       </ul>
     </section>
-  </div>
-  <div id="listModal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="listModalTitle">Edit List</h3>
-        <a id="listModalHelp" class="help hidden" target="_blank" title="">?</a>
-      </div>
-      <p class="modal-help">Edit items in the list below.</p>
-      <div id="listModalItems"></div>
-      <button id="addListItem">Add</button>
-      <button id="saveList">Save</button>
-      <button id="cancelList">Cancel</button>
-    </div>
   </div>
 
   <div id="duplicateModal" class="modal hidden">

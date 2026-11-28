@@ -16,8 +16,8 @@ describe('set aside only hashes outside the set aside sections', () => {
     expect(isSetAsideOnlyHash('#rules?other=1')).toBe(false)
   })
 
-  it('links keep-alive and defaults to their plain section hash', () => {
-    expect(setAsideOnlyHashFor('keep-alive')).toBe('#keep-alive')
+  it('keeps the set aside query for keep-alive and leaves other sections plain', () => {
+    expect(setAsideOnlyHashFor('keep-alive')).toBe('#keep-alive?set-aside')
     expect(setAsideOnlyHashFor('defaults')).toBe('#defaults')
   })
 })

@@ -3,13 +3,12 @@ import { ruleFormFaults } from '@utils/ruleFaults'
 import { proxyFormFaults, proxyFormOf, storedProxyOf } from '@utils/proxyDraft'
 import { ruleFormOf, storedRuleOf } from '@utils/ruleDraft'
 import { siteFormFaults } from '@utils/siteDraft'
-import { isValidFailoverTimeout, isValidProxyId, isValidStaticExtensions, isValidTestUrl, validateHostnamePattern } from '@utils/validity'
+import { keepAliveRuleFaults } from '@utils/keepAliveDraft'
+import { isValidFailoverTimeout, isValidProxyId, isValidStaticExtensions, isValidTestUrl } from '@utils/validity'
 
 const PROXY_ID_FAULT = 'This proxy has no internal id, so rules and sites cannot use it. Open Fix and save to repair it.'
 const FAILOVER_TIMEOUT_IGNORED_NOTE = 'Failover timeout is not a whole number of seconds, 1 or more, so the default is used.'
 const STATIC_EXTENSIONS_IGNORED_NOTE = "'Never proxy files matching' is not a valid pattern, so it is ignored. The rule still works."
-const KEEP_ALIVE_NO_TAB_URL_FAULT = 'Add at least one tab URL pattern.'
-const KEEP_ALIVE_ACTIVE_FAULT = 'Choose on or off.'
 const KEEP_ALIVE_TEST_URL_IGNORED_NOTE = 'Test URL is not valid, so the default test URL is used.'
 
 const PROXY_FIELD_STATEMENTS: Record<string, string> = {
@@ -59,16 +58,7 @@ export function overrideReasons (domain: string, proxyId: unknown): string[] {
 }
 
 export function keepAliveReasons (entry: unknown): string[] {
-  const rule = recordOf(entry)
-  const tabUrls = Array.isArray(rule.tabUrls) ? rule.tabUrls : []
-  return [
-    ...(tabUrls.length > 0 ? [] : [KEEP_ALIVE_NO_TAB_URL_FAULT]),
-    ...tabUrls
-      .map((url, index) => ({ url, index }))
-      .filter(({ url }) => typeof url !== 'string' || !validateHostnamePattern(url))
-      .map(({ index }) => `Tab URL pattern ${index + 1} is not valid.`),
-    ...(typeof rule.active === 'boolean' ? [] : [KEEP_ALIVE_ACTIVE_FAULT]),
-  ]
+  return keepAliveRuleFaults(recordOf(entry)).map(fault => fault.message)
 }
 
 export function keepAliveTestUrlIgnoredNote (entry: unknown): string | undefined {

@@ -141,9 +141,38 @@ export function saveOpenProxySheetAddress (host, port) {
   Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Save').click()
 }
 
+export function clickKeepAliveFocusKey (focusKey) {
+  document.querySelector(`#keepAliveContent [data-focus-key="${focusKey}"]`).click()
+}
+
 export function clickKeepAliveActiveFor (proxyId) {
-  const row = document.querySelector(`#keepAliveTable button[data-edit="${proxyId}"]`).closest('tr')
-  row.querySelector('input[data-active]').click()
+  document.querySelector(`#keepAliveContent [data-focus-key="switch-${proxyId}"]`).click()
+}
+
+export function openNewKeepAliveSheet () {
+  document.querySelector('[data-tab="keepalive"]').click()
+  Array.from(document.querySelectorAll('#keepAliveContent button')).find(button => button.textContent.trim() === 'Add keep-alive rule').click()
+}
+
+export function fillAndSaveOpenKeepAliveSheet (proxyId, tabUrl) {
+  document.querySelector('dialog.sheet select[name="proxyId"]').value = proxyId
+  document.querySelector('dialog.sheet input[name="tabUrls"]').value = tabUrl
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Save').click()
+}
+
+export function selectKeepAliveRowFor (proxyId) {
+  const row = document.querySelector(`#keepAliveContent [data-focus-key="edit-${proxyId}"]`).closest('li.row')
+  const box = row.querySelector('input[type="checkbox"]')
+  box.checked = true
+  box.dispatchEvent(new Event('change'))
+}
+
+export function clickKeepAliveDeleteSelected () {
+  Array.from(document.querySelectorAll('#keepAliveContent button')).find(button => button.textContent.trim() === 'Delete selected').click()
+}
+
+export function confirmKeepAliveInlineDelete () {
+  Array.from(document.querySelectorAll('#keepAliveContent .inline-confirm button')).find(button => button.textContent.trim() === 'Delete').click()
 }
 
 export function writeLocalStorage (entries) {

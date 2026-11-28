@@ -4,30 +4,21 @@ import {
   saveTabProxyMap,
   updateConfig,
 } from '@utils/storage'
-import { KeepAliveProxyRule, ProxyListItem, ProxyRule } from '@customTypes/proxy'
+import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
 import browser from 'webextension-polyfill'
 import { supportsProxyOnRequest } from '@utils/env'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
-import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, withAppliedSettings } from '@utils/importFiles'
+import { findSettingChanges, refuseConfigFile, withAppliedSettings } from '@utils/importFiles'
 import { chooseAppliedSettingChanges } from './settingChangeModal'
-import {
-  KEEP_ALIVE_FORM_FIELDS,
-  mergeEditedFields,
-} from '@utils/editFields'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
 import { buildConfigExport } from '@utils/exportFiles'
 import { isValidProxyItem } from '@utils/validity'
 import { markInvalid } from '@utils/fieldMarks'
 import {
-  isValidTestUrl,
-  validateHostnamePattern,
-} from '@utils/validity'
-import {
   canSaveDefaultProxy,
-  canSaveKeepAliveRule,
   canSaveTestUrl,
 } from '@utils/saveDecisions'
 import { keepAliveRows, overrideRows, proxyOptions, proxyRows, ruleRows } from '@utils/pageView'
@@ -37,10 +28,6 @@ import { downloadJsonFile } from '@ui/download'
 import { openProxyEditor } from '@ui/proxies/proxySheet'
 
 let config: Awaited<ReturnType<typeof getConfig>>
-const selectedKeepAlive = new Set<string>()
-let listTargetInput: HTMLInputElement | null = null
-let currentListValidator: (val: string) => boolean = () => true
-let editingKeepAliveId: string | null = null
 let networkAutoInterval: ReturnType<typeof setInterval> | null = null
 
 // Helper to generate a signature for comparing proxy entries
@@ -54,118 +41,6 @@ function createOption (id: string, label: string) {
   opt.value = id
   opt.textContent = label
   return opt
-}
-
-function updateSelectVisibility (
-  table: HTMLTableElement,
-  exportBtn: HTMLElement,
-  deleteBtn?: HTMLElement,
-) {
-  const anyChecked = table.querySelectorAll('td.row-select input:checked').length > 0
-  const anyActions = table.querySelector('tr.show-actions')
-  if (anyChecked || anyActions) {
-    table.dataset.showSelect = 'true'
-    exportBtn.style.display = 'inline-block'
-    if (deleteBtn) deleteBtn.style.display = 'inline-block'
-  } else {
-    delete table.dataset.showSelect
-    exportBtn.style.display = 'none'
-    if (deleteBtn) deleteBtn.style.display = 'none'
-  }
-  if (!anyActions) delete table.dataset.showActions
-}
-
-function setValidation (el: HTMLInputElement, validate: (val: string) => boolean) {
-  function run () {
-    if (!el.value.trim()) {
-      el.classList.remove('valid', 'invalid')
-      return
-    }
-    if (validate(el.value)) {
-      el.classList.add('valid')
-      el.classList.remove('invalid')
-    } else {
-      el.classList.add('invalid')
-      el.classList.remove('valid')
-    }
-  }
-
-  el.addEventListener('input', run)
-  run()
-}
-
-function updateListDisplay (input: HTMLInputElement) {
-  const span = document.getElementById(input.id + 'Display')
-  if (span) {
-    const arr = input.value.split(/\s*,\s*/).filter(Boolean)
-    span.textContent = arr.length ? arr.join(', ') : 'None'
-  }
-}
-
-function addListItem (container: HTMLElement, value = '') {
-  const div = document.createElement('div')
-  const inp = document.createElement('input')
-  inp.type = 'text'
-  inp.value = value
-  setValidation(inp, currentListValidator)
-  const btn = document.createElement('button')
-  btn.textContent = 'x'
-  btn.onclick = () => div.remove()
-  div.appendChild(inp)
-  div.appendChild(btn)
-  container.appendChild(div)
-}
-
-interface ListHelp {
-  href?: string;
-  title?: string;
-}
-
-function openListModal (inputId: string, title: string, validator: (v: string) => boolean, help?: ListHelp) {
-  listTargetInput = document.getElementById(inputId) as HTMLInputElement
-  currentListValidator = validator
-  const modal = document.getElementById('listModal')!
-  const heading = document.getElementById('listModalTitle')!
-  const container = document.getElementById('listModalItems')!
-  const helpEl = document.getElementById('listModalHelp') as HTMLAnchorElement
-  heading.textContent = title
-  container.innerHTML = ''
-  if (help) {
-    if (help.href) {
-      helpEl.href = help.href
-      helpEl.target = '_blank'
-    } else {
-      helpEl.removeAttribute('href')
-      helpEl.removeAttribute('target')
-    }
-    if (help.title) helpEl.title = help.title
-    else helpEl.removeAttribute('title')
-    helpEl.classList.remove('hidden')
-  } else {
-    helpEl.classList.add('hidden')
-  }
-  const arr = listTargetInput.value.split(/\s*,\s*/).filter(Boolean)
-  if (arr.length === 0) addListItem(container)
-  else arr.forEach(v => addListItem(container, v))
-  modal.classList.remove('hidden')
-}
-
-function closeListModal () {
-  document.getElementById('listModal')!.classList.add('hidden')
-  listTargetInput = null
-}
-
-function saveListModal () {
-  if (!listTargetInput) return
-  const container = document.getElementById('listModalItems')!
-  const values: string[] = []
-  container.querySelectorAll('input').forEach(inp => {
-    const v = (inp as HTMLInputElement).value.trim()
-    if (v) values.push(v)
-  })
-  listTargetInput.value = values.join(', ')
-  updateListDisplay(listTargetInput)
-  closeListModal()
 }
 
 function showDuplicateModal (name: string): Promise<'old' | 'new' | 'both'> {
@@ -220,147 +95,6 @@ function renderGeneral () {
     const valid = canSaveTestUrl(testUrl.value)
     markInvalid(testUrl, !valid)
     if (valid) updateConfig({ testProxyUrl: testUrl.value })
-  }
-}
-
-function openKeepAliveModal (id?: string) {
-  editingKeepAliveId = typeof id === 'string' ? id : null
-  const modal = document.getElementById('keepAliveModal')!
-  const title = document.getElementById('keepAliveModalTitle')!
-  const proxy = document.getElementById('keepAliveProxy') as HTMLSelectElement
-  const patterns = document.getElementById('keepAlivePatterns') as HTMLInputElement
-  const testUrl = document.getElementById('keepAliveTestUrl') as HTMLInputElement
-  const active = document.getElementById('keepAliveActive') as HTMLInputElement
-
-  proxy.innerHTML = ''
-  proxyOptions(config.proxyList).forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
-  const kaExists = editingKeepAliveId ? proxyOptions(config.proxyList).some(p => p.id === editingKeepAliveId) : false
-  if (editingKeepAliveId && !kaExists) {
-    proxy.appendChild(createOption(editingKeepAliveId, `Missing Proxy (${editingKeepAliveId})`))
-  }
-
-  if (editingKeepAliveId) {
-    const rule = config.keepAliveRules?.[editingKeepAliveId]
-    title.textContent = 'Edit Keep-Alive Rule'
-    proxy.value = editingKeepAliveId
-    patterns.value = rule?.tabUrls.join(', ') || ''
-    testUrl.value = rule?.testProxyUrl || ''
-    active.checked = !!rule?.active
-  } else {
-    title.textContent = 'Add Keep-Alive Rule'
-    proxy.value = proxyOptions(config.proxyList)[0]?.id || ''
-    patterns.value = ''
-    testUrl.value = ''
-    active.checked = true
-  }
-  markInvalid(proxy, false)
-  markInvalid(testUrl, false)
-  updateListDisplay(patterns)
-  setValidation(patterns, validateHostnamePattern)
-  modal.classList.remove('hidden')
-}
-
-function closeKeepAliveModal () {
-  document.getElementById('keepAliveModal')!.classList.add('hidden')
-}
-
-function saveKeepAliveFromModal () {
-  const proxyField = document.getElementById('keepAliveProxy') as HTMLSelectElement
-  const patternsField = document.getElementById('keepAlivePatterns') as HTMLInputElement
-  const testUrlField = document.getElementById('keepAliveTestUrl') as HTMLInputElement
-  const proxyId = proxyField.value
-  const patterns = patternsField.value.split(/\s*,\s*/).filter(Boolean)
-  const testUrl = testUrlField.value.trim()
-  const active = (document.getElementById('keepAliveActive') as HTMLInputElement).checked
-  const rule: { active: boolean; tabUrls: string[]; testProxyUrl?: string } = { active, tabUrls: patterns }
-  if (testUrl) rule.testProxyUrl = testUrl
-  if (!proxyId || !canSaveKeepAliveRule(rule)) {
-    markInvalid(proxyField, !proxyId)
-    markInvalid(patternsField, patterns.length === 0 || !patterns.every(validateHostnamePattern))
-    markInvalid(testUrlField, !!testUrl && !isValidTestUrl(testUrl))
-    return
-  }
-  if (!config.keepAliveRules) config.keepAliveRules = {}
-  const storedKeepAliveRule = editingKeepAliveId ? config.keepAliveRules[editingKeepAliveId] : undefined
-  if (editingKeepAliveId && editingKeepAliveId !== proxyId) {
-    delete config.keepAliveRules[editingKeepAliveId]
-  }
-  config.keepAliveRules[proxyId] = mergeEditedFields(storedKeepAliveRule, rule, KEEP_ALIVE_FORM_FIELDS)
-  saveConfig(config).then(() => {
-    renderAll()
-    closeKeepAliveModal()
-  })
-}
-
-function renderKeepAlive () {
-  const tbody = document.querySelector('#keepAliveTable tbody') as HTMLElement
-  tbody.innerHTML = ''
-  for (const { proxyId, raw: rule, proxyLabel, active, tabUrls, testProxyUrl, missingProxy } of keepAliveRows(config.keepAliveRules, config.proxyList)) {
-    const tr = document.createElement('tr')
-
-    const activeCell = document.createElement('td')
-    const chk = document.createElement('input')
-    chk.type = 'checkbox'
-    chk.dataset.active = ''
-    chk.checked = active
-    activeCell.appendChild(chk)
-    tr.appendChild(activeCell)
-
-    const proxyCell = document.createElement('td')
-    proxyCell.textContent = proxyLabel
-    tr.appendChild(proxyCell)
-
-    const urlsCell = document.createElement('td')
-    urlsCell.textContent = tabUrls
-    tr.appendChild(urlsCell)
-
-    const testCell = document.createElement('td')
-    testCell.textContent = testProxyUrl
-    tr.appendChild(testCell)
-
-    const selectCell = document.createElement('td')
-    selectCell.className = 'row-select'
-    const selChk = document.createElement('input')
-    selChk.type = 'checkbox'
-    selChk.dataset.select = proxyId
-    selectCell.appendChild(selChk)
-    tr.appendChild(selectCell)
-
-    const actionsCell = document.createElement('td')
-    actionsCell.className = 'row-actions'
-    const editBtn = document.createElement('button')
-    editBtn.dataset.edit = proxyId
-    editBtn.textContent = 'Edit'
-    const delBtn = document.createElement('button')
-    delBtn.dataset.remove = proxyId
-    delBtn.textContent = 'Delete'
-    actionsCell.appendChild(editBtn)
-    actionsCell.appendChild(delBtn)
-    tr.appendChild(actionsCell)
-
-    if (missingProxy) tr.classList.add('missing-proxy')
-    tbody.appendChild(tr)
-    // attachRowHandlers(tr, document.getElementById('keepAliveTable') as HTMLTableElement,
-    //   document.getElementById('exportKeepAliveSelected') as HTMLElement)
-    chk.onchange = () => {
-      const current = config.keepAliveRules?.[proxyId]
-      if (current) current.active = chk.checked
-      saveConfig(config)
-    }
-    selChk.onchange = () => {
-      if (selChk.checked) selectedKeepAlive.add(proxyId)
-      else selectedKeepAlive.delete(proxyId)
-      updateSelectVisibility(
-        document.getElementById('keepAliveTable') as HTMLTableElement,
-        document.getElementById('exportKeepAliveSelected') as HTMLElement,
-        document.getElementById('deleteKeepAliveSelected') as HTMLElement,
-      )
-    }
-    editBtn.onclick = () => openKeepAliveModal(proxyId)
-    delBtn.onclick = () => {
-      delete config.keepAliveRules?.[proxyId]
-      saveConfig(config).then(renderAll)
-    }
   }
 }
 
@@ -621,52 +355,6 @@ async function confirmRemoteImport () {
     await importConfigFromUrl(url)
   }
   closeRemoteImportModal()
-}
-
-function exportKeepAlive (obj: KeepAliveProxyRule) {
-  downloadJsonFile('keepalive.json', JSON.stringify({ keepAliveRules: obj }, null, 2))
-}
-
-function exportAllKeepAlive () {
-  exportKeepAlive(config.keepAliveRules || {})
-}
-
-function exportSelectedKeepAlive () {
-  const out: KeepAliveProxyRule = {}
-  selectedKeepAlive.forEach(id => {
-    const rule = config.keepAliveRules?.[id]
-    if (rule) out[id] = rule
-  })
-  if (Object.keys(out).length === 0) exportAllKeepAlive()
-  else exportKeepAlive(out)
-}
-
-function deleteSelectedKeepAlive () {
-  selectedKeepAlive.forEach(id => {
-    delete config.keepAliveRules?.[id]
-  })
-  selectedKeepAlive.clear()
-  saveConfig(config).then(renderAll)
-}
-
-function handleImportKeepAlive (files: FileList | null) {
-  if (!files || !files[0]) return
-
-  files[0].text().then(t => {
-    try {
-      const parsed = JSON.parse(t)
-      const verdict = refuseKeepAliveRules(parsed?.keepAliveRules)
-      alertImportMessages(verdict.messages)
-      if (!config.keepAliveRules) config.keepAliveRules = {}
-
-      Object.assign(config.keepAliveRules, verdict.accepted)
-      saveConfig(config).then(renderAll)
-
-    } catch (e) {
-      console.error('Error importing keep-alive rules:', e)
-      alert('Failed to import keep-alive rules: invalid JSON')
-    }
-  })
 }
 
 function openExportConfigModal () {
@@ -951,7 +639,6 @@ function renderAbout () {
 
 function renderAll () {
   renderGeneral()
-  renderKeepAlive()
   renderDiagnostics()
   renderNetwork()
   renderAbout()
@@ -965,7 +652,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   browser.storage.onChanged.addListener(async (_changes, area) => {
     if (area !== 'local') return
     config = await getConfig()
-    renderKeepAlive()
   })
   renderAll()
 
@@ -983,30 +669,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sectionId === 'network') renderNetwork()
     },
   })
-
-  document.getElementById('addKeepAliveRule')!.addEventListener('click', () => openKeepAliveModal())
-  document.getElementById('exportKeepAliveSelected')!.addEventListener('click', exportSelectedKeepAlive)
-  document.getElementById('deleteKeepAliveSelected')!.addEventListener('click', deleteSelectedKeepAlive)
-  document.getElementById('exportKeepAliveAll')!.addEventListener('click', exportAllKeepAlive)
-  document.getElementById('importKeepAliveBtn')!.addEventListener('click', () =>
-    document.getElementById('importKeepAlive')!.click())
-  document.getElementById('importKeepAlive')!.addEventListener('change', ev =>
-    handleImportKeepAlive((ev.target as HTMLInputElement).files))
-  document.getElementById('addListItem')!.addEventListener('click', () => {
-    const container = document.getElementById('listModalItems')!
-    addListItem(container)
-  })
-  document.getElementById('saveList')!.addEventListener('click', saveListModal)
-  document.getElementById('cancelList')!.addEventListener('click', closeListModal)
-  document.getElementById('saveKeepAlive')!.addEventListener('click', saveKeepAliveFromModal)
-  document.getElementById('cancelKeepAlive')!.addEventListener('click', closeKeepAliveModal)
-  document.getElementById('editKeepAlivePatterns')!.addEventListener('click', () =>
-    openListModal(
-      'keepAlivePatterns',
-      'List of URLs',
-      validateHostnamePattern,
-      { title: 'Hostname pattern, e.g. example.com or *.example.com' },
-    ))
 
   document.getElementById('diagTestSelected')!.addEventListener('click', () => {
     const sel = document.getElementById('diagSelectProxy') as HTMLSelectElement

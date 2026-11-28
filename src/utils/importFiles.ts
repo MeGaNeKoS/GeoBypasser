@@ -27,6 +27,14 @@ function isPlainObject (value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+export function parseImportJson (text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
 function notImported (section: string, shape: string) {
   return `${section} was not imported: the file does not hold ${shape}.`
 }

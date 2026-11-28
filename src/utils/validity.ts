@@ -141,8 +141,12 @@ export function validateHostnamePattern (val: string) {
   return /^[a-zA-Z0-9.-]+$/.test(trimmed)
 }
 
+export function isChosenProxyId (proxyId: unknown): boolean {
+  return typeof proxyId === 'string' && proxyId !== ''
+}
+
 export function isValidOverrideEntry (domain: string, proxyId: unknown): boolean {
-  return isBareHostname(domain) && typeof proxyId === 'string' && proxyId !== ''
+  return isBareHostname(domain) && isChosenProxyId(proxyId)
 }
 
 export function isValidKeepAliveRule (rule: unknown): boolean {

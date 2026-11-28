@@ -48,17 +48,6 @@ section.active { display: block; }
   max-height: 60vh;
   overflow-y: auto;
 }
-/*th.select-col,*/
-/*td.row-select,*/
-/*th.action-col,*/
-/*td.row-actions,*/
-button.export-selected { display: none; }
-button.delete-selected { display: none; }
-
-table[data-show-select='true'] th.select-col,
-table[data-show-select='true'] td.row-select,
-table[data-show-actions='true'] th.action-col { display: table-cell; }
-tr.show-actions td.row-actions { display: table-cell; }
 input.valid { border-color: #4c4; }
 input.invalid { border-color: #c44; }
 
@@ -78,28 +67,6 @@ input.invalid { border-color: #c44; }
   font-size: 0.9em;
   opacity: 0.8;
   margin-bottom: 8px;
-}
-
-#listModal .help {
-  font-size: 0.9em;
-  margin-left: 4px;
-  cursor: help;
-  color: var(--accent);
-  text-decoration: none;
-}
-
-#listModal .help:hover {
-  text-decoration: underline;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.modal-header h3 {
-  margin: 0;
 }
 
 .hidden { display: none; }
@@ -145,9 +112,6 @@ input[type='number'] {
 /* Interim: keeps the sections not yet rebuilt usable inside the new frame; removed as each section is rebuilt. */
 table { border-collapse: collapse; }
 th, td { border: 1px solid #555; padding: 4px; }
-tr.missing-proxy { background: var(--danger-bg); }
-.table-scroll { overflow-x: auto; }
-.table-scroll > table { width: max-content; }
 .modal-content {
   background: var(--surface);
   padding: 16px;

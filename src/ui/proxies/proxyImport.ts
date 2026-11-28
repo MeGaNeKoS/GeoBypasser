@@ -1,5 +1,5 @@
 import type { ProxyListItem } from '@customTypes/proxy'
-import { refuseProxyItems } from '@utils/importFiles'
+import { parseImportJson, refuseProxyItems } from '@utils/importFiles'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
 import { applyImportedProxy, duplicateIndexOf } from '@utils/proxyDraft'
 import type { DuplicateChoice } from '@utils/proxyDraft'
@@ -17,7 +17,7 @@ const DUPLICATE_OPTIONS: SegmentOption<DuplicateChoice>[] = [
 ]
 
 export async function importProxyFile (file: File): Promise<string[]> {
-  const parsed = parseJson(await file.text())
+  const parsed = parseImportJson(await file.text())
   if (parsed === undefined) return [NOT_JSON_MESSAGE]
   const verdict = refuseProxyItems((parsed as { proxyList?: unknown } | null)?.proxyList)
   const stored = await readProxyList()
@@ -28,14 +28,6 @@ export async function importProxyFile (file: File): Promise<string[]> {
   }
   await saveProxyList(running)
   return verdict.messages
-}
-
-function parseJson (text: string): unknown {
-  try {
-    return JSON.parse(text)
-  } catch {
-    return undefined
-  }
 }
 
 async function applyOne (list: ProxyListItem[], proxy: ProxyListItem): Promise<ProxyListItem[]> {

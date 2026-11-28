@@ -1,4 +1,4 @@
-import type { ProxyListItem } from '@customTypes/proxy'
+import type { KeepAliveProxyRule, ProxyListItem } from '@customTypes/proxy'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { exportProxyList, type CredentialsOption } from '@utils/proxyCredentials'
 import { exportedRules } from '@utils/ruleExport'
@@ -22,6 +22,10 @@ export function buildProxiesExport (proxies: ProxyListItem[]) {
 
 export function buildSitesExport (perWebsiteOverride: Record<string, string>) {
   return { perWebsiteOverride }
+}
+
+export function buildKeepAliveExport (keepAliveRules: KeepAliveProxyRule) {
+  return { keepAliveRules }
 }
 
 export function buildConfigExport (

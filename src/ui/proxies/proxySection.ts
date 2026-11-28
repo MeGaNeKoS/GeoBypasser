@@ -5,7 +5,7 @@ import { proxyRows } from '@utils/pageView'
 import { isValidProxyId } from '@utils/validity'
 import { button } from '../components/button'
 import { switchControl } from '../components/controls'
-import { banner } from '../components/feedback'
+import { importNotesBanner } from '../components/import-notes'
 import { ignoredSettingBadge, ignoredSettingReason, listSection, setAsideBadge, setAsideReason } from '../components/list-section'
 import type { ListRow } from '../components/list-section'
 import { nothingLeftToFix, setAsideBanners } from '../components/set-aside-view'
@@ -37,7 +37,7 @@ const passwordReveal: PasswordReveal = { all: false, overrides: new Map() }
 export async function renderProxySection (setAsideOnly = false): Promise<void> {
   const container = requireElement(PROXY_CONTAINER_ID)
   const list = await readProxyList()
-  replaceContent(container, [element('div', { class: 'stack' }, importNoteBanner(), proxySection(list, setAsideOnly))])
+  replaceContent(container, [element('div', { class: 'stack' }, importNotesBanner(importNotes, dismissImportNotes), proxySection(list, setAsideOnly))])
 }
 
 export function resetPasswordReveal (): void {
@@ -191,15 +191,6 @@ async function importFrom (event: Event): Promise<void> {
   importNotes = await importProxyFile(file)
   input.value = ''
   rerender()
-}
-
-function importNoteBanner (): HTMLElement | null {
-  if (importNotes.length === 0) return null
-  return banner({
-    tone: 'warn',
-    text: element('ul', {}, ...importNotes.map(message => element('li', {}, message))),
-    action: button('Dismiss', { variant: 'quiet', onClick: dismissImportNotes }),
-  })
 }
 
 function dismissImportNotes (): void {

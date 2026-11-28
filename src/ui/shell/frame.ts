@@ -9,8 +9,9 @@ import { icon, installSprite } from '../icons'
 import { renderProxySection, resetPasswordReveal } from '../proxies/proxySection'
 import { renderRuleSection } from '../rules/ruleSection'
 import { renderSiteSection } from '../sites/siteSection'
+import { renderKeepAliveSection } from '../keep-alive/keepAliveSection'
 import { clearSelections } from '../components/list-section'
-import { HOME_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
+import { HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
 
 export type FrameOptions = {
   onSectionShown?: (sectionId: string) => void
@@ -27,7 +28,7 @@ const COUNTED_SECTIONS: Partial<Record<string, keyof NavCounts>> = {
   proxy: 'proxies',
   [RULES_SECTION_ID]: 'rules',
   [SITE_SECTION_ID]: 'sites',
-  keepalive: 'keepAlive',
+  [KEEP_ALIVE_SECTION_ID]: 'keepAlive',
 }
 
 export function mountDashboardFrame (options: FrameOptions = {}): void {
@@ -93,6 +94,7 @@ async function renderSection (sectionId: string): Promise<void> {
   if (sectionId === PROXY_SECTION_ID) await renderProxySection(setAsideOnly)
   if (sectionId === RULES_SECTION_ID) await renderRuleSection(setAsideOnly)
   if (sectionId === SITE_SECTION_ID) await renderSiteSection(setAsideOnly)
+  if (sectionId === KEEP_ALIVE_SECTION_ID) await renderKeepAliveSection(setAsideOnly)
 }
 
 function onStorageChanged (nav: FrameNav): void {
