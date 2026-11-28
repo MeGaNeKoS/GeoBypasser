@@ -2,6 +2,10 @@ import { STORAGE_KEYS } from '@constant/storageKeys'
 import { importRuleFile } from '@ui/rules/ruleImport'
 import { browser } from './setup'
 
+jest.mock('@ui/review/reviewSheet', () => ({
+  askImportReview: async () => ({ duplicates: {}, settings: [] }),
+}))
+
 function loadStored (data: Record<string, unknown>) {
   browser.storage.local.get.mockImplementation(async (keys: any) => {
     if (typeof keys === 'string') return {}

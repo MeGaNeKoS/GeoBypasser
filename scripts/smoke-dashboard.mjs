@@ -121,13 +121,13 @@ export function openNewProxySheet () {
   Array.from(document.querySelectorAll('#proxyContent button')).find(button => button.textContent.trim() === 'Add proxy').click()
 }
 
-export function isProxyDuplicateSheetOpen () {
-  return document.querySelector('dialog.sheet input[name="choice"][value="replace"]') !== null
+export function isReviewSheetOpen () {
+  return document.querySelector('dialog.sheet[open][aria-label="Review import"]') !== null
 }
 
-export function answerProxyDuplicateWithReplace () {
-  document.querySelector('dialog.sheet input[name="choice"][value="replace"]').click()
-  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Apply').click()
+export function answerReviewWithReplace () {
+  for (const radio of document.querySelectorAll('dialog.sheet[open] input[type="radio"][value="useNew"]')) radio.click()
+  Array.from(document.querySelectorAll('dialog.sheet[open] button')).find(button => button.textContent.trim() === 'Import').click()
 }
 
 export function closeOpenSheet () {

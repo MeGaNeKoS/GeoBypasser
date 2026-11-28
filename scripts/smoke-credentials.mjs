@@ -1,13 +1,13 @@
 import { CREDENTIAL_PROXY, runStep, STORAGE_WAIT_MS, UI_SETTLE_MS, sleep, waitFor } from './smoke-fixture.mjs'
 import {
-  answerProxyDuplicateWithReplace,
+  answerReviewWithReplace,
   closeOpenSheet,
   captureDownload,
   clickSelector,
   importFile,
   isCheckedSelector,
   isDuplicateModalOpen,
-  isProxyDuplicateSheetOpen,
+  isReviewSheetOpen,
   openNewProxySheet,
   readAttributeSelector,
   readLocalStorage,
@@ -33,7 +33,7 @@ const TEST_INPUT_ATTRIBUTES = [
   { selector: 'input[name="testPassword"]', attribute: 'type', expected: 'password' },
   { selector: 'input[name="testPassword"]', attribute: 'autocomplete', expected: 'new-password' },
 ]
-const PROXY_DUPLICATE_PROMPT = { isOpen: isProxyDuplicateSheetOpen, answer: [answerProxyDuplicateWithReplace, []] }
+const PROXY_REVIEW_PROMPT = { isOpen: isReviewSheetOpen, answer: [answerReviewWithReplace, []] }
 const CONFIG_DUPLICATE_PROMPT = { isOpen: isDuplicateModalOpen, answer: [clickSelector, ['#duplicateKeepNew']] }
 
 function checkCarriesCredentials (label, text, failures) {
@@ -85,7 +85,7 @@ async function checkConfigExportLeaveOutControl (run, failures) {
 async function checkImportKeepsStoredCredentials (run, failures, { label, inputId, prompt }) {
   await run(importFile, [inputId, JSON.stringify({ proxyList: [IMPORTED_WITHOUT_CREDENTIALS] })])
   try {
-    await waitFor(() => run(prompt.isOpen), STORAGE_WAIT_MS, 'the duplicate prompt')
+    await waitFor(() => run(prompt.isOpen), STORAGE_WAIT_MS, 'the import prompt')
     await run(...prompt.answer)
     await waitFor(async () => {
       const stored = await run(readLocalStorage)
@@ -118,7 +118,7 @@ export async function checkCredentialWiring (run, failures) {
   const failuresBefore = failures.length
   await runStep('proxies export', () => checkProxiesExportCarriesCredentials(run, failures), failures)
   await runStep('config export leave out control', () => checkConfigExportLeaveOutControl(run, failures), failures)
-  await runStep('proxy import', () => checkImportKeepsStoredCredentials(run, failures, { label: 'proxy import', inputId: 'proxyImportInput', prompt: PROXY_DUPLICATE_PROMPT }), failures)
+  await runStep('proxy import', () => checkImportKeepsStoredCredentials(run, failures, { label: 'proxy import', inputId: 'proxyImportInput', prompt: PROXY_REVIEW_PROMPT }), failures)
   await runStep('config import', () => checkImportKeepsStoredCredentials(run, failures, { label: 'config import', inputId: 'importConfig', prompt: CONFIG_DUPLICATE_PROMPT }), failures)
   await runStep('credential input attributes', () => checkCredentialInputAttributes(run, failures), failures)
   if (failures.length === failuresBefore) {
