@@ -68,11 +68,16 @@ async function checkProxiesExportCarriesCredentials (run, failures) {
   if (selected !== null && !selected.includes(CREDENTIAL_PROXY.host)) failures.push('Export Selected did not write the selected proxy')
 }
 
+function configExportSheetReady () {
+  return document.querySelector('dialog.sheet[open] [role="switch"][data-field="leaveOutCredentials"]') !== null
+    && Array.from(document.querySelectorAll('dialog.sheet[open] button')).some(button => button.textContent.trim() === 'Export')
+}
+
 async function openConfigExportSheet (run) {
   await run(clickSelector, ['[data-tab="impexp"]'])
   await sleep(UI_SETTLE_MS)
   await run(clickSelector, [EXPORT_BUTTON_SELECTOR])
-  await sleep(UI_SETTLE_MS)
+  await waitFor(() => run(configExportSheetReady), STORAGE_WAIT_MS, 'the config export sheet fields to render')
 }
 
 async function checkLeaveOutStateIsOff (run, failures, when) {
