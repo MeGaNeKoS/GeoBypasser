@@ -48,13 +48,16 @@ describe('request log negative cases', () => {
   it('words 451 as blocked and other 4xx and 5xx as errors', () => {
     const [row] = requestLogPages(usageOf(observation({ statusCode: 451 }), observation({ statusCode: 404 })))[0].rows
 
-    expect(row.results).toEqual(['1 errors (404)', '1 blocked (451)'])
+    expect(row.results).toEqual([
+      { kind: 'error', text: '1 errors (404)' },
+      { kind: 'blocked', text: '1 blocked (451)' },
+    ])
   })
 
   it('counts a 301 redirect as OK', () => {
     const [row] = requestLogPages(usageOf(observation({ statusCode: 301 })))[0].rows
 
-    expect(row.results).toEqual(['1 OK'])
+    expect(row.results).toEqual([{ kind: 'ok', text: '1 OK' }])
   })
 
   it('does not mark a direct route as proxied or inferred', () => {

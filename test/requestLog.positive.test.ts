@@ -1,5 +1,5 @@
 import { addRequestToTab, emptyTabUsage, type NetworkUsage, type RecordedRoute, type RequestObservation } from '@utils/networkUsage'
-import { formatProxiedShare, requestLogPages, resultLabels, routeLabel } from '@utils/requestLog'
+import { formatProxiedShare, requestLogPages, resultLines, routeLabel } from '@utils/requestLog'
 
 const PAGE = 'page.example'
 const CDN = 'cdn.example.com'
@@ -68,11 +68,11 @@ describe('request log', () => {
     const [row] = requestLogPages(usage)[0].rows
 
     expect(row.results).toEqual([
-      '2 OK',
-      '1 blocked (403)',
-      '1 errors (500)',
-      '1 failed: net::ERR_CONNECTION_RESET',
-      '1 from cache',
+      { kind: 'ok', text: '2 OK' },
+      { kind: 'blocked', text: '1 blocked (403)' },
+      { kind: 'error', text: '1 errors (500)' },
+      { kind: 'failed', text: '1 failed: net::ERR_CONNECTION_RESET' },
+      { kind: 'cache', text: '1 from cache' },
     ])
   })
 
@@ -81,7 +81,7 @@ describe('request log', () => {
 
     const [row] = requestLogPages(usage)[0].rows
 
-    expect(resultLabels(usageOf(observation({ statusCode: 304 }))[1][PAGE][CDN])).toEqual(['1 OK'])
+    expect(resultLines(usageOf(observation({ statusCode: 304 }))[1][PAGE][CDN])).toEqual([{ kind: 'ok', text: '1 OK' }])
     expect(row.host).toBe(CDN)
     expect(row.requests).toBe(1)
   })

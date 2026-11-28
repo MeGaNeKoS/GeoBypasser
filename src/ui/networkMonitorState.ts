@@ -1,4 +1,5 @@
 import browser from 'webextension-polyfill'
+import type { TabSummary } from '@utils/webTabs'
 
 export async function readTabNetworkMonitored (tabId: number): Promise<unknown> {
   try {
@@ -10,4 +11,8 @@ export async function readTabNetworkMonitored (tabId: number): Promise<unknown> 
 
 export async function setTabMonitoring (tabId: number, monitored: boolean): Promise<void> {
   await browser.runtime.sendMessage({ type: monitored ? 'monitorTabNetwork' : 'unmonitorTabNetwork', tabId }).catch(() => {})
+}
+
+export function readOpenTabs (): Promise<TabSummary[]> {
+  return browser.tabs.query({})
 }

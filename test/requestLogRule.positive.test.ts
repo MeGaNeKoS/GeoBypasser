@@ -1,4 +1,4 @@
-import { ruleFormForSelection, ruleFormSkippingHost } from '@utils/requestLogRule'
+import { ruleFormForSelection, ruleFormSkippingHost, selectionOnPage, withHostToggled, withTypeToggled } from '@utils/requestLogRule'
 import { ruleFormOf } from '@utils/ruleDraft'
 
 const PAGE = 'page.example'
@@ -24,6 +24,25 @@ describe('rule from a request log selection', () => {
       onlyResourceTypes: ['script', 'image'],
       proxyOnlyPageHostnames: [PAGE],
     })
+  })
+
+  it('starts an empty selection when the page changes', () => {
+    const onFirst = withHostToggled(selectionOnPage(undefined, PAGE), 'cdn.example.com')
+
+    expect(selectionOnPage(onFirst, 'other.example')).toEqual({ page: 'other.example', hosts: [], types: [] })
+    expect(selectionOnPage(onFirst, PAGE)).toBe(onFirst)
+  })
+
+  it('toggles a host off and drops its type selections with it', () => {
+    const withType = withTypeToggled(selectionOnPage(undefined, PAGE), 'cdn.example.com', 'script')
+
+    expect(withHostToggled(withType, 'cdn.example.com')).toEqual({ page: PAGE, hosts: [], types: [] })
+  })
+
+  it('selects the host of a type line when the type is toggled on', () => {
+    const selection = withTypeToggled(selectionOnPage(undefined, PAGE), 'cdn.example.com', 'image')
+
+    expect(selection).toEqual({ page: PAGE, hosts: ['cdn.example.com'], types: [{ host: 'cdn.example.com', type: 'image' }] })
   })
 
   it('adds the host to the never proxy list of a skipped rule', () => {

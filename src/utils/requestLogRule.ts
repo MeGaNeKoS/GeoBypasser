@@ -1,4 +1,6 @@
 import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
+import type { ProxyRule } from '@customTypes/proxy'
+import type { RequestLogRow } from './requestLog'
 import { ruleFormOf, type RuleForm } from './ruleDraft'
 
 export type LogSelection = {
@@ -6,6 +8,16 @@ export type LogSelection = {
   hosts: string[];
   types: { host: string; type: string }[];
 };
+
+export type SkipRule = { index: number; name: string };
+
+export function skippableRuleOf (row: RequestLogRow, rules: ProxyRule[]): SkipRule | undefined {
+  for (const line of row.routes) {
+    if (line.reason !== 'rule' || line.ruleId === undefined || line.ruleName === undefined) continue
+    if (rules[line.ruleId]?.name === line.ruleName) return { index: line.ruleId, name: line.ruleName }
+  }
+  return undefined
+}
 
 export function hostMatchPattern (host: string): string {
   return `*://${host}/*`
@@ -22,6 +34,23 @@ export function ruleFormForSelection (selection: LogSelection, perTypeRules: boo
     resourceTypeMode: 'only',
     onlyResourceTypes: types,
   }
+}
+
+export function selectionOnPage (selection: LogSelection | undefined, page: string): LogSelection {
+  return selection?.page === page ? selection : { page, hosts: [], types: [] }
+}
+
+export function withHostToggled (selection: LogSelection, host: string): LogSelection {
+  if (selection.hosts.includes(host)) {
+    return { ...selection, hosts: selection.hosts.filter(entry => entry !== host), types: selection.types.filter(entry => entry.host !== host) }
+  }
+  return { ...selection, hosts: [...selection.hosts, host] }
+}
+
+export function withTypeToggled (selection: LogSelection, host: string, type: string): LogSelection {
+  const selected = selection.types.some(entry => entry.host === host && entry.type === type)
+  if (selected) return { ...selection, types: selection.types.filter(entry => !(entry.host === host && entry.type === type)) }
+  return { ...selection, hosts: selection.hosts.includes(host) ? selection.hosts : [...selection.hosts, host], types: [...selection.types, { host, type }] }
 }
 
 export function ruleFormSkippingHost (form: RuleForm, host: string): RuleForm {

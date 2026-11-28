@@ -6,6 +6,7 @@ import {
   type NetworkUsage,
   type PathNode,
   type RecordedRoute,
+  type RecordedRouteReason,
   type RouteTally,
 } from './networkUsage'
 
@@ -13,6 +14,7 @@ export type TypeCount = { name: string; count: number };
 
 export type RouteLine = {
   label: string;
+  reason: RecordedRouteReason;
   count: number;
   bytes: number;
   expected: boolean;
@@ -21,12 +23,16 @@ export type RouteLine = {
   ruleName?: string;
 };
 
+export type ResultKind = 'ok' | 'blocked' | 'error' | 'failed' | 'cache';
+
+export type ResultLine = { kind: ResultKind; text: string };
+
 export type RequestLogRow = {
   page: string;
   host: string;
   requests: number;
   types: TypeCount[];
-  results: string[];
+  results: ResultLine[];
   routes: RouteLine[];
   sentBytes: number;
   receivedBytes: number;
@@ -58,13 +64,14 @@ export function requestLogPages (usage: NetworkUsage): RequestLogPage[] {
   return [...hostsByPage].map(([page, hosts]) => requestLogPage(page, hosts));
 }
 
-export function resultLabels (usage: HostUsage): string[] {
-  return [
-    usage.ok > 0 ? `${usage.ok} OK` : undefined,
-    ...Object.entries(usage.statuses).map(([code, count]) => statusLabel(Number(code), count)),
-    ...Object.entries(usage.failures).map(([reason, count]) => `${count} failed: ${reason}`),
-    usage.fromCache > 0 ? `${usage.fromCache} from cache` : undefined,
-  ].filter(isLabel);
+export function resultLines (usage: HostUsage): ResultLine[] {
+  const lines: (ResultLine | undefined)[] = [
+    usage.ok > 0 ? { kind: 'ok', text: `${usage.ok} OK` } : undefined,
+    ...Object.entries(usage.statuses).map(([code, count]) => statusLine(Number(code), count)),
+    ...Object.entries(usage.failures).map(([reason, count]) => failedLine(reason, count)),
+    usage.fromCache > 0 ? { kind: 'cache', text: `${usage.fromCache} from cache` } : undefined,
+  ];
+  return lines.filter(isLine);
 }
 
 export function routeLabel (route: RecordedRoute): string {
@@ -96,7 +103,7 @@ function requestLogRow (page: string, host: string, hostUsage: HostUsage): Reque
     host,
     requests: hostUsage.count,
     types: typeCountsOf(hostUsage.types),
-    results: resultLabels(hostUsage),
+    results: resultLines(hostUsage),
     routes: Object.values(hostUsage.routes).map(routeLine),
     sentBytes: hostUsage.sent,
     receivedBytes: hostUsage.received,
@@ -109,6 +116,7 @@ function routeLine (tally: RouteTally): RouteLine {
   const { route } = tally;
   return {
     label: routeLabel(route),
+    reason: route.reason,
     count: tally.count,
     bytes: tally.bytes,
     expected: route.expected,
@@ -136,9 +144,13 @@ function reasonPhrase (route: RecordedRoute): string | undefined {
   }
 }
 
-function statusLabel (code: number, count: number): string {
-  const kind = BLOCKED_STATUSES.includes(code) ? 'blocked' : 'errors';
-  return `${count} ${kind} (${code})`;
+function failedLine (reason: string, count: number): ResultLine {
+  return { kind: 'failed', text: `${count} failed: ${reason}` };
+}
+
+function statusLine (code: number, count: number): ResultLine {
+  if (BLOCKED_STATUSES.includes(code)) return { kind: 'blocked', text: `${count} blocked (${code})` };
+  return { kind: 'error', text: `${count} errors (${code})` };
 }
 
 function typeCountsOf (types: Record<string, number>): TypeCount[] {
@@ -147,8 +159,8 @@ function typeCountsOf (types: Record<string, number>): TypeCount[] {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-function isLabel (label: string | undefined): label is string {
-  return label !== undefined;
+function isLine (line: ResultLine | undefined): line is ResultLine {
+  return line !== undefined;
 }
 
 function sumOf (values: number[]): number {
