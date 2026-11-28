@@ -22,11 +22,38 @@
   min-width: 0;
 }
 
+#networkContent .settings-card {
+  max-width: none;
+}
+
+.log-toolbar {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--surface);
+}
+
+.log-toolbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.log-toolbar__row > .field {
+  margin-left: auto;
+}
+
 .log-page {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--surface);
   overflow-x: auto;
 }
 
@@ -44,7 +71,6 @@
 
 .log-table {
   width: 100%;
-  min-width: 48rem;
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
@@ -60,22 +86,11 @@
 .log-table th {
   color: var(--text-muted);
   font-weight: 600;
-  white-space: nowrap;
 }
 
 .log-table .mono,
 .log-table .muted {
   display: block;
-}
-
-.log-table .result,
-.log-table td button {
-  white-space: nowrap;
-}
-
-.log-table .num {
-  text-align: right;
-  white-space: nowrap;
 }
 
 .log-table .log-detail td {
@@ -87,6 +102,11 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: var(--space-2);
+}
+
+.log-bytes {
+  display: flex;
+  flex-direction: column;
 }
 
 .result-list,
@@ -119,4 +139,59 @@
 
 .result--cache {
   color: var(--text-muted);
+}
+
+@media (max-width: 719px) {
+  .log-table,
+  .log-table tbody,
+  .log-table tr,
+  .log-table td {
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .log-table thead {
+    display: none;
+  }
+
+  .log-table tr {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-2) 0;
+    border-top: var(--hairline) solid var(--border);
+  }
+
+  .log-table td,
+  .log-table .log-detail td {
+    padding: 0;
+    border: 0;
+  }
+
+  .log-table .log-detail td {
+    padding: var(--space-2) 0;
+  }
+
+  .log-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+}
+
+@media (min-width: 720px) {
+  .log-table th {
+    white-space: nowrap;
+  }
+
+  .log-table .log-host,
+  .log-table .result,
+  .log-table td button {
+    white-space: nowrap;
+  }
+
+  .log-table .num {
+    text-align: right;
+  }
 }

@@ -10,6 +10,11 @@ export type TreeNode = {
 
 export function usageTree (nodes: TreeNode[]): HTMLDivElement {
   return element('div', { class: 'tree', role: 'tree', 'aria-label': 'Network usage' },
+    element('div', { class: 'tree__header', 'aria-hidden': 'true' },
+      element('span', {}, 'Path'),
+      element('span', { class: 'tree__numbers' }, 'Sent'),
+      element('span', { class: 'tree__numbers' }, 'Received'),
+    ),
     ...nodes.map(node => treeNode(node)),
   )
 }
@@ -17,8 +22,8 @@ export function usageTree (nodes: TreeNode[]): HTMLDivElement {
 function treeNode (node: TreeNode): HTMLElement {
   const summary = element('summary', {},
     treeName(node),
-    figure('Sent', node.sent),
-    figure('Received', node.received),
+    figure(node.sent),
+    figure(node.received),
   )
   if (node.children.length === 0) {
     return element('details', { class: 'tree__leaf', open: true }, summary)
@@ -36,6 +41,6 @@ function treeName (node: TreeNode): HTMLElement {
   return element('span', { class: 'tree__name' }, marker, element('span', { class: 'mono' }, node.name))
 }
 
-function figure (label: string, value: string): HTMLElement {
-  return element('span', { class: 'tree__numbers' }, `${label} `, element('span', { class: 'mono' }, value))
+function figure (value: string): HTMLElement {
+  return element('span', { class: 'tree__numbers mono' }, value)
 }

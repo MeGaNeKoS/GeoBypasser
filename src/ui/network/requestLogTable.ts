@@ -1,8 +1,8 @@
 import { formatBytes, type PathNode } from '@utils/networkUsage'
-import type { RequestLogRow, ResultKind, ResultLine, RouteLine } from '@utils/requestLog'
+import { formatCount, type RequestLogRow, type ResultKind, type ResultLine, type RouteLine } from '@utils/requestLog'
 import type { SkipRule } from '@utils/requestLogRule'
 import { button } from '../components/button'
-import { checkbox } from '../components/controls'
+import { checkbox, checkboxWithHiddenLabel } from '../components/controls'
 import { usageTree, type TreeNode } from '../components/tree'
 import { element } from '../dom'
 import { icon, type IconName } from '../icons'
@@ -17,9 +17,16 @@ export type LogRowActions = {
   onToggleType: (host: string, type: string) => void;
   onToggleExpanded: (key: string) => void;
   onSkip: (row: RequestLogRow, rule: SkipRule) => void;
-};
+}
 
-const COLUMN_TITLES = ['Select', 'Host', 'Types', 'Results', 'Route', 'Bytes', 'Rule']
+type TableContext = {
+  actions: LogRowActions;
+  showActions: boolean;
+}
+
+const SELECT_COLUMN_TITLE = ''
+const ACTION_COLUMN_TITLE = 'Action'
+const DATA_COLUMN_TITLES = ['Host', 'Types', 'Results', 'Route', 'Bytes']
 const RESULT_ICONS: Record<ResultKind, IconName> = {
   ok: 'check',
   blocked: 'alert',
@@ -30,9 +37,10 @@ const RESULT_ICONS: Record<ResultKind, IconName> = {
 const EXPECTED_PREFIX = 'Expected: '
 
 export function requestLogTable (rows: RequestLogRow[], actions: LogRowActions): HTMLTableElement {
+  const context: TableContext = { actions, showActions: rows.some(row => actions.skipRuleFor(row) !== undefined) }
   return element('table', { class: 'log-table' },
-    element('thead', {}, element('tr', {}, ...COLUMN_TITLES.map(title => element('th', { scope: 'col' }, title)))),
-    element('tbody', {}, ...rows.flatMap(row => logRowPair(row, actions))),
+    element('thead', {}, element('tr', {}, ...headerTitles(context).map(title => element('th', { scope: 'col' }, title)))),
+    element('tbody', {}, ...rows.flatMap(row => logRowPair(row, context))),
   )
 }
 
@@ -40,14 +48,20 @@ export function routeText (line: RouteLine): string {
   return line.expected ? `${EXPECTED_PREFIX}${line.label}` : line.label
 }
 
-function logRowPair (row: RequestLogRow, actions: LogRowActions): HTMLTableRowElement[] {
-  const key = expansionKey(row)
-  const main = logRow(row, actions, key)
-  if (!actions.isExpanded(key)) return [main]
-  return [main, detailRow(row, actions)]
+function headerTitles (context: TableContext): string[] {
+  const titles = [SELECT_COLUMN_TITLE, ...DATA_COLUMN_TITLES]
+  return context.showActions ? [...titles, ACTION_COLUMN_TITLE] : titles
 }
 
-function logRow (row: RequestLogRow, actions: LogRowActions, key: string): HTMLTableRowElement {
+function logRowPair (row: RequestLogRow, context: TableContext): HTMLTableRowElement[] {
+  const key = expansionKey(row)
+  const main = logRow(row, context, key)
+  if (!context.actions.isExpanded(key)) return [main]
+  return [main, detailRow(row, context)]
+}
+
+function logRow (row: RequestLogRow, context: TableContext, key: string): HTMLTableRowElement {
+  const { actions } = context
   const rule = actions.skipRuleFor(row)
   return element('tr', {
     'data-page': row.page,
@@ -57,43 +71,60 @@ function logRow (row: RequestLogRow, actions: LogRowActions, key: string): HTMLT
     'data-rule-id': row.routes.flatMap(line => (line.ruleId === undefined ? [] : [String(line.ruleId)])).join(','),
     'data-result': row.results.map(line => line.text).join('; '),
   },
-    element('td', {}, checkbox(`Select ${row.host}`, actions.isHostSelected(row.host), () => actions.onToggleHost(row.host), `select-${key}`)),
-    element('td', {},
-      element('span', { class: 'mono' }, row.host),
-      unsizedNote(row, actions.chrome),
+    element('td', {}, hostCheckbox(row, actions, key)),
+    element('td', { 'data-label': 'Host' },
+      element('span', { class: 'mono log-host' }, row.host),
       button(actions.isExpanded(key) ? 'Hide details' : 'Details', {
         variant: 'quiet',
         focusKey: `details-${key}`,
         onClick: () => actions.onToggleExpanded(key),
       }),
     ),
-    element('td', {}, typesText(row)),
-    element('td', {}, resultList(row.results)),
-    element('td', {}, routeList(row.routes)),
-    element('td', { class: 'num' }, formatBytes(row.sentBytes + row.receivedBytes)),
-    element('td', {}, rule ? button(`Skip in rule '${rule.name}'`, { variant: 'quiet', onClick: () => actions.onSkip(row, rule) }) : null),
+    element('td', { 'data-label': 'Types' }, typesText(row)),
+    element('td', { 'data-label': 'Results' }, resultList(row.results)),
+    element('td', { 'data-label': 'Route' }, routeList(row.routes)),
+    element('td', { class: 'num', 'data-label': 'Bytes' }, bytesCell(row, actions.chrome)),
+    context.showActions
+      ? element('td', { 'data-label': ACTION_COLUMN_TITLE }, rule ? skipButton(row, rule, actions) : null)
+      : null,
   )
 }
 
-function detailRow (row: RequestLogRow, actions: LogRowActions): HTMLTableRowElement {
+function hostCheckbox (row: RequestLogRow, actions: LogRowActions, key: string): HTMLLabelElement {
+  return checkboxWithHiddenLabel(row.host, actions.isHostSelected(row.host), () => actions.onToggleHost(row.host), `select-${key}`)
+}
+
+function skipButton (row: RequestLogRow, rule: SkipRule, actions: LogRowActions): HTMLButtonElement {
+  return button(`Skip in rule '${rule.name}'`, { variant: 'quiet', onClick: () => actions.onSkip(row, rule) })
+}
+
+function detailRow (row: RequestLogRow, context: TableContext): HTMLTableRowElement {
+  const { actions } = context
   return element('tr', { class: 'log-detail' },
-    element('td', { colspan: COLUMN_TITLES.length },
+    element('td', { colspan: headerTitles(context).length },
       element('ul', { class: 'log-types' }, ...row.types.map(type => typeLine(row, type.name, type.count, actions))),
-      element('p', { class: 'num' }, `Sent ${formatBytes(row.sentBytes)}, received ${formatBytes(row.receivedBytes)}`),
       usageTree(treeNodesOf(row.paths)),
     ),
   )
 }
 
 function typeLine (row: RequestLogRow, name: string, count: number, actions: LogRowActions): HTMLElement {
-  const label = `${name}, ${count} requests`
+  const label = `${name}, ${formatCount(count, 'request')}`
   if (actions.chrome) return element('li', {}, label)
   return element('li', {}, checkbox(label, actions.isTypeSelected(row.host, name), () => actions.onToggleType(row.host, name), `type-${row.host}-${name}`))
 }
 
+function bytesCell (row: RequestLogRow, chrome: boolean): HTMLElement {
+  return element('span', { class: 'log-bytes' },
+    element('span', {}, `Sent ${formatBytes(row.sentBytes)}`),
+    element('span', {}, `Received ${formatBytes(row.receivedBytes)}`),
+    unsizedNote(row, chrome),
+  )
+}
+
 function unsizedNote (row: RequestLogRow, chrome: boolean): HTMLElement | null {
   if (!chrome || row.unsizedCount === 0) return null
-  return element('span', { class: 'muted' }, `${row.unsizedCount} without a size`)
+  return element('span', { class: 'muted' }, `${formatCount(row.unsizedCount, 'request')} without a size`)
 }
 
 function resultList (results: ResultLine[]): HTMLElement {
@@ -103,8 +134,9 @@ function resultList (results: ResultLine[]): HTMLElement {
 }
 
 function routeList (routes: RouteLine[]): HTMLElement {
+  const showCounts = routes.length > 1
   return element('ul', { class: 'route-list' },
-    ...routes.map(line => element('li', {}, routeText(line), ` · ${line.count} requests`)),
+    ...routes.map(line => element('li', {}, routeText(line), showCounts ? ` · ${formatCount(line.count, 'request')}` : null)),
   )
 }
 

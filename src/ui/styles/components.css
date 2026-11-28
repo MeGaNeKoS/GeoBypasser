@@ -886,6 +886,16 @@
   gap: 0;
 }
 
+.tree__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  border-bottom: var(--hairline) solid var(--border);
+}
+
 .tree details {
   border-bottom: var(--hairline) solid var(--border);
 }
@@ -936,7 +946,8 @@
 }
 
 @media (min-width: 720px) {
-  .tree summary {
+  .tree summary,
+  .tree__header {
     grid-template-columns: minmax(0, 1fr) 10rem 10rem;
     gap: var(--space-3);
   }

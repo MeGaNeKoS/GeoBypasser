@@ -1,6 +1,6 @@
 import type { ProxyRule } from '@customTypes/proxy'
 import { supportsProxyOnRequest } from '@utils/env'
-import { requestLogPages, type RequestLogPage, type RequestLogRow } from '@utils/requestLog'
+import { formatCount, requestLogPages, type RequestLogPage, type RequestLogRow } from '@utils/requestLog'
 import {
   ruleFormForSelection,
   ruleFormSkippingHost,
@@ -13,7 +13,7 @@ import {
 } from '@utils/requestLogRule'
 import { webTabsOf } from '@utils/webTabs'
 import { getConfig } from '@utils/storage'
-import { button, buttonGroup } from '../components/button'
+import { button } from '../components/button'
 import { switchControl } from '../components/controls'
 import { switchField } from '../components/fields'
 import { inlineConfirm } from '../components/inline-confirm'
@@ -24,13 +24,17 @@ import { NETWORK_SECTION_ID } from '../shell/routes'
 import { openRuleEditor } from '../rules/ruleSheet'
 import { onNetworkMonitoringChanged, onOpenTabsChanged, readOpenTabs, readTabNetworkMonitored, setTabMonitoring } from '../networkMonitorState'
 import { clearNetworkUsage, readNetworkUsage } from './networkStore'
-import { requestLogPageGroup, type PageGroupOptions } from './requestLogPage'
+import { logToolbar } from './logToolbar'
+import { requestLogPageGroup } from './requestLogPage'
 import { expansionKey, type LogRowActions } from './requestLogTable'
 import { tabsCard, type TabMonitorRow } from './tabsCard'
 
 const CONTAINER_ID = 'networkContent'
 const HEADING = 'Network'
+const HELP_TEXT = 'What monitored tabs requested, and how each request was routed.'
 const CHROME_NOTE = 'Chrome does not report the route each request used. Routes shown are the ones your settings expect.'
+const CREATE_RULE_LABEL = 'Create rule from selection'
+const SELECT_HOST_HINT = 'Select a host first.'
 const AUTO_REFRESH_LABEL = 'Auto refresh'
 const AUTO_REFRESH_INTERVAL_MS = 5000
 const OPEN_TABS_DEBOUNCE_MS = 250
@@ -106,50 +110,61 @@ function networkContent (): Node[] {
   return [
     element('div', { class: 'stack' },
       sectionHeading(HEADING),
+      element('p', { class: 'help' }, HELP_TEXT),
       clearFailed ? clearFailedBanner() : null,
-      element('div', { class: 'settings-card' },
-        buttonGroup(refreshButton(), clearControl()),
-        switchField({
-          label: AUTO_REFRESH_LABEL,
-          control: switchControl(AUTO_REFRESH_LABEL, autoRefresh, setAutoRefresh, { focusKey: AUTO_REFRESH_KEY }),
-        }),
-      ),
       ...bodyNodes(),
     ),
   ];
 }
 
 function bodyNodes (): Node[] {
-  if (view.kind === 'loading') return [skeletonRows(LOADING_ROW_COUNT)];
-  if (view.kind === 'error') return [loadErrorBlock()];
+  if (view.kind === 'loading') return [toolbarNode(undefined), skeletonRows(LOADING_ROW_COUNT)];
+  if (view.kind === 'error') return [toolbarNode(undefined), loadErrorBlock()];
   return [
     tabsCard(view.tabs, toggleMonitoring),
     ...(view.chrome ? [banner({ tone: 'info', text: CHROME_NOTE })] : []),
+    toolbarNode(view),
     ...logNodes(view),
   ];
 }
 
+function toolbarNode (ready: ReadyView | undefined): HTMLElement {
+  const hasSelection = selection !== undefined && selection.hosts.length > 0;
+  return logToolbar({
+    actions: [refreshButton(), clearControl(), copyJsonButton(ready)],
+    autoRefresh: switchField({
+      label: AUTO_REFRESH_LABEL,
+      control: switchControl(AUTO_REFRESH_LABEL, autoRefresh, setAutoRefresh, { focusKey: AUTO_REFRESH_KEY }),
+    }),
+    createRule: createRuleButton(ready, hasSelection),
+    selectionHint: hasSelection ? null : element('span', { class: 'help' }, SELECT_HOST_HINT),
+  });
+}
+
+function copyJsonButton (ready: ReadyView | undefined): HTMLButtonElement | null {
+  if (ready === undefined || ready.pages.length === 0) return null;
+  return button(COPY_JSON_LABEL, { variant: 'quiet', focusKey: COPY_JSON_KEY, onClick: () => void copyPagesAsJson(ready.pages) });
+}
+
+function createRuleButton (ready: ReadyView | undefined, hasSelection: boolean): HTMLButtonElement {
+  return button(CREATE_RULE_LABEL, {
+    variant: 'primary',
+    disabled: ready === undefined || !hasSelection,
+    onClick: () => {
+      if (ready !== undefined && selection !== undefined) createRuleFromSelection(ready, selection);
+    },
+  });
+}
+
 function logNodes (ready: ReadyView): Node[] {
   if (ready.pages.length === 0) return [stateBlock({ title: emptyLogTitle(ready) })];
-  return [
-    button(COPY_JSON_LABEL, { variant: 'quiet', focusKey: COPY_JSON_KEY, onClick: () => void copyPagesAsJson(ready.pages) }),
-    ...ready.pages.map(page => requestLogPageGroup(page, pageGroupOptions(ready, page))),
-  ];
+  return ready.pages.map(page => requestLogPageGroup(page, rowActionsFor(ready, page.page, selectionOnPage(selection, page.page))));
 }
 
 function emptyLogTitle (ready: ReadyView): string {
   const monitoring = ready.tabs.filter(tab => tab.monitored).length;
   if (monitoring === 0) return NO_TRAFFIC_TITLE;
-  return `Monitoring ${monitoring} tabs. Nothing recorded yet. Load or reload the page.`;
-}
-
-function pageGroupOptions (ready: ReadyView, page: RequestLogPage): PageGroupOptions {
-  const onPage = selectionOnPage(selection, page.page);
-  return {
-    canCreateRule: onPage.hosts.length > 0,
-    onCreateRule: () => createRuleFromSelection(ready, page.page),
-    rowActions: rowActionsFor(ready, page.page, onPage),
-  };
+  return `Monitoring ${formatCount(monitoring, 'tab')}. Nothing recorded yet. Load or reload the page.`;
 }
 
 function rowActionsFor (ready: ReadyView, page: string, onPage: LogSelection): LogRowActions {
@@ -186,10 +201,10 @@ function toggleMonitoring (tabId: number, monitored: boolean): void {
   void setTabMonitoring(tabId, monitored).then(() => renderNetworkSection(`monitor-tab-${tabId}`));
 }
 
-function createRuleFromSelection (ready: ReadyView, page: string): void {
+function createRuleFromSelection (ready: ReadyView, chosen: LogSelection): void {
   openRuleEditor({
     proxyList: ready.proxyList,
-    prefill: () => ruleFormForSelection(selectionOnPage(selection, page), !ready.chrome),
+    prefill: () => ruleFormForSelection(chosen, !ready.chrome),
     onSaved: afterRuleSaved,
   });
 }

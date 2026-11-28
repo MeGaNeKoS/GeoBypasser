@@ -68,7 +68,15 @@ function segmentOption<T extends string> (name: string, option: SegmentOption<T>
 }
 
 export function checkbox (label: string, checked: boolean, onChange: (checked: boolean) => void, focusKey?: string): HTMLLabelElement {
+  return element('label', { class: 'checkbox' }, checkboxInput(checked, onChange, focusKey), label)
+}
+
+export function checkboxWithHiddenLabel (label: string, checked: boolean, onChange: (checked: boolean) => void, focusKey?: string): HTMLLabelElement {
+  return element('label', { class: 'checkbox' }, checkboxInput(checked, onChange, focusKey), element('span', { class: 'visually-hidden' }, label))
+}
+
+function checkboxInput (checked: boolean, onChange: (checked: boolean) => void, focusKey?: string): HTMLInputElement {
   const input = element('input', { type: 'checkbox', checked, 'data-focus-key': focusKey })
   input.addEventListener('change', () => onChange(input.checked))
-  return element('label', { class: 'checkbox' }, input, label)
+  return input
 }

@@ -1,9 +1,8 @@
 import type { WebTab } from '@utils/webTabs'
 import { switchControl } from '../components/controls'
-import { stateBlock } from '../components/feedback'
 import { element } from '../dom'
 
-export type TabMonitorRow = WebTab & { monitored: boolean };
+export type TabMonitorRow = WebTab & { monitored: boolean }
 
 const TITLE = 'Tabs'
 const EMPTY_TITLE = 'No web page is open in a tab.'
@@ -12,7 +11,7 @@ export function tabsCard (rows: TabMonitorRow[], onToggle: (tabId: number, monit
   return element('div', { class: 'settings-card' },
     element('h3', {}, TITLE),
     rows.length === 0
-      ? stateBlock({ title: EMPTY_TITLE })
+      ? element('p', { class: 'help' }, EMPTY_TITLE)
       : element('ul', { class: 'tab-list' }, ...rows.map(row => tabRow(row, onToggle))),
   )
 }
