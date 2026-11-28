@@ -32,7 +32,7 @@ describe('makeTabProxyHandler', () => {
   it('maps by tab id and appends direct', async () => {
     const handler = makeTabProxyHandler(baseConfig(), { 1: 'p1' })
     const res = await handler({ tabId: 1, url: 'https://x', type: 'script' } as any)
-    expect(res).toEqual([{ ...proxy, proxyDNS: false }, { type: 'direct' }])
+    expect(res).toEqual({ proxyInfo: [{ ...proxy, proxyDNS: false }, { type: 'direct' }], proxyId: 'p1' })
   })
 })
 
@@ -42,7 +42,7 @@ describe('makeDomainProxyHandler', () => {
     cfg.perWebsiteOverride = { 'example.com': 'p1' }
     browser.tabs.get.mockResolvedValue({ id: 1, url: 'https://example.com/path' })
     const res = await makeDomainProxyHandler(cfg, browser.tabs.get)({ tabId: 1 } as any)
-    expect(res).toEqual([{ ...proxy, proxyDNS: false }, { type: 'direct' }])
+    expect(res).toEqual({ proxyInfo: [{ ...proxy, proxyDNS: false }, { type: 'direct' }], proxyId: 'p1' })
   })
 
   it('warns when proxy missing', async () => {
@@ -108,7 +108,7 @@ describe('makeDefaultProxyHandler', () => {
     const cfg = baseConfig()
     cfg.defaultProxy = 'p1'
     let res = await makeDefaultProxyHandler(cfg)()
-    expect(res).toEqual([{ ...proxy, proxyDNS: false }, { type: 'direct' }])
+    expect(res).toEqual({ proxyInfo: [{ ...proxy, proxyDNS: false }, { type: 'direct' }], proxyId: 'p1' })
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
     cfg.defaultProxy = undefined
     res = await makeDefaultProxyHandler(cfg)()

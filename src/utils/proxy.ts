@@ -61,17 +61,14 @@ export function makeTabProxyHandler (
   config: GeoBypassRuntimeSettings,
   tabProxyMap: Record<number, ProxyId> = {},
 ) {
-  return async function handleTabProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
+  return async function handleTabProxyRequest (requestInfo: Proxy.OnRequestDetailsType): Promise<ProxyDecision | undefined> {
     if (requestInfo.tabId === undefined) return
     const mapped = tabProxyMap[requestInfo.tabId]
     if (!mapped) return
     const proxy = resolveProxy(config, mapped)
     if (proxy) {
       console.info(`[${APP_NAME}Proxy] Tab ${requestInfo.tabId} mapped to proxy ${mapped}`)
-      return [
-        proxyInfoFor(proxy),
-        ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
-      ]
+      return { proxyInfo: proxyAnswer(proxy, config.fallbackDirect), proxyId: mapped }
     }
   }
 }
@@ -84,7 +81,7 @@ function overrideProxyIdForHost (overrides: unknown, hostname: string): string |
 export type TabLookup = (tabId: number) => Promise<Pick<Tabs.Tab, 'url'>>
 
 export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings, lookupTab: TabLookup) {
-  return async function handleDomainProxyRequest (requestInfo: Proxy.OnRequestDetailsType) {
+  return async function handleDomainProxyRequest (requestInfo: Proxy.OnRequestDetailsType): Promise<ProxyDecision | undefined> {
     if (requestInfo.tabId === undefined) return
     let tab
     try {
@@ -100,10 +97,7 @@ export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings, lookup
       const proxy = resolveProxy(config, overrideId)
       if (proxy) {
         console.info(`[${APP_NAME}Proxy] Domain override for "${hostname}" matched for tab ${requestInfo.tabId}`)
-        return [
-          proxyInfoFor(proxy),
-          ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
-        ]
+        return { proxyInfo: proxyAnswer(proxy, config.fallbackDirect), proxyId: overrideId }
       } else {
         console.warn(`[${APP_NAME}Proxy] Domain override proxy not found for "${hostname}"`)
       }
@@ -113,8 +107,12 @@ export function makeDomainProxyHandler (config: GeoBypassRuntimeSettings, lookup
 
 export type ProxyAnswer = Array<{ type: string; host?: string; port?: number }>
 
-export type RouteDecision = {
+export type ProxyDecision = {
   proxyInfo: ProxyAnswer;
+  proxyId?: ProxyId;
+};
+
+export type RouteDecision = ProxyDecision & {
   reason: RecordedRouteReason;
   rule?: RuleRef;
 };
@@ -223,7 +221,7 @@ function ruleDecision (
   reason: RecordedRouteReason,
   proxyInfo: ProxyAnswer,
 ): RouteDecision {
-  return { proxyInfo, reason, rule: { index: config.rules.indexOf(rule), name: rule.name } }
+  return { proxyInfo, proxyId: rule.proxyId, reason, rule: { index: config.rules.indexOf(rule), name: rule.name } }
 }
 
 function proxyAnswer (proxy: ProxyListItem, fallbackDirect: boolean | undefined): ProxyAnswer {
@@ -234,14 +232,11 @@ function proxyAnswer (proxy: ProxyListItem, fallbackDirect: boolean | undefined)
 }
 
 export function makeDefaultProxyHandler (config: GeoBypassSettings) {
-  return async () => {
+  return async (): Promise<ProxyDecision | undefined> => {
     const proxy = getProxyById(config.proxyList, config.defaultProxy)
     if (proxy) {
       console.info(`[${APP_NAME}Proxy] Default handler: Using ${proxy.type} proxy -> ${proxy.host}:${proxy.port}`)
-      return [
-        proxyInfoFor(proxy),
-        ...(config.fallbackDirect ? [{ type: 'direct' }] : []),
-      ]
+      return { proxyInfo: proxyAnswer(proxy, config.fallbackDirect), proxyId: config.defaultProxy }
     } else {
       console.warn(`[${APP_NAME}Proxy] Default handler: No default proxy set.`)
     }

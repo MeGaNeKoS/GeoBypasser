@@ -44,7 +44,7 @@ async function runRequest (
   reqUrl: string,
   type: any = 'script',
   tabMap: Record<number, string> = {},
-) {
+): Promise<any> {
   const tabHandler = makeTabProxyHandler(cfg, tabMap)
   const domainHandler = makeDomainProxyHandler(cfg, browser.tabs.get)
   const ruleHandler = makeProxyHandler(cfg)
@@ -56,9 +56,10 @@ async function runRequest (
     browser.tabs.get.mockResolvedValue({ id: tabId, url: tabUrl })
     res = await domainHandler(info)
   }
-  if (!res) res = await ruleHandler(info)
-  if (!res && defaultHandler) res = await defaultHandler()
-  return res as any
+  if (res) return res.proxyInfo
+  const ruleAnswer = await ruleHandler(info)
+  if (ruleAnswer) return ruleAnswer
+  return (await defaultHandler?.())?.proxyInfo
 }
 
 describe('proxy hierarchy scenarios', () => {
@@ -67,25 +68,25 @@ describe('proxy hierarchy scenarios', () => {
   it('1. tab rule takes priority', async () => {
     const cfg = baseConfig()
     const res = await runRequest(cfg, 1, 'https://example.com', 'https://external.org/api', 'script', { 1: 'p1' })
-    expect(res[0].id).toBe('p1')
+    expect(res?.[0]?.id).toBe('p1')
   })
 
   it('2. domain override beats rule', async () => {
     const cfg = baseConfig()
     const res = await runRequest(cfg, 2, 'https://example.com', 'https://external.org/api')
-    expect(res[0].id).toBe('p3')
+    expect(res?.[0]?.id).toBe('p3')
   })
 
   it('3. rule applied when no override', async () => {
     const cfg = baseConfig()
     const res = await runRequest(cfg, 3, 'https://othersite.com', 'https://external.org/api')
-    expect(res[0].id).toBe('p4')
+    expect(res?.[0]?.id).toBe('p4')
   })
 
   it('4. default proxy when nothing matches', async () => {
     const cfg = baseConfig()
     const res = await runRequest(cfg, 4, 'https://nomatch.example', 'https://nomatch.example')
-    expect(res[0].id).toBe('p2')
+    expect(res?.[0]?.id).toBe('p2')
   })
 
   it('5. direct connection if default absent', async () => {
@@ -115,13 +116,13 @@ describe('proxy hierarchy scenarios', () => {
     ]
     cfg.rules = compileRules(rules)
     const res = await runRequest(cfg, 3, 'https://othersite.com', 'https://cdn.force.me/file.js')
-    expect(res[0].id).toBe('p5')
+    expect(res?.[0]?.id).toBe('p5')
   })
 
   it('8. invalid tab mapping uses default', async () => {
     const cfg = baseConfig()
     const res = await runRequest(cfg, 5, 'https://example.com', 'https://external.org/api', 'script', { 5: 'missing' })
-    expect(res[0].id).toBe('p2')
+    expect(res?.[0]?.id).toBe('p2')
   })
 
   it('9. domain override missing proxy warns and falls through', async () => {

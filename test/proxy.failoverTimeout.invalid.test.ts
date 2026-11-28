@@ -34,8 +34,8 @@ describe('a stored failover timeout that is not a whole number of seconds, 1 or 
 
   it.each([0, -5, 2.5, '12'])('is omitted from the default handler result for %p', async value => {
     const res = await makeDefaultProxyHandler(configWith(proxyWith(value)))()
-    expect(res).toEqual([expect.anything()])
-    expect(res![0]).not.toHaveProperty('failoverTimeout')
+    expect(res?.proxyInfo).toEqual([expect.anything()])
+    expect(res!.proxyInfo[0]).not.toHaveProperty('failoverTimeout')
   })
 
   it.each([0, -5, 2.5, '12'])('gives failoverTimeoutFor no value for %p', value => {

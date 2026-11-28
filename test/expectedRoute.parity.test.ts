@@ -92,7 +92,7 @@ describe('expectedRoute matches the Chrome PAC route', () => {
   it.each(rows)('for %s', (_name, settings, url, expected) => {
     const route = expectedRoute(settings, url)
 
-    expect(route).toEqual(expected)
+    expect(route).toMatchObject(expected)
     expect(route.route).toBe(pacRouteOracle(settings, url))
   })
 })

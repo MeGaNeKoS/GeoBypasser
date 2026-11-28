@@ -37,7 +37,7 @@ function pathTreeKeys (paths: Record<string, PathNode>, prefix = ''): string[] {
 }
 
 function pathKeysOf (usage: NetworkUsage): string[] {
-  const page = requestLogPages(usage).find(p => p.page === FIXTURE_HOST)
+  const page = requestLogPages(usage, []).find(p => p.page === FIXTURE_HOST)
   const host = page?.rows.find(row => row.host === FIXTURE_HOST)
   return pathTreeKeys(host?.paths ?? {})
 }

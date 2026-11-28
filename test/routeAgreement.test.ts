@@ -114,8 +114,9 @@ async function firefoxRoute (row: Row): Promise<string> {
   const runtimeConfig = configFor(row)
   const handlers = [makeDomainProxyHandler(runtimeConfig, browser.tabs.get),makeProxyHandler(runtimeConfig), makeDefaultProxyHandler(runtimeConfig)]
   for (const handler of handlers) {
-    const result = await handler(requestInfo)
-    if (result !== undefined) return toPacRoute(result)
+    const answer = await handler(requestInfo)
+    const proxyInfo = answer && 'proxyInfo' in answer ? answer.proxyInfo : answer
+    if (proxyInfo !== undefined) return toPacRoute(proxyInfo)
   }
   return DIRECT
 }

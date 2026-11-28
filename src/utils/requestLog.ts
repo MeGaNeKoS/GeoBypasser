@@ -1,3 +1,4 @@
+import type { ProxyListItem } from '@customTypes/proxy'
 import { DIRECT_ROUTE } from './pacRoute'
 import {
   emptyHostUsage,
@@ -49,8 +50,10 @@ export type RequestLogPage = {
 
 const BLOCKED_STATUSES = [403, 451];
 const UNKNOWN_ROUTE_TEXT = 'Unknown route';
+const DIRECT_TEXT = 'Direct';
+const PAC_KEYWORD = /^\S+\s+/;
 
-export function requestLogPages (usage: NetworkUsage): RequestLogPage[] {
+export function requestLogPages (usage: NetworkUsage, proxies: ProxyListItem[]): RequestLogPage[] {
   const hostsByPage = new Map<string, Map<string, HostUsage>>();
   for (const tab of Object.values(usage)) {
     for (const [page, hosts] of Object.entries(tab)) {
@@ -61,7 +64,7 @@ export function requestLogPages (usage: NetworkUsage): RequestLogPage[] {
       }
     }
   }
-  return [...hostsByPage].map(([page, hosts]) => requestLogPage(page, hosts));
+  return [...hostsByPage].map(([page, hosts]) => requestLogPage(page, hosts, proxies));
 }
 
 export function resultLines (usage: HostUsage): ResultLine[] {
@@ -74,20 +77,31 @@ export function resultLines (usage: HostUsage): ResultLine[] {
   return lines.filter(isLine);
 }
 
-export function routeLabel (route: RecordedRoute): string {
+export function routeLabel (route: RecordedRoute, proxies: ProxyListItem[]): string {
   if (route.route === '') return UNKNOWN_ROUTE_TEXT;
-  const base = route.route === DIRECT_ROUTE ? 'Direct' : route.route;
+  const text = route.route === DIRECT_ROUTE ? DIRECT_TEXT : proxiedLabel(route, proxies);
+  return route.inferred ? `${text} (inferred)` : text;
+}
+
+function proxiedLabel (route: RecordedRoute, proxies: ProxyListItem[]): string {
+  const name = proxyNameFor(route, proxies);
   const phrase = reasonPhrase(route);
-  const withPhrase = phrase === undefined ? base : `${base} ${phrase}`;
-  return route.inferred ? `${withPhrase} (inferred)` : withPhrase;
+  return phrase === undefined ? name : `${name}, ${phrase}`;
+}
+
+function proxyNameFor (route: RecordedRoute, proxies: ProxyListItem[]): string {
+  const proxy = proxies.find(candidate => candidate.id === route.proxyId);
+  if (proxy?.label) return proxy.label;
+  if (proxy) return `${proxy.host}:${proxy.port}`;
+  return route.route.replace(PAC_KEYWORD, '');
 }
 
 export function formatProxiedShare (page: RequestLogPage): string {
   return `${formatBytes(page.proxiedBytes)} of ${formatBytes(page.totalBytes)}`;
 }
 
-function requestLogPage (page: string, hosts: Map<string, HostUsage>): RequestLogPage {
-  const rows = [...hosts].map(([host, hostUsage]) => requestLogRow(page, host, hostUsage));
+function requestLogPage (page: string, hosts: Map<string, HostUsage>, proxies: ProxyListItem[]): RequestLogPage {
+  const rows = [...hosts].map(([host, hostUsage]) => requestLogRow(page, host, hostUsage, proxies));
   const lines = rows.flatMap(row => row.routes);
   return {
     page,
@@ -97,14 +111,14 @@ function requestLogPage (page: string, hosts: Map<string, HostUsage>): RequestLo
   };
 }
 
-function requestLogRow (page: string, host: string, hostUsage: HostUsage): RequestLogRow {
+function requestLogRow (page: string, host: string, hostUsage: HostUsage, proxies: ProxyListItem[]): RequestLogRow {
   return {
     page,
     host,
     requests: hostUsage.count,
     types: typeCountsOf(hostUsage.types),
     results: resultLines(hostUsage),
-    routes: Object.values(hostUsage.routes).map(routeLine),
+    routes: Object.values(hostUsage.routes).map(tally => routeLine(tally, proxies)),
     sentBytes: hostUsage.sent,
     receivedBytes: hostUsage.received,
     unsizedCount: hostUsage.unsizedCount,
@@ -112,10 +126,10 @@ function requestLogRow (page: string, host: string, hostUsage: HostUsage): Reque
   };
 }
 
-function routeLine (tally: RouteTally): RouteLine {
+function routeLine (tally: RouteTally, proxies: ProxyListItem[]): RouteLine {
   const { route } = tally;
   return {
-    label: routeLabel(route),
+    label: routeLabel(route, proxies),
     reason: route.reason,
     count: tally.count,
     bytes: tally.bytes,
@@ -130,7 +144,7 @@ function reasonPhrase (route: RecordedRoute): string | undefined {
   switch (route.reason) {
     case 'rule':
     case 'bypass':
-      return `by rule "${route.rule?.name ?? ''}"`;
+      return `by rule '${route.rule?.name ?? ''}'`;
     case 'site':
       return 'by site proxy';
     case 'tab':
@@ -138,7 +152,7 @@ function reasonPhrase (route: RecordedRoute): string | undefined {
     case 'staticExtension':
       return 'for a static file';
     case 'default':
-      return route.route === DIRECT_ROUTE ? undefined : 'by default proxy';
+      return 'default proxy';
     case 'unknown':
       return undefined;
   }

@@ -7,7 +7,7 @@ const OTHER_PROXY_PROBE_SECONDS = 3
 
 const base = { id: 'p1', host: 'h', port: 8080, proxyDNS: true }
 
-function defaultRouteFor (proxy: ProxyListItem): Promise<unknown> {
+async function defaultRouteFor (proxy: ProxyListItem): Promise<unknown> {
   const config: GeoBypassRuntimeSettings = {
     proxyList: [proxy],
     defaultProxy: proxy.id,
@@ -16,7 +16,7 @@ function defaultRouteFor (proxy: ProxyListItem): Promise<unknown> {
     rules: [],
     perWebsiteOverride: {},
   }
-  return makeDefaultProxyHandler(config)()
+  return (await makeDefaultProxyHandler(config)())?.proxyInfo
 }
 
 describe('failover timeout when none is stored', () => {

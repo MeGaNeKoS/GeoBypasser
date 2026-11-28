@@ -117,12 +117,12 @@ describe('Firefox network adapter', () => {
     expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: RULE_PROXY_ROUTE, count: 1 })])
   })
 
-  it('marks the noted route inferred when the completed request carries no proxy info for it', () => {
+  it('records an absent proxy info on a completed request as observed direct against the noted proxy', () => {
     const monitor = monitorWithNotedRoute('req-5', RULE_PROXY_ROUTE)
 
     fire(browser.webRequest.onCompleted, completedDetails('req-5'))
 
-    expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: { ...RULE_PROXY_ROUTE, inferred: true }, count: 1 })])
+    expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: { reason: 'unknown', route: 'DIRECT', expected: false }, count: 1 })])
   })
 
   it('records a direct completed request as the noted direct route', () => {

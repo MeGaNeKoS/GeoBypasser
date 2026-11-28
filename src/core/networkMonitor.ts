@@ -84,8 +84,7 @@ function settleRoute (candidates: RouteCandidate[], observedRoute: string | unde
   if (observedRoute === undefined) return preferred ? inferredRoute(preferred) : UNKNOWN_ROUTE
   const matching = byPrecedence.find(candidate => candidate.route.route === observedRoute)
   if (matching) return matching.route
-  if (preferred) return inferredRoute(preferred)
-  if (observedRoute === DIRECT_ROUTE) return NO_LISTENER_ROUTE
+  if (observedRoute === DIRECT_ROUTE && candidates.length === 0) return NO_LISTENER_ROUTE
   return { reason: 'unknown', route: observedRoute, expected: false }
 }
 

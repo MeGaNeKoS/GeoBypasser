@@ -66,14 +66,24 @@ describe('network monitor recording', () => {
     expect(Object.values(host.routes)).toEqual([expect.objectContaining({ route: { ...RULE_ROUTE, inferred: true }, count: 1 })])
   })
 
-  it('marks the noted route inferred when the observed route is a different proxy', () => {
+  it('records an observed direct request as direct with an unknown reason when only a proxy was expected', () => {
     const monitor = monitorTab()
 
     monitor.noteRoute(REQUEST_ID, TAB_ID, RULE_ROUTE)
     monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: 'DIRECT' }))
 
     const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
-    expect(Object.values(host.routes)).toEqual([expect.objectContaining({ route: { ...RULE_ROUTE, inferred: true }, count: 1 })])
+    expect(Object.values(host.routes)).toEqual([expect.objectContaining({ route: { reason: 'unknown', route: 'DIRECT', expected: false }, count: 1 })])
+  })
+
+  it('records an observed proxy that differs from the expected proxy as observed, not inferred', () => {
+    const monitor = monitorTab()
+
+    monitor.noteRoute(REQUEST_ID, TAB_ID, RULE_ROUTE)
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ observedRoute: 'PROXY other.lan:3128' }))
+
+    const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
+    expect(Object.values(host.routes)).toEqual([expect.objectContaining({ route: { reason: 'unknown', route: 'PROXY other.lan:3128', expected: false }, count: 1 })])
   })
 
   it('settles on the lowest precedence route that matches the observed route, not the arrival order', () => {

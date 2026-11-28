@@ -1,3 +1,4 @@
+import type { ProxyListItem } from '@customTypes/proxy'
 import { addRequestToTab, emptyTabUsage, type NetworkUsage, type RecordedRoute, type RequestObservation } from '@utils/networkUsage'
 import { formatProxiedShare, requestLogPages, resultLines, routeLabel } from '@utils/requestLog'
 
@@ -5,6 +6,7 @@ const PAGE = 'page.example'
 const CDN = 'cdn.example.com'
 const RULE_ROUTE: RecordedRoute = { reason: 'rule', route: 'PROXY good.lan:8080', expected: true, rule: { index: 2, name: 'cdn' } }
 const DIRECT_DEFAULT: RecordedRoute = { reason: 'default', route: 'DIRECT', expected: false }
+const PROXIES = [{ id: 'good', label: 'good', host: 'good.lan', port: 8080 }] as ProxyListItem[]
 
 function observation (overrides: Partial<RequestObservation> = {}): RequestObservation {
   return {
@@ -35,7 +37,7 @@ describe('request log', () => {
       observation({ requestUrl: 'https://api.example.com/x', resourceType: 'xmlhttprequest' }),
     )
 
-    const [page] = requestLogPages(usage)
+    const [page] = requestLogPages(usage, PROXIES)
 
     expect(page.page).toBe(PAGE)
     expect(page.rows.map(row => row.host)).toEqual([CDN, 'api.example.com'])
@@ -48,7 +50,7 @@ describe('request log', () => {
     const second = usageOf(observation({ sentBytes: 1, receivedBytes: 2 }))
     const usage: NetworkUsage = { 1: first[1], 2: second[1] }
 
-    const [page] = requestLogPages(usage)
+    const [page] = requestLogPages(usage, PROXIES)
 
     expect(page.rows).toHaveLength(1)
     expect(page.rows[0].requests).toBe(2)
@@ -65,7 +67,7 @@ describe('request log', () => {
       observation({ fromCache: true }),
     )
 
-    const [row] = requestLogPages(usage)[0].rows
+    const [row] = requestLogPages(usage, PROXIES)[0].rows
 
     expect(row.results).toEqual([
       { kind: 'ok', text: '2 OK' },
@@ -79,29 +81,29 @@ describe('request log', () => {
   it('counts a 304 as OK and keeps a zero byte request as a row', () => {
     const usage = usageOf(observation({ statusCode: 304, receivedBytes: 0 }))
 
-    const [row] = requestLogPages(usage)[0].rows
+    const [row] = requestLogPages(usage, PROXIES)[0].rows
 
     expect(resultLines(usageOf(observation({ statusCode: 304 }))[1][PAGE][CDN])).toEqual([{ kind: 'ok', text: '1 OK' }])
     expect(row.host).toBe(CDN)
     expect(row.requests).toBe(1)
   })
 
-  it('words a rule route with its rule name and a site route plainly', () => {
+  it('names a route by its proxy label and reason, falling back to host and port for a missing proxy', () => {
     const usage = usageOf(
-      observation({ route: RULE_ROUTE }),
-      observation({ route: { reason: 'site', route: 'PROXY site.lan:9000', expected: false } }),
+      observation({ route: { ...RULE_ROUTE, proxyId: 'good' } }),
+      observation({ route: { reason: 'site', route: 'PROXY site.lan:9000', expected: false, proxyId: 'gone' } }),
     )
 
-    const labels = requestLogPages(usage)[0].rows[0].routes.map(line => line.label)
+    const labels = requestLogPages(usage, PROXIES)[0].rows[0].routes.map(line => line.label)
 
     expect(labels).toEqual([
-      'PROXY good.lan:8080 by rule "cdn"',
-      'PROXY site.lan:9000 by site proxy',
+      "good, by rule 'cdn'",
+      'site.lan:9000, by site proxy',
     ])
   })
 
   it('keeps the rule id and name on a rule route line', () => {
-    const [line] = requestLogPages(usageOf(observation({ route: RULE_ROUTE })))[0].rows[0].routes
+    const [line] = requestLogPages(usageOf(observation({ route: RULE_ROUTE })), PROXIES)[0].rows[0].routes
 
     expect(line).toMatchObject({ ruleId: 2, ruleName: 'cdn', proxied: true, expected: true })
   })
@@ -112,7 +114,7 @@ describe('request log', () => {
       observation({ route: DIRECT_DEFAULT, receivedBytes: 4000 }),
     )
 
-    const [page] = requestLogPages(usage)
+    const [page] = requestLogPages(usage, PROXIES)
 
     expect(page.proxiedBytes).toBe(1000)
     expect(page.totalBytes).toBe(5000)
@@ -120,10 +122,10 @@ describe('request log', () => {
   })
 
   it('words a direct default route as Direct', () => {
-    expect(routeLabel(DIRECT_DEFAULT)).toBe('Direct')
+    expect(routeLabel(DIRECT_DEFAULT, PROXIES)).toBe('Direct')
   })
 
   it('marks an inferred route as inferred', () => {
-    expect(routeLabel({ ...RULE_ROUTE, inferred: true })).toBe('PROXY good.lan:8080 by rule "cdn" (inferred)')
+    expect(routeLabel({ ...RULE_ROUTE, proxyId: 'good', inferred: true }, PROXIES)).toBe("good, by rule 'cdn' (inferred)")
   })
 })

@@ -10,7 +10,7 @@ import {
   makeDomainProxyHandler,
   makeProxyHandler,
   makeTabProxyHandler,
-  ProxyAnswer,
+  ProxyDecision,
   RouteDecision,
   RouteObserver,
   TabLookup,
@@ -64,19 +64,21 @@ export function createRouting (ports: RoutingPorts) {
         route: routeOfProxyInfo(decision.proxyInfo[0]),
         expected: false,
         rule: decision.rule,
+        proxyId: decision.proxyId,
       }, PROXY_HANDLER_SLOTS.indexOf(slot))
     }
   }
 
   function withFixedReason (
     slot: FixedReasonSlot,
-    handler: (requestInfo: Proxy.OnRequestDetailsType) => Promise<ProxyAnswer | undefined>,
+    handler: (requestInfo: Proxy.OnRequestDetailsType) => Promise<ProxyDecision | undefined>,
   ): ProxyRequestListener {
     const observe = observerFor(slot)
     return async requestInfo => {
-      const proxyInfo = await handler(requestInfo)
-      if (proxyInfo) observe(requestInfo, { proxyInfo, reason: FIXED_REASON_BY_SLOT[slot] })
-      return proxyInfo
+      const decision = await handler(requestInfo)
+      if (!decision) return undefined
+      observe(requestInfo, { ...decision, reason: FIXED_REASON_BY_SLOT[slot] })
+      return decision.proxyInfo
     }
   }
 

@@ -88,7 +88,7 @@ async function readView (): Promise<NetworkView> {
     return {
       kind: 'ready',
       tabs: webTabs.map((tab, index) => ({ ...tab, monitored: monitored[index] === true })),
-      pages: requestLogPages(usage),
+      pages: requestLogPages(usage, config.proxyList),
       rules: config.rules,
       proxyList: config.proxyList,
       chrome: !supportsProxyOnRequest,

@@ -7,6 +7,7 @@ export type RecordedRoute = {
   route: string;
   expected: boolean;
   rule?: RuleRef;
+  proxyId?: string;
   inferred?: boolean;
 };
 
@@ -181,5 +182,5 @@ function addToPath (node: PathNode, sent: number, received: number): void {
 }
 
 export function expectedRecordedRoute (expected: ExpectedRoute): RecordedRoute {
-  return { reason: expected.reason, route: expected.route, expected: true, rule: expected.rule };
+  return { reason: expected.reason, route: expected.route, expected: true, rule: expected.rule, proxyId: expected.proxyId };
 }

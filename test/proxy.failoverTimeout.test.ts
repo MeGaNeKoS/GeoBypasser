@@ -36,12 +36,12 @@ describe('stored failover timeout reaches the routing result', () => {
   it('is carried by the tab handler', async () => {
     const handler = makeTabProxyHandler(configWith(), { 1: 'p1' })
     const res = await handler({ tabId: 1, url: 'https://x', type: 'script' } as any)
-    expect(res).toEqual([expect.objectContaining({ failoverTimeout: STORED_FAILOVER_TIMEOUT_SECONDS })])
+    expect(res?.proxyInfo).toEqual([expect.objectContaining({ failoverTimeout: STORED_FAILOVER_TIMEOUT_SECONDS })])
   })
 
   it('is carried by the default handler', async () => {
     const res = await makeDefaultProxyHandler(configWith())()
-    expect(res).toEqual([expect.objectContaining({ failoverTimeout: STORED_FAILOVER_TIMEOUT_SECONDS })])
+    expect(res?.proxyInfo).toEqual([expect.objectContaining({ failoverTimeout: STORED_FAILOVER_TIMEOUT_SECONDS })])
   })
 
   it('is the value failoverTimeoutFor returns', () => {

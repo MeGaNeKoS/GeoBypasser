@@ -18,6 +18,7 @@ export type ExpectedRoute = {
   route: string;
   reason: RouteReason;
   rule?: RuleRef;
+  proxyId?: string;
 };
 
 const HTTPS_SCHEME = 'https:'
@@ -42,7 +43,7 @@ function siteRoute (config: GeoBypassRuntimeSettings, host: string): ExpectedRou
   for (const [domain, proxyId] of overridesMostSpecificFirst(usableOverrides(config.perWebsiteOverride))) {
     const proxy = resolveProxy(config, proxyId)
     if (proxy && isHostForDomain(host, domain.toLowerCase())) {
-      return { route: proxyToPac(proxy, Boolean(config.fallbackDirect)), reason: 'site' }
+      return { route: proxyToPac(proxy, Boolean(config.fallbackDirect)), reason: 'site', proxyId }
     }
   }
   return undefined
@@ -61,10 +62,11 @@ function ruleRoute (config: GeoBypassRuntimeSettings, seenUrl: string): Expected
 function ruleOutcome (config: GeoBypassRuntimeSettings, rule: ProxyRule, seenUrl: string): ExpectedRoute {
   const ref = { index: config.rules.indexOf(rule), name: rule.name }
   const proxyRoute = rulePacRoute(config, rule)
-  if (matchesAny(rule.forceProxyUrlPatterns ?? [], seenUrl)) return { route: proxyRoute, reason: 'rule', rule: ref }
+  const proxied = { route: proxyRoute, reason: 'rule' as const, rule: ref, proxyId: rule.proxyId }
+  if (matchesAny(rule.forceProxyUrlPatterns ?? [], seenUrl)) return proxied
   if (matchesAny(rule.bypassUrlPatterns ?? [], seenUrl)) return { route: DIRECT_ROUTE, reason: 'bypass', rule: ref }
   if (isStaticExtension(rule.staticExtensions, seenUrl)) return { route: DIRECT_ROUTE, reason: 'staticExtension', rule: ref }
-  return { route: proxyRoute, reason: 'rule', rule: ref }
+  return proxied
 }
 
 function rulePacRoute (config: GeoBypassRuntimeSettings, rule: ProxyRule): string {
@@ -86,6 +88,6 @@ function matchesAny (patterns: string[], seenUrl: string): boolean {
 
 function defaultRoute (config: GeoBypassRuntimeSettings): ExpectedRoute {
   const proxy = config.defaultProxy ? resolveProxy(config, config.defaultProxy) : null
-  const route = proxy ? proxyToPac(proxy, Boolean(config.fallbackDirect)) : DIRECT_ROUTE
-  return { route, reason: 'default' }
+  if (!proxy) return { route: DIRECT_ROUTE, reason: 'default' }
+  return { route: proxyToPac(proxy, Boolean(config.fallbackDirect)), reason: 'default', proxyId: config.defaultProxy }
 }

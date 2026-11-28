@@ -28,25 +28,25 @@ function usageOf (...observations: RequestObservation[]): NetworkUsage {
 
 describe('request log negative cases', () => {
   it('has no pages when nothing was recorded', () => {
-    expect(requestLogPages({})).toEqual([])
-    expect(requestLogPages({ 1: emptyTabUsage() })).toEqual([])
+    expect(requestLogPages({}, [])).toEqual([])
+    expect(requestLogPages({ 1: emptyTabUsage() }, [])).toEqual([])
   })
 
   it('words a route nobody reported as Unknown route, not proxied', () => {
-    const [page] = requestLogPages(usageOf(observation({ route: UNKNOWN_ROUTE })))
+    const [page] = requestLogPages(usageOf(observation({ route: UNKNOWN_ROUTE })), [])
 
     expect(page.rows[0].routes[0]).toMatchObject({ label: 'Unknown route', proxied: false })
   })
 
   it('does not count a direct request as proxied bytes', () => {
-    const [page] = requestLogPages(usageOf(observation({ receivedBytes: 500 })))
+    const [page] = requestLogPages(usageOf(observation({ receivedBytes: 500 })), [])
 
     expect(page.proxiedBytes).toBe(0)
     expect(page.totalBytes).toBe(500)
   })
 
   it('words 451 as blocked and other 4xx and 5xx as errors', () => {
-    const [row] = requestLogPages(usageOf(observation({ statusCode: 451 }), observation({ statusCode: 404 })))[0].rows
+    const [row] = requestLogPages(usageOf(observation({ statusCode: 451 }), observation({ statusCode: 404 })), [])[0].rows
 
     expect(row.results).toEqual([
       { kind: 'error', text: '1 errors (404)' },
@@ -55,12 +55,12 @@ describe('request log negative cases', () => {
   })
 
   it('counts a 301 redirect as OK', () => {
-    const [row] = requestLogPages(usageOf(observation({ statusCode: 301 })))[0].rows
+    const [row] = requestLogPages(usageOf(observation({ statusCode: 301 })), [])[0].rows
 
     expect(row.results).toEqual([{ kind: 'ok', text: '1 OK' }])
   })
 
   it('does not mark a direct route as proxied or inferred', () => {
-    expect(routeLabel({ ...DIRECT_DEFAULT, inferred: false })).toBe('Direct')
+    expect(routeLabel({ ...DIRECT_DEFAULT, inferred: false }, [])).toBe('Direct')
   })
 })
