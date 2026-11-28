@@ -7,7 +7,7 @@ const TAB_ID = 4
 const REQUEST_ID = 'req-1'
 const URL = 'https://cdn.example.com/a/file.bin'
 const DOCUMENT_URL = 'https://page.example/home'
-const RULE_ROUTE: RecordedRoute = { reason: 'rule', route: 'PROXY good.lan:8080', expected: false, rule: { index: 0, name: 'cdn' } }
+const EXPECTED_RULE_ROUTE: RecordedRoute = { reason: 'rule', route: 'PROXY good.lan:8080', expected: true, rule: { index: 0, name: 'cdn' } }
 
 type Listener = (details: unknown) => void
 
@@ -25,7 +25,7 @@ function setUp () {
   const routes: string[] = []
   registerChromeNetworkMonitor(monitor, async requestUrl => {
     routes.push(requestUrl)
-    return RULE_ROUTE
+    return EXPECTED_RULE_ROUTE
   })
   return { monitor, routes }
 }
@@ -42,6 +42,13 @@ function flushPromises () {
   return new Promise(resolve => setImmediate(resolve))
 }
 
+function completedDetails (responseHeaders: { name: string; value: string }[]) {
+  return {
+    tabId: TAB_ID, requestId: REQUEST_ID, url: URL, documentUrl: DOCUMENT_URL, type: 'image',
+    statusCode: 200, fromCache: false, responseHeaders,
+  }
+}
+
 describe('Chrome network adapter', () => {
   beforeEach(() => {
     for (const event of [browser.webRequest.onBeforeSendHeaders, browser.webRequest.onCompleted, browser.webRequest.onErrorOccurred]) {
@@ -49,79 +56,87 @@ describe('Chrome network adapter', () => {
     }
   })
 
-  it('records the request Content-Length as sent and the response Content-Length as received', () => {
+  it('records the request Content-Length as sent and the response Content-Length as received', async () => {
     const { monitor } = setUp()
 
     fire(browser.webRequest.onBeforeSendHeaders, {
       tabId: TAB_ID, requestId: REQUEST_ID, url: URL, requestHeaders: [header('Content-Length', '300')],
     })
-    fire(browser.webRequest.onCompleted, {
-      tabId: TAB_ID, requestId: REQUEST_ID, url: URL, documentUrl: DOCUMENT_URL, type: 'image',
-      statusCode: 200, fromCache: false, responseHeaders: [header('content-length', '4096')],
-    })
+    fire(browser.webRequest.onCompleted, completedDetails([header('content-length', '4096')]))
+    await flushPromises()
 
     expect(hostUsage(monitor).sent).toBe(300)
     expect(hostUsage(monitor).received).toBe(4096)
   })
 
-  it('counts a response without Content-Length as unsized', () => {
+  it('counts a response without Content-Length as unsized', async () => {
     const { monitor } = setUp()
 
-    fire(browser.webRequest.onCompleted, {
-      tabId: TAB_ID, requestId: REQUEST_ID, url: URL, documentUrl: DOCUMENT_URL, type: 'script',
-      statusCode: 200, fromCache: false, responseHeaders: [],
-    })
+    fire(browser.webRequest.onCompleted, completedDetails([]))
+    await flushPromises()
 
     expect(hostUsage(monitor).unsizedCount).toBe(1)
     expect(hostUsage(monitor).received).toBe(0)
   })
 
-  it('takes the sent bytes once, so a second completion for the same id sends nothing', () => {
+  it('takes the sent bytes once, so a second completion for the same id sends nothing', async () => {
     const { monitor } = setUp()
     fire(browser.webRequest.onBeforeSendHeaders, {
       tabId: TAB_ID, requestId: REQUEST_ID, url: URL, requestHeaders: [header('Content-Length', '300')],
     })
-    const completed = {
-      tabId: TAB_ID, requestId: REQUEST_ID, url: URL, documentUrl: DOCUMENT_URL, type: 'script',
-      statusCode: 200, fromCache: false, responseHeaders: [],
-    }
 
-    fire(browser.webRequest.onCompleted, completed)
-    fire(browser.webRequest.onCompleted, completed)
+    fire(browser.webRequest.onCompleted, completedDetails([]))
+    fire(browser.webRequest.onCompleted, completedDetails([]))
+    await flushPromises()
 
     expect(hostUsage(monitor).sent).toBe(300)
   })
 
-  it('records a failed request under its error with no received bytes', () => {
+  it('takes the sent bytes of a failed request once, so a later completion sends nothing more', async () => {
+    const { monitor } = setUp()
+    fire(browser.webRequest.onBeforeSendHeaders, {
+      tabId: TAB_ID, requestId: REQUEST_ID, url: URL, requestHeaders: [header('Content-Length', '300')],
+    })
+
+    fire(browser.webRequest.onErrorOccurred, {
+      tabId: TAB_ID, requestId: REQUEST_ID, url: URL, documentUrl: DOCUMENT_URL, type: 'image',
+      error: 'net::ERR_ABORTED', fromCache: false,
+    })
+    fire(browser.webRequest.onCompleted, completedDetails([]))
+    await flushPromises()
+
+    expect(hostUsage(monitor).sent).toBe(300)
+  })
+
+  it('records a failed request under its error with no received bytes', async () => {
     const { monitor } = setUp()
 
     fire(browser.webRequest.onErrorOccurred, {
       tabId: TAB_ID, requestId: REQUEST_ID, url: URL, documentUrl: DOCUMENT_URL, type: 'image',
       error: 'net::ERR_CONNECTION_RESET', fromCache: false,
     })
+    await flushPromises()
 
     expect(hostUsage(monitor).failures).toEqual({ 'net::ERR_CONNECTION_RESET': 1 })
     expect(hostUsage(monitor).received).toBe(0)
   })
 
-  it('asks the route of each request it sees for a monitored tab', async () => {
+  it('records the expected route of a completed request, asked at completion', async () => {
     const { monitor, routes } = setUp()
 
     fire(browser.webRequest.onBeforeSendHeaders, { tabId: TAB_ID, requestId: REQUEST_ID, url: URL, requestHeaders: [] })
+    expect(routes).toEqual([])
+    fire(browser.webRequest.onCompleted, completedDetails([]))
     await flushPromises()
-    fire(browser.webRequest.onCompleted, {
-      tabId: TAB_ID, requestId: REQUEST_ID, url: URL, documentUrl: DOCUMENT_URL, type: 'image',
-      statusCode: 200, fromCache: false, responseHeaders: [],
-    })
 
     expect(routes).toEqual([URL])
-    expect(Object.values(hostUsage(monitor).routes)).toEqual([{ route: { ...RULE_ROUTE, inferred: true }, count: 1 }])
+    expect(Object.values(hostUsage(monitor).routes)).toEqual([{ route: EXPECTED_RULE_ROUTE, count: 1 }])
   })
 
   it('does not ask for the route of a request on an unmonitored tab', async () => {
     const { routes } = setUp()
 
-    fire(browser.webRequest.onBeforeSendHeaders, { tabId: 99, requestId: REQUEST_ID, url: URL, requestHeaders: [] })
+    fire(browser.webRequest.onCompleted, { ...completedDetails([]), tabId: 99 })
     await flushPromises()
 
     expect(routes).toEqual([])

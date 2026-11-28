@@ -2,7 +2,7 @@ import type { NetworkMessage } from '@customTypes/messages'
 import { addRequestToTab, emptyTabUsage, UNKNOWN_ROUTE, type NetworkUsage, type RecordedRoute, type RequestObservation, type TabUsage } from '@utils/networkUsage'
 import { DIRECT_ROUTE } from '@utils/pacRoute'
 
-export type RequestOutcome = Omit<RequestObservation, 'route'> & { observedRoute?: string };
+export type RequestOutcome = Omit<RequestObservation, 'route'> & { observedRoute?: string; expectedRoute?: RecordedRoute };
 
 const NO_LISTENER_ROUTE: RecordedRoute = { reason: 'default', route: DIRECT_ROUTE, expected: false };
 
@@ -33,12 +33,12 @@ export function createNetworkMonitor () {
   }
 
   function recordRequest (tabId: number, requestId: string, outcome: RequestOutcome) {
-    const { observedRoute, ...observation } = outcome
+    const { observedRoute, expectedRoute, ...observation } = outcome
     const requests = candidatesByTab.get(tabId)
     const candidates = requests?.get(requestId) ?? []
     requests?.delete(requestId)
     if (!monitoredTabs.has(tabId)) return
-    addRequestToTab(tabUsageFor(tabId), { ...observation, route: settleRoute(candidates, observedRoute) })
+    addRequestToTab(tabUsageFor(tabId), { ...observation, route: expectedRoute ?? settleRoute(candidates, observedRoute) })
   }
 
   function tabUsageFor (tabId: number): TabUsage {

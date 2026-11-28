@@ -1,5 +1,5 @@
 import browser, { Types, WebRequest } from 'webextension-polyfill'
-import type { NetworkMonitor, RouteForRequest } from '@core/networkMonitor'
+import type { NetworkMonitor, RequestOutcome, RouteForRequest } from '@core/networkMonitor'
 import type { ProxyControlState } from '@customTypes/proxyControl'
 import { pageHostFor } from '@utils/networkUsage'
 import { APP_NAME } from '@constant/defaults'
@@ -72,12 +72,16 @@ export function registerChromeNetworkMonitor (monitor: NetworkMonitor, routeFor:
     return bytes
   }
 
+  function recordWithExpectedRoute (tabId: number, requestId: string, requestUrl: string, outcome: RequestOutcome) {
+    if (!monitor.isTabMonitored(tabId)) return
+    void routeFor(requestUrl).then(expectedRoute => monitor.recordRequest(tabId, requestId, { ...outcome, expectedRoute }))
+  }
+
   browser.webRequest.onBeforeSendHeaders.addListener(
     details => {
       if (!monitor.isTabMonitored(details.tabId)) return
       const bytes = contentLengthBytes(details.requestHeaders)
       if (bytes !== undefined) sentBytesByRequest.set(details.requestId, bytes)
-      void routeFor(details.url).then(route => monitor.noteRoute(details.requestId, details.tabId, route))
     },
     { urls: ['<all_urls>'] },
     ['requestHeaders'],
@@ -86,7 +90,7 @@ export function registerChromeNetworkMonitor (monitor: NetworkMonitor, routeFor:
   browser.webRequest.onCompleted.addListener(
     details => {
       const receivedBytes = contentLengthBytes(details.responseHeaders)
-      monitor.recordRequest(details.tabId, details.requestId, {
+      recordWithExpectedRoute(details.tabId, details.requestId, details.url, {
         pageHost: pageHostFor(details.url, details.documentUrl),
         requestUrl: details.url,
         resourceType: details.type,
@@ -103,7 +107,7 @@ export function registerChromeNetworkMonitor (monitor: NetworkMonitor, routeFor:
 
   browser.webRequest.onErrorOccurred.addListener(
     details => {
-      monitor.recordRequest(details.tabId, details.requestId, {
+      recordWithExpectedRoute(details.tabId, details.requestId, details.url, {
         pageHost: pageHostFor(details.url, details.documentUrl),
         requestUrl: details.url,
         resourceType: details.type,
