@@ -18,7 +18,7 @@ describe('valid entries from each import path', () => {
 
     const verdict = refuseConfigFile(file)
 
-    expect(verdict.messages).toEqual([])
+    expect(verdict.notes.map(note => note.text)).toEqual([])
     expect(verdict.accepted).toEqual(file)
   })
 
@@ -27,7 +27,7 @@ describe('valid entries from each import path', () => {
 
     const verdict = refuseRules([withExtensions])
 
-    expect(verdict.messages).toEqual([])
+    expect(verdict.notes.map(note => note.text)).toEqual([])
     expect(verdict.accepted).toEqual([withExtensions])
   })
 
@@ -36,21 +36,21 @@ describe('valid entries from each import path', () => {
 
     const verdict = refuseProxyItems([padded])
 
-    expect(verdict.messages).toEqual([])
+    expect(verdict.notes.map(note => note.text)).toEqual([])
     expect(verdict.accepted).toEqual([padded])
   })
 
   it('overrides import accepts a valid domain and proxy id', () => {
     const verdict = refuseOverrides({ 'example.com': 'p1' })
 
-    expect(verdict.messages).toEqual([])
+    expect(verdict.notes.map(note => note.text)).toEqual([])
     expect(verdict.accepted).toEqual({ 'example.com': 'p1' })
   })
 
   it('keep-alive import accepts a rule with a valid test URL', () => {
     const verdict = refuseKeepAliveRules({ p1: keepAlive })
 
-    expect(verdict.messages).toEqual([])
+    expect(verdict.notes.map(note => note.text)).toEqual([])
     expect(verdict.accepted).toEqual({ p1: keepAlive })
   })
 })
@@ -61,7 +61,7 @@ describe('a rule without an active field is imported as written', () => {
 
     const verdict = refuseRules([withoutActive])
 
-    expect(verdict.messages).toEqual([])
+    expect(verdict.notes.map(note => note.text)).toEqual([])
     expect(verdict.accepted).toEqual([withoutActive])
     expect('active' in verdict.accepted[0]).toBe(false)
   })

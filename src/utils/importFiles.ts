@@ -16,9 +16,17 @@ import {
   isValidTestUrl,
 } from '@utils/validity'
 
+export type ImportNoteKind = 'refused' | 'ignored'
+
+export interface ImportNote {
+  kind: ImportNoteKind
+  entry: string
+  text: string
+}
+
 export interface ImportResult<T> {
   accepted: T
-  messages: string[]
+  notes: ImportNote[]
 }
 
 const PATTERN_FIELDS = ['match', 'bypassUrlPatterns', 'forceProxyUrlPatterns'] as const
@@ -35,8 +43,16 @@ export function parseImportJson (text: string): unknown {
   }
 }
 
-function notImported (section: string, shape: string) {
-  return `${section} was not imported: the file does not hold ${shape}.`
+function refusal (entry: string, text: string): ImportNote {
+  return { kind: 'refused', entry, text }
+}
+
+function ignored (entry: string, text: string): ImportNote {
+  return { kind: 'ignored', entry, text }
+}
+
+function notImported (section: string, shape: string): ImportNote {
+  return refusal(section, `${section} was not imported: the file does not hold ${shape}.`)
 }
 
 function positionName (index: number) {
@@ -86,110 +102,111 @@ function ruleProblem (entry: unknown) {
 }
 
 export function refuseProxyItems (list: unknown): ImportResult<ProxyListItem[]> {
-  if (!Array.isArray(list)) return { accepted: [], messages: [notImported('Proxy list', 'a list of proxies')] }
+  if (!Array.isArray(list)) return { accepted: [], notes: [notImported('Proxy list', 'a list of proxies')] }
   const accepted: ProxyListItem[] = []
-  const messages: string[] = []
+  const notes: ImportNote[] = []
   list.forEach((entry, index) => {
     if (isValidProxyItem(entry)) {
       accepted.push(entry)
       return
     }
-    messages.push(`Proxy "${proxyName(entry, index)}" was not imported: ${proxyProblem(entry)}.`)
+    const name = proxyName(entry, index)
+    notes.push(refusal(name, `Proxy "${name}" was not imported: ${proxyProblem(entry)}.`))
   })
-  return { accepted, messages }
+  return { accepted, notes }
 }
 
 export function refuseRules (list: unknown): ImportResult<ProxyRule[]> {
-  if (!Array.isArray(list)) return { accepted: [], messages: [notImported('Rule list', 'a list of rules')] }
+  if (!Array.isArray(list)) return { accepted: [], notes: [notImported('Rule list', 'a list of rules')] }
   const accepted: ProxyRule[] = []
-  const messages: string[] = []
+  const notes: ImportNote[] = []
   list.forEach((entry, index) => {
     const name = entryName(entry, index)
     if (!isValidRule(entry)) {
-      messages.push(`Rule "${name}" was not imported: ${ruleProblem(entry)}.`)
+      notes.push(refusal(name, `Rule "${name}" was not imported: ${ruleProblem(entry)}.`))
       return
     }
     accepted.push(entry)
     if (!isValidStaticExtensions(entry.staticExtensions)) {
-      messages.push(`Rule "${name}" has a staticExtensions value that is not valid, so that setting is ignored.`)
+      notes.push(ignored(name, `Rule "${name}" has a staticExtensions value that is not valid, so that setting is ignored.`))
     }
   })
-  return { accepted, messages }
+  return { accepted, notes }
 }
 
 export function refuseOverrides (map: unknown): ImportResult<Record<string, string>> {
-  if (!isPlainObject(map)) return { accepted: {}, messages: [notImported('Website overrides', 'an object of domains')] }
+  if (!isPlainObject(map)) return { accepted: {}, notes: [notImported('Website overrides', 'an object of domains')] }
   const accepted: Record<string, string> = {}
-  const messages: string[] = []
+  const notes: ImportNote[] = []
   for (const [domain, proxyId] of Object.entries(map)) {
     if (isValidOverrideEntry(domain, proxyId)) {
       accepted[domain] = proxyId as string
     } else {
-      messages.push(`Website override "${domain}" was not imported: its domain or proxy is not valid.`)
+      notes.push(refusal(domain, `Website override "${domain}" was not imported: its domain or proxy is not valid.`))
     }
   }
-  return { accepted, messages }
+  return { accepted, notes }
 }
 
 export function refuseKeepAliveRules (map: unknown): ImportResult<KeepAliveProxyRule> {
-  if (!isPlainObject(map)) return { accepted: {}, messages: [notImported('Keep-alive rules', 'an object of proxies')] }
+  if (!isPlainObject(map)) return { accepted: {}, notes: [notImported('Keep-alive rules', 'an object of proxies')] }
   const accepted: KeepAliveProxyRule = {}
-  const messages: string[] = []
+  const notes: ImportNote[] = []
   for (const [proxyId, rule] of Object.entries(map)) {
     if (!isValidKeepAliveRule(rule)) {
-      messages.push(`Keep-alive rule for proxy "${proxyId}" was not imported: its active flag or tab URL patterns are not valid.`)
+      notes.push(refusal(proxyId, `Keep-alive rule for proxy "${proxyId}" was not imported: its active flag or tab URL patterns are not valid.`))
       continue
     }
     const keepAlive = rule as KeepAliveProxyRule[string]
     accepted[proxyId] = keepAlive
     if (keepAlive.testProxyUrl !== undefined && !isValidTestUrl(keepAlive.testProxyUrl)) {
-      messages.push(`Keep-alive rule for proxy "${proxyId}" has a test URL that is not valid, so that test URL is ignored.`)
+      notes.push(ignored(proxyId, `Keep-alive rule for proxy "${proxyId}" has a test URL that is not valid, so that test URL is ignored.`))
     }
   }
-  return { accepted, messages }
+  return { accepted, notes }
 }
 
 export function refuseConfigFile (obj: unknown): ImportResult<Partial<GeoBypassSettings>> {
   if (!isPlainObject(obj)) {
-    return { accepted: {}, messages: [notImported('Config file', 'a settings object')] }
+    return { accepted: {}, notes: [notImported('Config file', 'a settings object')] }
   }
   const accepted: Partial<GeoBypassSettings> = {}
-  const messages: string[] = []
+  const notes: ImportNote[] = []
 
   if ('proxyList' in obj) {
     const part = refuseProxyItems(obj.proxyList)
     accepted.proxyList = part.accepted
-    messages.push(...part.messages)
+    notes.push(...part.notes)
   }
   if ('rules' in obj) {
     const part = refuseRules(obj.rules)
     accepted.rules = part.accepted
-    messages.push(...part.messages)
+    notes.push(...part.notes)
   }
   if ('keepAliveRules' in obj) {
     const part = refuseKeepAliveRules(obj.keepAliveRules)
     accepted.keepAliveRules = part.accepted
-    messages.push(...part.messages)
+    notes.push(...part.notes)
   }
   if ('perWebsiteOverride' in obj) {
     const part = refuseOverrides(obj.perWebsiteOverride)
     accepted.perWebsiteOverride = part.accepted
-    messages.push(...part.messages)
+    notes.push(...part.notes)
   }
   if ('defaultProxy' in obj) {
     if (typeof obj.defaultProxy === 'string') accepted.defaultProxy = obj.defaultProxy
-    else messages.push('Default proxy was not imported: it is not a proxy id.')
+    else notes.push(refusal('Default proxy', 'Default proxy was not imported: it is not a proxy id.'))
   }
   if ('fallbackDirect' in obj) {
     if (typeof obj.fallbackDirect === 'boolean') accepted.fallbackDirect = obj.fallbackDirect
-    else messages.push('Fallback setting was not imported: it is not true or false.')
+    else notes.push(refusal('Fallback setting', 'Fallback setting was not imported: it is not true or false.'))
   }
   if ('testProxyUrl' in obj) {
     if (isValidTestUrl(obj.testProxyUrl)) accepted.testProxyUrl = obj.testProxyUrl
-    else messages.push(`Test URL "${String(obj.testProxyUrl)}" was not imported: it is not an http or https URL.`)
+    else notes.push(refusal('Test URL', `Test URL "${String(obj.testProxyUrl)}" was not imported: it is not an http or https URL.`))
   }
 
-  return { accepted, messages }
+  return { accepted, notes }
 }
 
 export type ImportableSetting = 'defaultProxy' | 'fallbackDirect' | 'testProxyUrl'

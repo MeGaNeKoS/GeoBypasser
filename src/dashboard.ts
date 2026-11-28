@@ -147,7 +147,7 @@ function alertImportMessages (messages: string[]) {
 
 async function importConfigObject (obj: unknown) {
   const verdict = refuseConfigFile(obj)
-  alertImportMessages(verdict.messages)
+  alertImportMessages(verdict.notes.map(note => note.text))
   await mergeConfigData(verdict.accepted)
 }
 

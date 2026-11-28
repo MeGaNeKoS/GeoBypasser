@@ -25,7 +25,7 @@ export async function importProxyFile (file: File): Promise<string[]> {
     running = await applyOne(running, proxy)
   }
   await saveProxyList(running)
-  return verdict.messages
+  return verdict.notes.map(note => note.text)
 }
 
 async function applyOne (list: ProxyListItem[], proxy: ProxyListItem): Promise<ProxyListItem[]> {

@@ -17,5 +17,5 @@ export async function importKeepAliveFile (file: File): Promise<string[]> {
     proxyId => `${storedProxyLabel(proxyList, proxyId) ?? proxyId} already has a keep-alive rule.`,
   )
   await changeKeepAliveMap(map => mapAfterImport(map, verdict.accepted, replaced))
-  return verdict.messages
+  return verdict.notes.map(note => note.text)
 }

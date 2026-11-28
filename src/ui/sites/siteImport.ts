@@ -14,5 +14,5 @@ export async function importSiteFile (file: File): Promise<string[]> {
     domain => `${domain} already has a site entry.`,
   )
   await changeSiteMap(map => mapAfterImport(map, verdict.accepted, replaced))
-  return verdict.messages
+  return verdict.notes.map(note => note.text)
 }

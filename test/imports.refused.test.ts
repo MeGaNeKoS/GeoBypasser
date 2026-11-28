@@ -11,9 +11,9 @@ describe('rules import refuses bypassResourceTypes that are not known names', ()
     const verdict = refuseRules([bad, rule])
 
     expect(verdict.accepted).toEqual([rule])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('"Bad types"')
-    expect(verdict.messages[0]).toContain('bypass resource types')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('"Bad types"')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('bypass resource types')
   })
 })
 
@@ -27,9 +27,9 @@ describe('rules import refuses proxyOnlyResourceTypes and proxyOnlyPageHostnames
     const verdict = refuseRules([bad, rule])
 
     expect(verdict.accepted).toEqual([rule])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('"Bad scope"')
-    expect(verdict.messages[0]).toContain(reason)
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('"Bad scope"')
+    expect(verdict.notes.map(note => note.text)[0]).toContain(reason)
   })
 })
 
@@ -37,26 +37,26 @@ describe('a refusal message names the entry by its name or label, or else by its
   it('names a rule by its name when the name is not empty', () => {
     const verdict = refuseRules([{ ...rule, name: 'Bad rule', match: ['not a pattern'] }])
 
-    expect(verdict.messages[0]).toContain('"Bad rule"')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('"Bad rule"')
   })
 
   it('names a rule with a blank name by its position in the list', () => {
     const verdict = refuseRules([rule, { ...rule, name: '   ', match: ['not a pattern'] }])
 
-    expect(verdict.messages[0]).toContain('"entry 2"')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('"entry 2"')
   })
 
   it('names a proxy by its label when the label is not empty', () => {
     const verdict = refuseProxyItems([{ ...proxy, label: 'Office', host: 'a:1; PROXY x:8080' }])
 
-    expect(verdict.messages[0]).toContain('"Office"')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('"Office"')
   })
 
   it('names a proxy without a label by its position, not by its host and port', () => {
     const verdict = refuseProxyItems([proxy, { ...proxy, label: '', host: 'a:1; PROXY x:8080' }])
 
-    expect(verdict.messages[0]).toContain('"entry 2"')
-    expect(verdict.messages[0]).not.toContain('a:1')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('"entry 2"')
+    expect(verdict.notes.map(note => note.text)[0]).not.toContain('a:1')
   })
 })
 
@@ -67,9 +67,9 @@ describe('an entry that would be set aside is refused by each path', () => {
     const verdict = refuseConfigFile({ rules: [bad, rule] })
 
     expect(verdict.accepted.rules).toEqual([rule])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('Bad rule')
-    expect(verdict.messages[0]).toContain('not a pattern')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('Bad rule')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('not a pattern')
   })
 
   it('rules import refuses a rule with a match pattern of "not a pattern" and keeps the valid rule', () => {
@@ -78,9 +78,9 @@ describe('an entry that would be set aside is refused by each path', () => {
     const verdict = refuseRules([bad, rule])
 
     expect(verdict.accepted).toEqual([rule])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('Bad rule')
-    expect(verdict.messages[0]).toContain('not a pattern')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('Bad rule')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('not a pattern')
   })
 
   it.each([
@@ -91,8 +91,8 @@ describe('an entry that would be set aside is refused by each path', () => {
     const verdict = refuseConfigFile({ proxyList: [bad, proxy] })
 
     expect(verdict.accepted.proxyList).toEqual([proxy])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('"entry 1"')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('"entry 1"')
   })
 
   it.each([
@@ -103,8 +103,8 @@ describe('an entry that would be set aside is refused by each path', () => {
     const verdict = refuseProxyItems([bad, proxy])
 
     expect(verdict.accepted).toEqual([proxy])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('"entry 1"')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('"entry 1"')
   })
 
   it('config file skips a test URL of www.google.com and imports the rest of the file', () => {
@@ -112,16 +112,16 @@ describe('an entry that would be set aside is refused by each path', () => {
 
     expect(verdict.accepted).not.toHaveProperty('testProxyUrl')
     expect(verdict.accepted.rules).toEqual([rule])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('www.google.com')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('www.google.com')
   })
 
   it('overrides import refuses a domain that is not valid and keeps the valid one', () => {
     const verdict = refuseOverrides({ 'exa mple.com': 'p1', 'example.com': 'p1' })
 
     expect(verdict.accepted).toEqual({ 'example.com': 'p1' })
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('exa mple.com')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('exa mple.com')
   })
 
   it('overrides import refuses keys that are not bare hostnames and keeps the bare one', () => {
@@ -133,7 +133,7 @@ describe('an entry that would be set aside is refused by each path', () => {
     })
 
     expect(verdict.accepted).toEqual({ 'example.com': 'p1' })
-    expect(verdict.messages).toHaveLength(3)
+    expect(verdict.notes.map(note => note.text)).toHaveLength(3)
   })
 
   it('keep-alive import refuses a rule with a tab URL that is not valid and keeps the valid one', () => {
@@ -142,16 +142,16 @@ describe('an entry that would be set aside is refused by each path', () => {
     const verdict = refuseKeepAliveRules({ p2: bad, p1: keepAlive })
 
     expect(verdict.accepted).toEqual({ p1: keepAlive })
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('p2')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('p2')
   })
 
   it('config file refuses a keep-alive rule with a tab URL that is not valid', () => {
     const verdict = refuseConfigFile({ keepAliveRules: { p2: { active: true, tabUrls: ['not valid!'] } } })
 
     expect(verdict.accepted.keepAliveRules).toEqual({})
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('p2')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('p2')
   })
 })
 
@@ -166,9 +166,10 @@ describe('a staticExtensions value that is not valid is kept and its setting ign
     const verdict = refuseConfigFile({ rules: [withExtensions] })
 
     expect(verdict.accepted.rules).toEqual([withExtensions])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('Images')
-    expect(verdict.messages[0]).toContain('ignored')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('Images')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('ignored')
+    expect(verdict.notes[0]).toMatchObject({ kind: 'ignored', entry: 'Images' })
   })
 
   it.each([
@@ -181,9 +182,9 @@ describe('a staticExtensions value that is not valid is kept and its setting ign
     const verdict = refuseRules([withExtensions])
 
     expect(verdict.accepted).toEqual([withExtensions])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('Images')
-    expect(verdict.messages[0]).toContain('ignored')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('Images')
+    expect(verdict.notes.map(note => note.text)[0]).toContain('ignored')
   })
 })
 
@@ -192,13 +193,13 @@ describe('a whole section of the wrong shape is refused with a message', () => {
     const verdict = refuseConfigFile(['not', 'an', 'object'])
 
     expect(verdict.accepted).toEqual({})
-    expect(verdict.messages).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
   })
 
   it('rules import that is not a list imports nothing', () => {
     const verdict = refuseRules('oops')
 
     expect(verdict.accepted).toEqual([])
-    expect(verdict.messages).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
   })
 })

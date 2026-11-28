@@ -8,5 +8,5 @@ export async function importRuleFile (file: File): Promise<string[]> {
   if (parsed === undefined) return [NOT_JSON_MESSAGE]
   const verdict = refuseRules((parsed as { rules?: unknown } | null)?.rules)
   await changeRuleList(list => [...list, ...verdict.accepted])
-  return verdict.messages
+  return verdict.notes.map(note => note.text)
 }

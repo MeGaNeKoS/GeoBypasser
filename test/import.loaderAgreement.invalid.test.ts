@@ -16,15 +16,15 @@ describe('a proxy needs an id and a supported type', () => {
     const verdict = refuseProxyItems([{ ...proxy, id: '' }])
 
     expect(verdict.accepted).toEqual([])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('it has no id')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('it has no id')
   })
 
   it('the import refuses a proxy whose type is not supported and names it', () => {
     const verdict = refuseProxyItems([{ ...proxy, type: 'ftp' }])
 
     expect(verdict.accepted).toEqual([])
-    expect(verdict.messages).toHaveLength(1)
-    expect(verdict.messages[0]).toContain('socks or http')
+    expect(verdict.notes.map(note => note.text)).toHaveLength(1)
+    expect(verdict.notes.map(note => note.text)[0]).toContain('socks or http')
   })
 })
