@@ -6,7 +6,8 @@ import type { ButtonVariant } from '../components/button'
 import { element } from '../dom'
 import type { Child } from '../dom'
 import { icon } from '../icons'
-import { setAsideOnlyHashFor } from '../shell/routes'
+import { SITE_SECTION_ID, hashForSection, setAsideOnlyHashFor } from '../shell/routes'
+import { openSiteEditor } from '../sites/siteSheet'
 
 type ActionOptions = {
   variant?: ButtonVariant
@@ -40,7 +41,7 @@ export function quickActions (sitesShown: boolean): HTMLElement {
   return buttonGroup(
     actionButton('Add rule', 'rules', null, { variant: 'primary' }, 'quick-add-rule'),
     actionButton('Add proxy', 'proxies', null, {}, 'quick-add-proxy'),
-    ...(sitesShown ? [actionButton('Add site', 'sites', 'addOverride', {}, 'quick-add-site')] : []),
+    ...(sitesShown ? [addSiteButton('Add site', {}, 'quick-add-site')] : []),
     actionButton('Import', 'import-export', 'importConfigBtn', {}, 'quick-import'),
     actionButton('Browse community rules', 'import-export', 'openCommunityImport', {}, 'quick-community'),
   )
@@ -58,7 +59,7 @@ export function getStartedCard (view: HomeView): HTMLElement {
       ]),
       setupStep(2, 'Choose what uses it', 'A rule for matching requests, one site, or everything by default.', choiceMade, [
         actionButton('Add a rule', 'rules', null, { disabled: !proxyAdded }, 'step-2-add-rule'),
-        ...(view.sitesShown ? [actionButton('Add a site', 'sites', 'addOverride', { disabled: !proxyAdded }, 'step-2-add-site')] : []),
+        ...(view.sitesShown ? [addSiteButton('Add a site', { disabled: !proxyAdded }, 'step-2-add-site')] : []),
         actionButton('Set a default', 'defaults', null, { disabled: !proxyAdded }, 'step-2-default'),
       ], proxyAdded ? undefined : 'Add a proxy first.'),
       setupStep(3, 'Check it works', 'Test a proxy. Then open a site and look at the popup.', false, [
@@ -138,6 +139,18 @@ function actionButton (label: string, section: string, controlId: string | null,
     disabled: options.disabled,
     focusKey,
     onClick: () => openSection(section, controlId),
+  })
+}
+
+function addSiteButton (label: string, options: ActionOptions, focusKey: string): HTMLButtonElement {
+  return button(label, {
+    variant: options.variant,
+    disabled: options.disabled,
+    focusKey,
+    onClick: () => {
+      location.hash = `#${hashForSection(SITE_SECTION_ID)}`
+      void openSiteEditor({})
+    },
   })
 }
 

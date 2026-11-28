@@ -8,4 +8,10 @@ describe('override rows built from a config with a mixed case key', () => {
       { domain: 'Mixed.Example.NET', invalid: false, faults: [], rawEntry: 'good', proxyLabel: 'Good', missingProxy: false },
     ])
   })
+
+  it('labels a site sent directly as Direct, not as a missing proxy', () => {
+    expect(overrideRows({ 'example.com': 'direct' }, [good])).toEqual([
+      { domain: 'example.com', invalid: false, faults: [], rawEntry: 'direct', proxyLabel: 'Direct', missingProxy: false },
+    ])
+  })
 })

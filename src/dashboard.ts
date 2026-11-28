@@ -11,7 +11,7 @@ import { supportsProxyOnRequest } from '@utils/env'
 import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
-import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, refuseOverrides, withAppliedSettings } from '@utils/importFiles'
+import { findSettingChanges, refuseConfigFile, refuseKeepAliveRules, withAppliedSettings } from '@utils/importFiles'
 import { chooseAppliedSettingChanges } from './settingChangeModal'
 import {
   KEEP_ALIVE_FORM_FIELDS,
@@ -22,14 +22,12 @@ import { buildConfigExport } from '@utils/exportFiles'
 import { isValidProxyItem } from '@utils/validity'
 import { markInvalid } from '@utils/fieldMarks'
 import {
-  isBareHostname,
   isValidTestUrl,
   validateHostnamePattern,
 } from '@utils/validity'
 import {
   canSaveDefaultProxy,
   canSaveKeepAliveRule,
-  canSaveOverride,
   canSaveTestUrl,
 } from '@utils/saveDecisions'
 import { keepAliveRows, overrideRows, proxyOptions, proxyRows, ruleRows } from '@utils/pageView'
@@ -39,7 +37,6 @@ import { downloadJsonFile } from '@ui/download'
 import { openProxyEditor } from '@ui/proxies/proxySheet'
 
 let config: Awaited<ReturnType<typeof getConfig>>
-const selectedOverrides = new Set<string>()
 const selectedKeepAlive = new Set<string>()
 let listTargetInput: HTMLInputElement | null = null
 let currentListValidator: (val: string) => boolean = () => true
@@ -224,89 +221,6 @@ function renderGeneral () {
     markInvalid(testUrl, !valid)
     if (valid) updateConfig({ testProxyUrl: testUrl.value })
   }
-}
-
-function renderOverrides () {
-  const tbody = document.querySelector('#overrideTable tbody') as HTMLElement | null
-  if (!tbody) return
-  tbody.innerHTML = ''
-  for (const { domain, proxyLabel } of overrideRows(config.perWebsiteOverride, config.proxyList)) {
-    const tr = document.createElement('tr')
-    const domainCell = document.createElement('td')
-    domainCell.textContent = domain
-    tr.appendChild(domainCell)
-
-    const proxyCell = document.createElement('td')
-    proxyCell.textContent = proxyLabel
-    tr.appendChild(proxyCell)
-
-    const selectCell = document.createElement('td')
-    selectCell.className = 'row-select'
-    const selChk = document.createElement('input')
-    selChk.type = 'checkbox'
-    selChk.dataset.select = domain
-    selectCell.appendChild(selChk)
-    tr.appendChild(selectCell)
-
-    const actionsCell = document.createElement('td')
-    actionsCell.className = 'row-actions'
-    const delBtn = document.createElement('button')
-    delBtn.dataset.domain = domain
-    delBtn.textContent = 'Delete'
-    actionsCell.appendChild(delBtn)
-    tr.appendChild(actionsCell)
-
-    tbody.appendChild(tr)
-    // attachRowHandlers(tr, document.getElementById('overrideTable') as HTMLTableElement,
-    //   document.getElementById('exportOverridesSelected') as HTMLElement)
-    delBtn.onclick = () => {
-      delete config.perWebsiteOverride[domain]
-      saveConfig(config).then(renderAll)
-    }
-    selChk.onchange = () => {
-      if (selChk.checked) selectedOverrides.add(domain)
-      else selectedOverrides.delete(domain)
-      updateSelectVisibility(
-        document.getElementById('overrideTable') as HTMLTableElement,
-        document.getElementById('exportOverridesSelected') as HTMLElement,
-        document.getElementById('deleteOverridesSelected') as HTMLElement,
-      )
-    }
-  }
-}
-
-function openOverrideModal () {
-  const modal = document.getElementById('overrideModal')!
-  const domain = document.getElementById('overrideDomain') as HTMLInputElement
-  const proxy = document.getElementById('overrideProxy') as HTMLSelectElement
-  domain.value = ''
-  proxy.innerHTML = ''
-  proxyOptions(config.proxyList).forEach(p => proxy.appendChild(createOption(p.id, p.label || p.host)))
-  proxy.value = proxyOptions(config.proxyList)[0]?.id || ''
-  markInvalid(proxy, false)
-  setValidation(domain, isBareHostname)
-  modal.classList.remove('hidden')
-}
-
-function closeOverrideModal () {
-  document.getElementById('overrideModal')!.classList.add('hidden')
-}
-
-function saveOverrideFromModal () {
-  const domainField = document.getElementById('overrideDomain') as HTMLInputElement
-  const proxyField = document.getElementById('overrideProxy') as HTMLSelectElement
-  const domain = domainField.value.trim()
-  const proxyId = proxyField.value
-  if (!canSaveOverride(domain, proxyId)) {
-    markInvalid(domainField, !isBareHostname(domain))
-    markInvalid(proxyField, !proxyId)
-    return
-  }
-  config.perWebsiteOverride[domain] = proxyId
-  saveConfig(config).then(() => {
-    renderAll()
-    closeOverrideModal()
-  })
 }
 
 function openKeepAliveModal (id?: string) {
@@ -709,50 +623,6 @@ async function confirmRemoteImport () {
   closeRemoteImportModal()
 }
 
-function exportOverrides (obj: Record<string, string>) {
-  downloadJsonFile('overrides.json', JSON.stringify({ perWebsiteOverride: obj }, null, 2))
-}
-
-function exportAllOverrides () {
-  exportOverrides(config.perWebsiteOverride)
-}
-
-function exportSelectedOverrides () {
-  const out: Record<string, string> = {}
-  selectedOverrides.forEach(d => {
-    const val = config.perWebsiteOverride[d]
-    if (val) out[d] = val
-  })
-  if (Object.keys(out).length === 0) exportAllOverrides()
-  else exportOverrides(out)
-}
-
-function deleteSelectedOverrides () {
-  selectedOverrides.forEach(domain => {
-    delete config.perWebsiteOverride[domain]
-  })
-  selectedOverrides.clear()
-  saveConfig(config).then(renderAll)
-}
-
-function handleImportOverrides (files: FileList | null) {
-  if (!files || !files[0]) return
-
-  files[0].text().then(t => {
-    try {
-      const parsed = JSON.parse(t)
-      const verdict = refuseOverrides(parsed?.perWebsiteOverride)
-      alertImportMessages(verdict.messages)
-      Object.assign(config.perWebsiteOverride, verdict.accepted)
-      saveConfig(config).then(renderAll)
-
-    } catch (e) {
-      console.error('Error importing overrides:', e)
-      alert('Failed to import overrides: invalid JSON')
-    }
-  })
-}
-
 function exportKeepAlive (obj: KeepAliveProxyRule) {
   downloadJsonFile('keepalive.json', JSON.stringify({ keepAliveRules: obj }, null, 2))
 }
@@ -1082,7 +952,6 @@ function renderAbout () {
 function renderAll () {
   renderGeneral()
   renderKeepAlive()
-  renderOverrides()
   renderDiagnostics()
   renderNetwork()
   renderAbout()
@@ -1097,14 +966,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (area !== 'local') return
     config = await getConfig()
     renderKeepAlive()
-    renderOverrides()
   })
   renderAll()
 
   if (!supportsProxyOnRequest) {
     document.getElementById('clearTabProxies')?.remove()
-    document.querySelector('button[data-tab="override"]')?.remove()
-    document.getElementById('override')?.remove()
     document.getElementById('aboutTabRule')?.remove()
     document.getElementById('aboutMainSiteRule')?.remove()
     document.getElementById('aboutTabAssignment')?.remove()
@@ -1118,14 +984,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
   })
 
-  document.getElementById('addOverride')?.addEventListener('click', openOverrideModal)
-  document.getElementById('exportOverridesSelected')?.addEventListener('click', exportSelectedOverrides)
-  document.getElementById('deleteOverridesSelected')?.addEventListener('click', deleteSelectedOverrides)
-  document.getElementById('exportOverridesAll')?.addEventListener('click', exportAllOverrides)
-  document.getElementById('importOverridesBtn')?.addEventListener('click', () =>
-    document.getElementById('importOverrides')?.click())
-  document.getElementById('importOverrides')?.addEventListener('change', ev =>
-    handleImportOverrides((ev.target as HTMLInputElement).files))
   document.getElementById('addKeepAliveRule')!.addEventListener('click', () => openKeepAliveModal())
   document.getElementById('exportKeepAliveSelected')!.addEventListener('click', exportSelectedKeepAlive)
   document.getElementById('deleteKeepAliveSelected')!.addEventListener('click', deleteSelectedKeepAlive)
@@ -1140,8 +998,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
   document.getElementById('saveList')!.addEventListener('click', saveListModal)
   document.getElementById('cancelList')!.addEventListener('click', closeListModal)
-  document.getElementById('saveOverride')?.addEventListener('click', saveOverrideFromModal)
-  document.getElementById('cancelOverride')?.addEventListener('click', closeOverrideModal)
   document.getElementById('saveKeepAlive')!.addEventListener('click', saveKeepAliveFromModal)
   document.getElementById('cancelKeepAlive')!.addEventListener('click', closeKeepAliveModal)
   document.getElementById('editKeepAlivePatterns')!.addEventListener('click', () =>

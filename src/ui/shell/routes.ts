@@ -1,12 +1,13 @@
 export const HOME_SECTION_ID = 'home'
 export const PROXY_SECTION_ID = 'proxy'
 export const RULES_SECTION_ID = 'rules'
+export const SITE_SECTION_ID = 'override'
 
 const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> = [
   [HOME_SECTION_ID, 'home'],
   [PROXY_SECTION_ID, 'proxies'],
   [RULES_SECTION_ID, 'rules'],
-  ['override', 'sites'],
+  [SITE_SECTION_ID, 'sites'],
   ['keepalive', 'keep-alive'],
   ['general', 'defaults'],
   ['diagnostics', 'test'],
@@ -17,7 +18,7 @@ const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> 
 
 export const SET_ASIDE_ONLY_QUERY = 'set-aside'
 
-const SET_ASIDE_SECTION_IDS: readonly string[] = [PROXY_SECTION_ID, RULES_SECTION_ID]
+const SET_ASIDE_SECTION_IDS: readonly string[] = [PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID]
 
 export function sectionIdForHash (hash: string): string {
   const name = pathOf(hash)

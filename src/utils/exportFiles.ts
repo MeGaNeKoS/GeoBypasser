@@ -20,6 +20,10 @@ export function buildProxiesExport (proxies: ProxyListItem[]) {
   return { proxyList: proxies }
 }
 
+export function buildSitesExport (perWebsiteOverride: Record<string, string>) {
+  return { perWebsiteOverride }
+}
+
 export function buildConfigExport (
   source: ConfigExportSource,
   selection: ConfigExportSelection,

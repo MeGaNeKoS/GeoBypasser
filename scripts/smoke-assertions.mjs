@@ -1,5 +1,5 @@
 import { canon, FIXTURE, serveImportFile, SET_ASIDE_EDIT_INDEXES, SET_ASIDE_PROXY, SET_ASIDE_RULE, sleep, STORAGE_WAIT_MS, UI_SETTLE_MS, URL_IMPORT_FILE, waitFor } from './smoke-fixture.mjs'
-import { clickKeepAliveActiveFor, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, confirmRuleInlineDelete, fillAndSaveOpenRuleSheet, importFromUrl, openNewRuleSheet, proxyHostMarkedInvalid, readLocalStorage, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
+import { clickKeepAliveActiveFor, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, clickSiteRowAction, confirmRuleInlineDelete, confirmSiteInlineDelete, fillAndSaveOpenRuleSheet, fillAndSaveOpenSiteSheet, importFromUrl, openNewRuleSheet, openNewSiteSheet, proxyHostMarkedInvalid, readLocalStorage, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
 
 const PROXY_LABEL_AFTER_EDIT = 'edited in proxies'
 
@@ -90,6 +90,32 @@ export async function checkRuleAddEditDelete (run, failures) {
   await run(confirmRuleInlineDelete)
   await waitFor(async () => canon((await run(readLocalStorage)).rules) === canon(before.rules), STORAGE_WAIT_MS, 'the deleted smoke rule to leave storage.local')
   console.log('rule added, edited, and deleted through the rules section; storage matches the starting list')
+}
+
+const SMOKE_SITE_DOMAIN = 'smoke.example'
+const SMOKE_SITE_RENAMED = 'smoke-renamed.example'
+const SMOKE_SITE_PROXY = 'proxy-good'
+
+export async function checkSiteAddEditDelete (run, failures) {
+  const before = await run(readLocalStorage)
+  const startingSites = before.perWebsiteOverride ?? {}
+  await run(openNewSiteSheet)
+  await run(fillAndSaveOpenSiteSheet, [SMOKE_SITE_DOMAIN, SMOKE_SITE_PROXY])
+  await waitFor(async () => (await run(readLocalStorage)).perWebsiteOverride?.[SMOKE_SITE_DOMAIN] === SMOKE_SITE_PROXY, STORAGE_WAIT_MS, 'the added site to reach storage.local')
+  await sleep(UI_SETTLE_MS)
+
+  await run(clickSiteRowAction, [SMOKE_SITE_DOMAIN, 'Edit'])
+  await run(fillAndSaveOpenSiteSheet, [SMOKE_SITE_RENAMED, SMOKE_SITE_PROXY])
+  await waitFor(async () => {
+    const sites = (await run(readLocalStorage)).perWebsiteOverride ?? {}
+    return sites[SMOKE_SITE_RENAMED] === SMOKE_SITE_PROXY && !(SMOKE_SITE_DOMAIN in sites)
+  }, STORAGE_WAIT_MS, 'the renamed site to reach storage.local under its new domain')
+  await sleep(UI_SETTLE_MS)
+
+  await run(clickSiteRowAction, [SMOKE_SITE_RENAMED, 'Delete'])
+  await run(confirmSiteInlineDelete)
+  await waitFor(async () => canon((await run(readLocalStorage)).perWebsiteOverride ?? {}) === canon(startingSites), STORAGE_WAIT_MS, 'the deleted smoke site to leave storage.local')
+  console.log('site added, renamed through the sites section, and deleted; storage matches the starting sites')
 }
 
 function expectedAfterRemoval () {

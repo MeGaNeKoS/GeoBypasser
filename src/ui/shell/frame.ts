@@ -8,8 +8,9 @@ import { renderHome } from '../home/home'
 import { icon, installSprite } from '../icons'
 import { renderProxySection, resetPasswordReveal } from '../proxies/proxySection'
 import { renderRuleSection } from '../rules/ruleSection'
+import { renderSiteSection } from '../sites/siteSection'
 import { clearSelections } from '../components/list-section'
-import { HOME_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
+import { HOME_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
 
 export type FrameOptions = {
   onSectionShown?: (sectionId: string) => void
@@ -25,7 +26,7 @@ const COMPACT_MENU_QUERY = '(max-width: 719.98px)'
 const COUNTED_SECTIONS: Partial<Record<string, keyof NavCounts>> = {
   proxy: 'proxies',
   [RULES_SECTION_ID]: 'rules',
-  override: 'sites',
+  [SITE_SECTION_ID]: 'sites',
   keepalive: 'keepAlive',
 }
 
@@ -91,6 +92,7 @@ async function renderSection (sectionId: string): Promise<void> {
   if (sectionId === HOME_SECTION_ID) await renderHome()
   if (sectionId === PROXY_SECTION_ID) await renderProxySection(setAsideOnly)
   if (sectionId === RULES_SECTION_ID) await renderRuleSection(setAsideOnly)
+  if (sectionId === SITE_SECTION_ID) await renderSiteSection(setAsideOnly)
 }
 
 function onStorageChanged (nav: FrameNav): void {

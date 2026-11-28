@@ -12,9 +12,9 @@ import { COMPONENT_TEST_PAGE, chromeKeyEvents, runComponentTestPage } from './sm
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
 import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
-import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkRuleRowsAfterReread, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
+import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkRuleRowsAfterReread, checkSiteAddEditDelete, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
-import { clickSelector } from './smoke-dashboard.mjs'
+import { clickSelector, siteSectionShowsChromeLimit } from './smoke-dashboard.mjs'
 import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -248,7 +248,8 @@ async function runSmoke (options) {
   await waitFor(() => findWorker(), STEP_TIMEOUT_MS, 'the service worker to start with the stored config')
   console.log('service worker started with the stored config')
 
-  await waitFor(() => evalIn(dashboard, 'document.querySelector(\'[data-tab="override"]\') === null'), STORAGE_WAIT_MS, 'the Chrome dashboard to drop the website overrides tab')
+  await runOnDashboard(clickSelector, ['[data-tab="override"]'])
+  await waitFor(() => runOnDashboard(siteSectionShowsChromeLimit), STORAGE_WAIT_MS, 'the Chrome dashboard to show the sites section as limited on Chrome')
   await checkHomeCase(() => runOnDashboard(readHomeState), SET_UP_CASE, failures)
   const tabs = await evalIn(dashboard, '[...document.querySelectorAll("[data-tab]")].map(b => b.dataset.tab)')
   for (const tab of tabs) {
@@ -268,6 +269,7 @@ async function runSmoke (options) {
   await checkProxyEditSurvivesRuleSave(runOnDashboard, failures)
   await checkRuleRowsAfterReread(runOnDashboard, failures)
   await checkRuleAddEditDelete(runOnDashboard, failures)
+  await checkSiteAddEditDelete(runOnDashboard, failures)
   await checkSetAsideEditSave(runOnDashboard, failures, () => runOnDashboard(() => location.reload()).catch(() => null))
   await checkSetAsideExports(runOnDashboard, failures)
   await checkSetAsideOnlyAndFocus(runOnDashboard, failures)

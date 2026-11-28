@@ -198,6 +198,31 @@ export function fillAndSaveOpenRuleSheet (name, match, proxyId) {
   Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Save').click()
 }
 
+export function openNewSiteSheet () {
+  document.querySelector('[data-tab="override"]').click()
+  Array.from(document.querySelectorAll('#overrideContent button')).find(button => button.textContent.trim() === 'Add site').click()
+}
+
+export function fillAndSaveOpenSiteSheet (domain, proxyId) {
+  document.querySelector('dialog.sheet input[name="domain"]').value = domain
+  document.querySelector('dialog.sheet select[name="proxyId"]').value = proxyId
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Save').click()
+}
+
+export function clickSiteRowAction (domain, label) {
+  const row = Array.from(document.querySelectorAll('#overrideContent li.row')).find(item => item.querySelector('strong')?.textContent === domain)
+  if (!row) throw new Error(`no site row for ${domain}`)
+  Array.from(row.querySelectorAll('button')).find(button => button.textContent.trim() === label).click()
+}
+
+export function confirmSiteInlineDelete () {
+  Array.from(document.querySelectorAll('#overrideContent .inline-confirm button')).find(button => button.textContent.trim() === 'Delete').click()
+}
+
+export function siteSectionShowsChromeLimit () {
+  return document.getElementById('overrideContent').textContent.includes('Limited on Chrome')
+}
+
 export function countProxyRows () {
   return document.querySelectorAll('#proxyContent li.row').length
 }

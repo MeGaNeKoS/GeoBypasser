@@ -16,6 +16,7 @@ type Entry = Record<string, any>
 
 const MISSING_TEXT = '(missing)'
 const NO_LABEL_TEXT = '(no label)'
+export const DIRECT_LABEL = 'Direct'
 
 function asEntry (value: unknown): Entry {
   return typeof value === 'object' && value !== null ? value as Entry : {}
@@ -75,7 +76,7 @@ export function ruleRows (list: unknown, proxyList: unknown) {
       name: asText(rule.name),
       match: Array.isArray(rule.match) ? rule.match.join(', ') : '',
       proxyLabel: rule.proxyId === DIRECT_PROXY_ID
-        ? 'Direct'
+        ? DIRECT_LABEL
         : proxy ? asText(proxy.label || proxy.host) : asText(rule.proxyId),
       missingProxy: !proxy,
     }
@@ -87,13 +88,14 @@ export function overrideRows (map: unknown, proxyList: unknown) {
   return Object.entries(asEntry(map)).map(([domain, proxyId]) => {
     const proxy = proxies.find(p => p.id === proxyId)
     const invalid = !isValidOverrideEntry(domain, proxyId)
+    const direct = proxyId === DIRECT_PROXY_ID
     return {
       domain,
       invalid,
       faults: invalid ? overrideReasons(domain, proxyId) : [],
       rawEntry: rawEntryText(proxyId),
-      proxyLabel: proxy ? asText(proxy.label || proxy.host) : asText(proxyId),
-      missingProxy: !proxy,
+      proxyLabel: direct ? DIRECT_LABEL : proxy ? asText(proxy.label || proxy.host) : asText(proxyId),
+      missingProxy: !direct && !proxy,
     }
   })
 }

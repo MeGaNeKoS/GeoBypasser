@@ -2,13 +2,12 @@ import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
 import { ruleFormFaults } from '@utils/ruleFaults'
 import { proxyFormFaults, proxyFormOf, storedProxyOf } from '@utils/proxyDraft'
 import { ruleFormOf, storedRuleOf } from '@utils/ruleDraft'
-import { isBareHostname, isValidFailoverTimeout, isValidProxyId, isValidStaticExtensions, isValidTestUrl, validateHostnamePattern } from '@utils/validity'
+import { siteFormFaults } from '@utils/siteDraft'
+import { isValidFailoverTimeout, isValidProxyId, isValidStaticExtensions, isValidTestUrl, validateHostnamePattern } from '@utils/validity'
 
 const PROXY_ID_FAULT = 'This proxy has no internal id, so rules and sites cannot use it. Open Fix and save to repair it.'
 const FAILOVER_TIMEOUT_IGNORED_NOTE = 'Failover timeout is not a whole number of seconds, 1 or more, so the default is used.'
 const STATIC_EXTENSIONS_IGNORED_NOTE = "'Never proxy files matching' is not a valid pattern, so it is ignored. The rule still works."
-const OVERRIDE_DOMAIN_FAULT = 'Domain is not a valid host name, such as example.com.'
-const OVERRIDE_PROXY_FAULT = 'No proxy is chosen for this site.'
 const KEEP_ALIVE_NO_TAB_URL_FAULT = 'Add at least one tab URL pattern.'
 const KEEP_ALIVE_ACTIVE_FAULT = 'Choose on or off.'
 const KEEP_ALIVE_TEST_URL_IGNORED_NOTE = 'Test URL is not valid, so the default test URL is used.'
@@ -55,10 +54,8 @@ export function staticExtensionsIgnoredNote (entry: unknown): string | undefined
 }
 
 export function overrideReasons (domain: string, proxyId: unknown): string[] {
-  return [
-    ...(isBareHostname(domain) ? [] : [OVERRIDE_DOMAIN_FAULT]),
-    ...(typeof proxyId === 'string' && proxyId !== '' ? [] : [OVERRIDE_PROXY_FAULT]),
-  ]
+  const chosenProxy = typeof proxyId === 'string' ? proxyId : ''
+  return siteFormFaults({ domain, proxyId: chosenProxy }).map(fault => fault.message)
 }
 
 export function keepAliveReasons (entry: unknown): string[] {

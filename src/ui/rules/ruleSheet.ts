@@ -1,10 +1,9 @@
 import type { ProxyRule } from '@customTypes/proxy'
-import { DIRECT_PROXY_ID } from '@constant/proxy'
-import { proxyOptions } from '@utils/pageView'
 import { faultFor, draftFlag, draftOf, draftValue, draftValues, openSheet } from '../components/sheet'
 import type { Draft, Fault } from '../components/sheet'
 import { switchControl } from '../components/controls'
-import { selectField, switchField, textField } from '../components/fields'
+import { switchField, textField } from '../components/fields'
+import { proxySelectField } from '../components/proxy-select'
 import { patternList } from '../components/pattern-list'
 import { element } from '../dom'
 import { faultRowsOf, ruleFormFaults } from '@utils/ruleFaults'
@@ -24,9 +23,6 @@ export type RuleEditorOptions = {
 
 const MATCH_PLACEHOLDER = '*://*.example.com/*'
 const MATCH_HELP = 'Matched by scheme and host, such as *://*.example.com/*. A path in the pattern is ignored.'
-const UNAVAILABLE_PREFIX = 'Unavailable: '
-const DIRECT_LABEL = 'Direct'
-const CHOOSE_PROXY_LABEL = 'Choose a proxy'
 
 export function openRuleEditor (options: RuleEditorOptions): void {
   const form = ruleFormOf(storedRuleOf(options.entry?.raw))
@@ -100,13 +96,5 @@ function activeField (form: RuleForm): HTMLElement {
 }
 
 function sendThroughField (form: RuleForm, proxyList: unknown, fault: string | undefined): HTMLElement {
-  const usable = proxyOptions(proxyList).map(proxy => ({ value: proxy.id, label: proxy.label || proxy.host }))
-  const known = form.proxyId === '' || form.proxyId === DIRECT_PROXY_ID || usable.some(option => option.value === form.proxyId)
-  const unavailable = known ? [] : [{ value: form.proxyId, label: `${UNAVAILABLE_PREFIX}${form.proxyId}`, disabled: true }]
-  const placeholder = form.proxyId === '' ? [{ value: '', label: CHOOSE_PROXY_LABEL }] : []
-  return selectField({
-    name: 'proxyId', label: 'Send through', fault,
-    options: [...placeholder, { value: DIRECT_PROXY_ID, label: DIRECT_LABEL }, ...usable, ...unavailable],
-    selected: form.proxyId,
-  })
+  return proxySelectField({ name: 'proxyId', label: 'Send through', proxyList, proxyId: form.proxyId, fault })
 }

@@ -1,5 +1,5 @@
 import { runStep, sleep, STORAGE_WAIT_MS, TAB_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
-import { captureDownload, clickSelector, readLocalStorage } from './smoke-dashboard.mjs'
+import { captureDownload, clickSelector, clickSiteRowAction, confirmSiteInlineDelete, readLocalStorage } from './smoke-dashboard.mjs'
 
 export const MIXED_KEY = 'Mixed.Example.NET'
 export const MIXED_HOST = 'mixed.example.net'
@@ -56,7 +56,7 @@ export async function storedKeysForHost (host) {
 }
 
 async function overrideRowLabels () {
-  return [...document.querySelectorAll('#overrideTable tbody tr td:first-child')].map(cell => cell.textContent)
+  return [...document.querySelectorAll('#overrideContent li.row strong')].map(name => name.textContent)
 }
 
 async function openOverrideTab (run) {
@@ -81,7 +81,8 @@ async function showMixedOverrideOnDashboard (run, reopenDashboard) {
 
 async function deleteMixedOverrideOnDashboard (run) {
   await waitForMixedOverrideRow(run)
-  await run(clickSelector, [`#overrideTable button[data-domain="${MIXED_KEY}"]`])
+  await run(clickSiteRowAction, [MIXED_KEY, 'Delete'])
+  await run(confirmSiteInlineDelete)
   await waitFor(async () => !(await storedOverrideKeys(run)).includes(MIXED_KEY), STORAGE_WAIT_MS, 'the dashboard delete to reach storage.local')
 }
 
@@ -90,7 +91,7 @@ async function exportMixedOverride (run, reopenDashboard) {
   await reopenDashboard()
   await openOverrideTab(run)
   await waitForMixedOverrideRow(run)
-  const text = await run(captureDownload, ['#exportOverridesAll'])
+  const text = await run(captureDownload, ['#overrideContent [data-focus-key="export-all"]'])
   if (text === null) throw new Error('the overrides export wrote no file')
   const exported = JSON.parse(text).perWebsiteOverride ?? {}
   if (exported[MIXED_KEY] !== MIXED_PROXY_ID) throw new Error(`the export holds the keys ${JSON.stringify(Object.keys(exported))}, not ${MIXED_KEY}`)
