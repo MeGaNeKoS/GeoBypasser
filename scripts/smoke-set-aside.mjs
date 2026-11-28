@@ -32,7 +32,12 @@ export async function checkSetAsideEditSave (run, failures, reopenDashboard) {
   if (hasCharacterKeys(saved.proxyList[textIndex])) failures.push('the text entry was saved with the characters of its text as keys')
   if (canon(saved.proxyList[objectIndex]) !== canon(before.proxyList[objectIndex])) failures.push('saving neighbouring set aside rows changed the empty object entry')
 
-  await run(clickSelector, ['#fallbackDirect'])
+  await run(clickSelector, ['[data-tab="general"]'])
+  await sleep(UI_SETTLE_MS)
+  await run(clickSelector, ['[data-field="fallbackDirect"]'])
+  await sleep(UI_SETTLE_MS)
+  await run(clickSelector, ['[data-tab="proxy"]'])
+  await sleep(UI_SETTLE_MS)
   await waitFor(async () => (await run(readLocalStorage)).fallbackDirect === !before.fallbackDirect, STORAGE_WAIT_MS, 'the unrelated General save to reach storage.local')
   if (canon((await run(readLocalStorage)).proxyList) !== canon(saved.proxyList)) failures.push('an unrelated General save changed the proxy list')
 

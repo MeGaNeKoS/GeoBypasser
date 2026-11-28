@@ -4,6 +4,7 @@ import { needsFixingPhrase } from '@utils/homeView'
 import { navCounts } from '@utils/pageView'
 import type { NavCount, NavCounts } from '@utils/pageView'
 import { element, replaceContent, requireElement } from '../dom'
+import { renderDefaultsSection } from '../defaults/defaultsSection'
 import { renderHome } from '../home/home'
 import { icon, installSprite } from '../icons'
 import { renderProxySection, resetPasswordReveal } from '../proxies/proxySection'
@@ -11,7 +12,7 @@ import { renderRuleSection } from '../rules/ruleSection'
 import { renderSiteSection } from '../sites/siteSection'
 import { renderKeepAliveSection } from '../keep-alive/keepAliveSection'
 import { clearSelections } from '../components/list-section'
-import { HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
+import { GENERAL_SECTION_ID, HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
 
 export type FrameOptions = {
   onSectionShown?: (sectionId: string) => void
@@ -95,6 +96,7 @@ async function renderSection (sectionId: string): Promise<void> {
   if (sectionId === RULES_SECTION_ID) await renderRuleSection(setAsideOnly)
   if (sectionId === SITE_SECTION_ID) await renderSiteSection(setAsideOnly)
   if (sectionId === KEEP_ALIVE_SECTION_ID) await renderKeepAliveSection(setAsideOnly)
+  if (sectionId === GENERAL_SECTION_ID) await renderDefaultsSection()
 }
 
 function onStorageChanged (nav: FrameNav): void {

@@ -501,6 +501,39 @@
   flex-basis: 100%;
 }
 
+.settings-card {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 480px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--surface);
+}
+
+.note-block {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 480px;
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-2);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+}
+
+.note-block__title,
+.note-block__body {
+  margin: 0;
+}
+
+.note-block__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
 .list-section {
   display: grid;
   gap: var(--space-3);

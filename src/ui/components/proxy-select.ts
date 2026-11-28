@@ -9,6 +9,7 @@ const SET_ASIDE_PROXY_HELP = 'This proxy is not used because it is invalid. Fix 
 export type ProxyChoices = {
   includeDirect: boolean;
   excludedProxyIds: readonly string[];
+  noneLabel?: string;
 }
 
 const ALL_PROXY_CHOICES: ProxyChoices = { includeDirect: true, excludedProxyIds: [] }
@@ -20,6 +21,8 @@ export type ProxySelectOptions = {
   proxyId: string;
   fault: string | undefined;
   choices?: ProxyChoices;
+  focusKey?: string;
+  onChange?: (value: string) => void;
 }
 
 export function proxySelectField (options: ProxySelectOptions): HTMLDivElement {
@@ -32,15 +35,21 @@ export function proxySelectField (options: ProxySelectOptions): HTMLDivElement {
     || (choices.includeDirect && options.proxyId === DIRECT_PROXY_ID)
   const storedLabel = storedProxyLabel(options.proxyList, options.proxyId)
   const unavailable = known ? [] : [{ value: options.proxyId, label: unavailableLabel(storedLabel, options.proxyId), disabled: true }]
-  const placeholder = options.proxyId === '' ? [{ value: '', label: CHOOSE_PROXY_LABEL }] : []
   return selectField({
     name: options.name,
     label: options.label,
     fault: options.fault,
     help: known || storedLabel === undefined ? undefined : SET_ASIDE_PROXY_HELP,
-    options: [...placeholder, ...directOffered, ...usable, ...unavailable],
+    options: [...emptyOptionFor(choices, options.proxyId), ...directOffered, ...usable, ...unavailable],
     selected: options.proxyId,
+    focusKey: options.focusKey,
+    onChange: options.onChange,
   })
+}
+
+function emptyOptionFor (choices: ProxyChoices, proxyId: string): { value: string; label: string }[] {
+  if (choices.noneLabel !== undefined) return [{ value: '', label: choices.noneLabel }]
+  return proxyId === '' ? [{ value: '', label: CHOOSE_PROXY_LABEL }] : []
 }
 
 function unavailableLabel (storedLabel: string | undefined, proxyId: string): string {

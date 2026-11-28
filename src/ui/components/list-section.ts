@@ -1,6 +1,7 @@
 import { element, focusableWithKey, replaceContent } from '../dom'
 import { icon } from '../icons'
 import { button } from './button'
+import { inlineConfirm } from './inline-confirm'
 import { badge, banner, skeletonRows, stateBlock, statusLine } from './feedback'
 import type { ListState } from './state-body'
 
@@ -234,12 +235,14 @@ class ListRegion {
   }
 
   private confirm (question: string, ids: string[], pendingKey: string): HTMLElement {
-    const cancelKey = `cancel-${pendingKey}`
-    return element('div', { class: 'inline-confirm', role: 'group', 'aria-label': 'Confirm delete' },
-      element('span', { class: 'inline-confirm__question' }, question),
-      button('Delete', { variant: 'danger', focusKey: `confirm-${pendingKey}`, onClick: () => this.remove(ids) }),
-      button('Cancel', { focusKey: cancelKey, onClick: () => this.cancelRemoval(pendingKey) }),
-    )
+    return inlineConfirm({
+      question,
+      confirmLabel: 'Delete',
+      groupLabel: 'Confirm delete',
+      pendingKey,
+      onConfirm: () => this.remove(ids),
+      onCancel: () => this.cancelRemoval(pendingKey),
+    })
   }
 
   private askRemoval (target: string | 'selection'): void {

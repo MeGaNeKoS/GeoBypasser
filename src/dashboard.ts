@@ -1,8 +1,6 @@
 import {
   getConfig,
   saveConfig,
-  saveTabProxyMap,
-  updateConfig,
 } from '@utils/storage'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import { testProxyConfigQueued } from '@utils/proxy'
@@ -16,12 +14,7 @@ import { chooseAppliedSettingChanges } from './settingChangeModal'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
 import { buildConfigExport } from '@utils/exportFiles'
 import { isValidProxyItem } from '@utils/validity'
-import { markInvalid } from '@utils/fieldMarks'
-import {
-  canSaveDefaultProxy,
-  canSaveTestUrl,
-} from '@utils/saveDecisions'
-import { keepAliveRows, overrideRows, proxyOptions, proxyRows, ruleRows } from '@utils/pageView'
+import { keepAliveRows, overrideRows, proxyRows, ruleRows } from '@utils/pageView'
 import { alertUnsavedChanges } from '@utils/saveFailure'
 import { mountDashboardFrame } from '@ui/shell/frame'
 import { downloadJsonFile } from '@ui/download'
@@ -72,30 +65,6 @@ function showDuplicateModal (name: string): Promise<'old' | 'new' | 'both'> {
     keepNew.addEventListener('click', onNew)
     keepBoth.addEventListener('click', onBoth)
   })
-}
-
-function renderGeneral () {
-  const select = document.getElementById('defaultProxy') as HTMLSelectElement
-  select.innerHTML = '<option value="">None</option>'
-  proxyOptions(config.proxyList).forEach(p => select.appendChild(createOption(p.id, p.label || p.host)))
-  select.value = config.defaultProxy || ''
-
-  const fallback = document.getElementById('fallbackDirect') as HTMLInputElement
-  fallback.checked = !!config.fallbackDirect
-
-  const testUrl = document.getElementById('testProxyUrl') as HTMLInputElement
-  testUrl.value = config.testProxyUrl
-  markInvalid(testUrl, false)
-
-  select.onchange = () => {
-    if (canSaveDefaultProxy(select.value, config.proxyList)) updateConfig({ defaultProxy: select.value || undefined })
-  }
-  fallback.onchange = () => updateConfig({ fallbackDirect: fallback.checked })
-  testUrl.onchange = () => {
-    const valid = canSaveTestUrl(testUrl.value)
-    markInvalid(testUrl, !valid)
-    if (valid) updateConfig({ testProxyUrl: testUrl.value })
-  }
 }
 
 async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
@@ -624,10 +593,6 @@ async function renderNetwork () {
   container.appendChild(buildList(stats.domains))
 }
 
-function clearTabProxies () {
-  saveTabProxyMap({})
-}
-
 function renderAbout () {
   const { name, version, description } = browser.runtime.getManifest()
   const nameEl = document.getElementById('aboutName')!
@@ -638,7 +603,6 @@ function renderAbout () {
 }
 
 function renderAll () {
-  renderGeneral()
   renderDiagnostics()
   renderNetwork()
   renderAbout()
@@ -656,7 +620,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAll()
 
   if (!supportsProxyOnRequest) {
-    document.getElementById('clearTabProxies')?.remove()
     document.getElementById('aboutTabRule')?.remove()
     document.getElementById('aboutMainSiteRule')?.remove()
     document.getElementById('aboutTabAssignment')?.remove()
@@ -720,8 +683,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('remoteImportCancel')!.addEventListener('click', closeRemoteImportModal)
   document.getElementById('remoteImportSelectAll')!.addEventListener('click', remoteSelectAll)
   document.getElementById('remoteImportUnselectAll')!.addEventListener('click', remoteUnselectAll)
-  const clearTabEl = document.getElementById('clearTabProxies')
-  clearTabEl?.addEventListener('click', clearTabProxies)
   document.getElementById('refreshNetwork')!.addEventListener('click', renderNetwork)
   document.getElementById('clearNetwork')!.addEventListener('click', async () => {
     await browser.runtime.sendMessage({ type: 'clearNetworkStats' }).catch(() => {})

@@ -57,8 +57,8 @@ export function readOpenSettingChange () {
   }
 }
 
-export function readFieldValue (fieldId) {
-  return document.getElementById(fieldId).value
+export function readFieldValue (fieldName) {
+  return document.querySelector(`[name="${fieldName}"]`)?.value
 }
 
 export function clickSettingChoice (choice) {

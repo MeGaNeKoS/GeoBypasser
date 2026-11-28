@@ -3,6 +3,7 @@ export const PROXY_SECTION_ID = 'proxy'
 export const RULES_SECTION_ID = 'rules'
 export const SITE_SECTION_ID = 'override'
 export const KEEP_ALIVE_SECTION_ID = 'keepalive'
+export const GENERAL_SECTION_ID = 'general'
 
 const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> = [
   [HOME_SECTION_ID, 'home'],
@@ -10,7 +11,7 @@ const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> 
   [RULES_SECTION_ID, 'rules'],
   [SITE_SECTION_ID, 'sites'],
   [KEEP_ALIVE_SECTION_ID, 'keep-alive'],
-  ['general', 'defaults'],
+  [GENERAL_SECTION_ID, 'defaults'],
   ['diagnostics', 'test'],
   ['network', 'network'],
   ['impexp', 'import-export'],

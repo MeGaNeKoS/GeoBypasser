@@ -16,6 +16,7 @@ export type FieldOptions = {
   fault?: string;
   mono?: boolean;
   badge?: HTMLElement;
+  focusKey?: string;
 }
 
 export type TextFieldOptions = FieldOptions & {
@@ -25,6 +26,7 @@ export type TextFieldOptions = FieldOptions & {
   placeholder?: string;
   suffix?: string;
   autocomplete?: string;
+  onChange?: (value: string) => void;
 }
 
 export type SelectOption = {
@@ -36,6 +38,7 @@ export type SelectOption = {
 export type SelectFieldOptions = FieldOptions & {
   options: SelectOption[];
   selected: string;
+  onChange?: (value: string) => void;
 }
 
 export function textField (options: TextFieldOptions): HTMLDivElement {
@@ -51,6 +54,7 @@ export function textField (options: TextFieldOptions): HTMLDivElement {
     'aria-invalid': options.fault ? 'true' : undefined,
     spellcheck: 'false',
   })
+  input.addEventListener('change', () => options.onChange?.(input.value))
   const control = options.suffix
     ? element('div', { class: 'field__suffix' }, input, element('span', {}, options.suffix))
     : input
@@ -69,6 +73,7 @@ export function selectField (options: SelectFieldOptions): HTMLDivElement {
     selected: option.value === options.selected,
     disabled: option.disabled,
   }, option.label)))
+  select.addEventListener('change', () => options.onChange?.(select.value))
   return fieldFrame(id, options, select, select)
 }
 
@@ -121,6 +126,7 @@ function togglePasswordVisibility (input: HTMLInputElement, show: HTMLButtonElem
 function fieldFrame (id: string, options: FieldOptions, control: Node, input: HTMLElement): HTMLDivElement {
   const describedBy = [options.help ? `${id}-help` : '', options.fault ? `${id}-error` : ''].filter(Boolean).join(' ')
   if (describedBy) input.setAttribute('aria-describedby', describedBy)
+  if (options.focusKey) input.dataset.focusKey = options.focusKey
   return element('div', { class: fieldClass(options) },
     element('div', { class: 'field__label-row' },
       element('label', { class: 'field__label', for: id }, options.label),

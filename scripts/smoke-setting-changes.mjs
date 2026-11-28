@@ -1,5 +1,5 @@
 import { serveImportFile, STORAGE_WAIT_MS, waitFor } from './smoke-fixture.mjs'
-import { clickSettingChoice, importFromUrl, pressEscapeInSettingChange, readFieldValue, readLocalStorage, readOpenSettingChange } from './smoke-dashboard.mjs'
+import { clickSelector, clickSettingChoice, importFromUrl, pressEscapeInSettingChange, readFieldValue, readLocalStorage, readOpenSettingChange } from './smoke-dashboard.mjs'
 
 const CHANGE_CHECK_URL = 'https://settings-check.example/'
 const CHANGE_CHECK_RULE = 'settings check rule'
@@ -35,9 +35,16 @@ function expectedSettingsAfterChoices (before) {
   return { defaultProxy: before.defaultProxy, fallbackDirect: true, testProxyUrl: before.testProxyUrl }
 }
 
+async function readShownTestUrl (run) {
+  await run(clickSelector, ['[data-tab="general"]'])
+  const shown = await waitFor(() => run(readFieldValue, ['testProxyUrl']), STORAGE_WAIT_MS, 'the Defaults test URL field')
+  await run(clickSelector, ['[data-tab="impexp"]'])
+  return shown
+}
+
 export async function checkSettingChanges (run, failures) {
   const before = await run(readLocalStorage)
-  const current = { ...before, testProxyUrl: await run(readFieldValue, ['testProxyUrl']) }
+  const current = { ...before, testProxyUrl: await readShownTestUrl(run) }
   const failuresBefore = failures.length
   const settingsFile = await serveImportFile(JSON.stringify(SETTINGS_IMPORT_FILE))
   try {
