@@ -11,8 +11,10 @@ import { renderProxySection, resetPasswordReveal } from '../proxies/proxySection
 import { renderRuleSection } from '../rules/ruleSection'
 import { renderSiteSection } from '../sites/siteSection'
 import { renderKeepAliveSection } from '../keep-alive/keepAliveSection'
+import { renderProxyTestSection } from '../proxy-test/proxyTestSection'
+import { onProxyControlStateChanged } from '../proxyControlState'
 import { clearSelections } from '../components/list-section'
-import { GENERAL_SECTION_ID, HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
+import { GENERAL_SECTION_ID, HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, TEST_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
 
 export type FrameOptions = {
   onSectionShown?: (sectionId: string) => void
@@ -49,6 +51,7 @@ export function mountDashboardFrame (options: FrameOptions = {}): void {
   document.addEventListener('keydown', event => closeMenuOnEscape(event, nav))
   window.addEventListener('hashchange', showCurrentHash)
   browser.storage.onChanged.addListener(() => onStorageChanged(nav))
+  onProxyControlStateChanged(() => void renderSection(sectionIdForHash(location.hash)))
   showCurrentHash()
   void refreshNavCounts(nav)
 }
@@ -97,6 +100,7 @@ async function renderSection (sectionId: string): Promise<void> {
   if (sectionId === SITE_SECTION_ID) await renderSiteSection(setAsideOnly)
   if (sectionId === KEEP_ALIVE_SECTION_ID) await renderKeepAliveSection(setAsideOnly)
   if (sectionId === GENERAL_SECTION_ID) await renderDefaultsSection()
+  if (sectionId === TEST_SECTION_ID) await renderProxyTestSection()
 }
 
 function onStorageChanged (nav: FrameNav): void {

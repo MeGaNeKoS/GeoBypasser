@@ -1,5 +1,3 @@
-import browser from 'webextension-polyfill'
-import type { ProxyControlState } from '@customTypes/proxyControl'
 import { supportsProxyOnRequest } from '@utils/env'
 import { homeViewFor } from '@utils/homeView'
 import type { HomeInput, HomeView } from '@utils/homeView'
@@ -7,6 +5,7 @@ import { getConfig, getTabProxyMap } from '@utils/storage'
 import { button } from '../components/button'
 import { stateBlock } from '../components/feedback'
 import { element, replaceContent, requireElement } from '../dom'
+import { readProxyControlState } from '../proxyControlState'
 import { getStartedCard, proxiesCard, quickActions, routesCard, statusCard, welcomeText } from './homeCards'
 
 const HOME_CONTAINER_ID = 'homeContent'
@@ -35,19 +34,13 @@ function showLoading (container: HTMLElement): void {
 }
 
 async function loadHomeInput (): Promise<HomeInput> {
-  const [settings, tabProxyMap, control] = await Promise.all([getConfig(), getTabProxyMap(), readControlState()])
+  const [settings, tabProxyMap, control] = await Promise.all([getConfig(), getTabProxyMap(), readProxyControlState()])
   return {
     settings,
     tabProxyMap,
     browser: supportsProxyOnRequest ? 'firefox' : 'chrome',
     control,
   }
-}
-
-async function readControlState (): Promise<ProxyControlState | undefined> {
-  if (supportsProxyOnRequest) return undefined
-  const response = await browser.runtime.sendMessage({ type: 'getProxyControl' }) as { state: ProxyControlState } | null | undefined
-  return response?.state
 }
 
 function homeBody (view: HomeView): HTMLElement {

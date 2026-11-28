@@ -12,6 +12,7 @@ import {
   readAttributeSelector,
   readLocalStorage,
   selectProxyRowByHost,
+  showTestSection,
 } from './smoke-dashboard.mjs'
 
 const CREDENTIAL_TEXTS = [CREDENTIAL_PROXY.username, CREDENTIAL_PROXY.password]
@@ -27,10 +28,10 @@ const PROXY_SHEET_INPUT_ATTRIBUTES = [
   { selector: 'input[name="password"]', attribute: 'type', expected: 'password' },
   { selector: 'input[name="password"]', attribute: 'autocomplete', expected: 'new-password' },
 ]
-const DIAGNOSTICS_INPUT_ATTRIBUTES = [
-  { selector: '#diagUser', attribute: 'autocomplete', expected: 'off' },
-  { selector: '#diagPass', attribute: 'type', expected: 'password' },
-  { selector: '#diagPass', attribute: 'autocomplete', expected: 'new-password' },
+const TEST_INPUT_ATTRIBUTES = [
+  { selector: 'input[name="testUsername"]', attribute: 'autocomplete', expected: 'off' },
+  { selector: 'input[name="testPassword"]', attribute: 'type', expected: 'password' },
+  { selector: 'input[name="testPassword"]', attribute: 'autocomplete', expected: 'new-password' },
 ]
 const PROXY_DUPLICATE_PROMPT = { isOpen: isProxyDuplicateSheetOpen, answer: [answerProxyDuplicateWithReplace, []] }
 const CONFIG_DUPLICATE_PROMPT = { isOpen: isDuplicateModalOpen, answer: [clickSelector, ['#duplicateKeepNew']] }
@@ -108,7 +109,9 @@ async function checkCredentialInputAttributes (run, failures) {
   await sleep(UI_SETTLE_MS)
   await checkInputAttributes(run, failures, PROXY_SHEET_INPUT_ATTRIBUTES)
   await run(closeOpenSheet)
-  await checkInputAttributes(run, failures, DIAGNOSTICS_INPUT_ATTRIBUTES)
+  await run(showTestSection)
+  await sleep(UI_SETTLE_MS)
+  await checkInputAttributes(run, failures, TEST_INPUT_ATTRIBUTES)
 }
 
 export async function checkCredentialWiring (run, failures) {

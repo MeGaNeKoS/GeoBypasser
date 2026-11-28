@@ -60,35 +60,7 @@
       <div id="networkTree" class="tree"></div>
     </section>
     <section id="diagnostics" class="tab">
-      <h2>Diagnostics</h2>
-      <p class="section-help">
-        Test proxy connectivity or add a new proxy from results.
-        <br>
-        <strong>Timeouts:</strong> Normal proxies timeout after <strong>5 seconds</strong>. HTTP proxies requiring authentication have a <strong>30 second</strong> timeout.
-      </p>
-      <label>Test URL <input type="text" id="diagTestUrl"></label>
-      <div>
-        <h3>Test Saved Proxy</h3>
-        <label>Proxy <select id="diagSelectProxy"></select></label>
-        <button id="diagTestSelected">Test</button>
-        <button id="diagEditSelected">Edit</button>
-      </div>
-      <div>
-        <h3>Test Custom Proxy</h3>
-        <label>Type
-          <select id="diagType">
-            <option value="http">http</option>
-            <option value="socks">socks5</option>
-          </select>
-        </label>
-        <label>Host <input type="text" id="diagHost"></label>
-        <label>Port <input type="number" id="diagPort" min="1" max="65535"></label>
-        <label>User <input type="text" id="diagUser" autocomplete="off"></label>
-        <label>Password <input type="password" id="diagPass" autocomplete="new-password"></label>
-        <button id="diagTestCustom">Test</button>
-        <button id="diagAddProxy">Add to List</button>
-      </div>
-      <pre id="diagResult"></pre>
+      <div id="testContent"></div>
     </section>
     <section id="impexp" class="tab">
       <h2>Import/Export</h2>

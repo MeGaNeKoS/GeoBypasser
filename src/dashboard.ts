@@ -3,10 +3,8 @@ import {
   saveConfig,
 } from '@utils/storage'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
-import { testProxyConfigQueued } from '@utils/proxy'
 import browser from 'webextension-polyfill'
 import { supportsProxyOnRequest } from '@utils/env'
-import { ProxyType } from '@customTypes/generic'
 import type { GeoBypassSettings } from '@customTypes/settings'
 import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
 import { findSettingChanges, refuseConfigFile, withAppliedSettings } from '@utils/importFiles'
@@ -18,7 +16,6 @@ import { keepAliveRows, overrideRows, proxyRows, ruleRows } from '@utils/pageVie
 import { alertUnsavedChanges } from '@utils/saveFailure'
 import { mountDashboardFrame } from '@ui/shell/frame'
 import { downloadJsonFile } from '@ui/download'
-import { openProxyEditor } from '@ui/proxies/proxySheet'
 
 let config: Awaited<ReturnType<typeof getConfig>>
 let networkAutoInterval: ReturnType<typeof setInterval> | null = null
@@ -27,13 +24,6 @@ let networkAutoInterval: ReturnType<typeof setInterval> | null = null
 
 function proxySignature (p: ProxyListItem) {
   return `${p.type}-${p.host}:${p.port}-${p.username || ''}`
-}
-
-function createOption (id: string, label: string) {
-  const opt = document.createElement('option')
-  opt.value = id
-  opt.textContent = label
-  return opt
 }
 
 function showDuplicateModal (name: string): Promise<'old' | 'new' | 'both'> {
@@ -517,50 +507,6 @@ function handleImportConfig (files: FileList | null) {
   })
 }
 
-async function runProxyTest (proxy: ProxyListItem) {
-  const result = document.getElementById('diagResult') as HTMLElement
-  result.textContent = 'Testing...'
-  const url = (document.getElementById('diagTestUrl') as HTMLInputElement).value || config.testProxyUrl
-  await testProxyConfigQueued(proxy, url, r => {
-    if (r.success) {
-      result.textContent = `Success for ${r.proxy}`
-    } else {
-      result.textContent = `Failed for ${r.proxy}: ${r.error}`
-    }
-  })
-}
-
-function getCustomProxyInput (): ProxyListItem | null {
-  const type = (document.getElementById('diagType') as HTMLSelectElement).value as ProxyType
-  const host = (document.getElementById('diagHost') as HTMLInputElement).value.trim()
-  const portStr = (document.getElementById('diagPort') as HTMLInputElement).value
-  const username = (document.getElementById('diagUser') as HTMLInputElement).value.trim()
-  const password = (document.getElementById('diagPass') as HTMLInputElement).value.trim()
-  const port = Number(portStr)
-  if (!host || !port) return null
-  const proxy: ProxyListItem = {
-    id: crypto.randomUUID(),
-    type,
-    host,
-    port,
-    proxyDNS: true,
-  }
-  if (username) proxy.username = username
-  if (password) proxy.password = password
-  return proxy
-}
-
-function renderDiagnostics () {
-  const select = document.getElementById('diagSelectProxy') as HTMLSelectElement
-  const testUrl = document.getElementById('diagTestUrl') as HTMLInputElement
-  select.innerHTML = ''
-  proxyRows(config.proxyList).filter(row => !row.invalid).forEach(({ index: idx, label: text }) => {
-    const opt = createOption(String(idx), text)
-    select.appendChild(opt)
-  })
-  testUrl.value = config.testProxyUrl
-}
-
 async function renderNetwork () {
   const container = document.getElementById('networkTree') as HTMLElement
   if (!container) return
@@ -603,7 +549,6 @@ function renderAbout () {
 }
 
 function renderAll () {
-  renderDiagnostics()
   renderNetwork()
   renderAbout()
 }
@@ -633,27 +578,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
   })
 
-  document.getElementById('diagTestSelected')!.addEventListener('click', () => {
-    const sel = document.getElementById('diagSelectProxy') as HTMLSelectElement
-    const idx = Number(sel.value)
-    const proxy = config.proxyList[idx]
-    if (proxy) runProxyTest(proxy)
-  })
-  document.getElementById('diagEditSelected')!.addEventListener('click', () => {
-    const sel = document.getElementById('diagSelectProxy') as HTMLSelectElement
-    const idx = Number(sel.value)
-    const proxy = config.proxyList[idx]
-    if (proxy) openProxyEditor({ entry: { proxy, position: idx } })
-  })
-  document.getElementById('diagTestCustom')!.addEventListener('click', () => {
-    const proxy = getCustomProxyInput()
-    if (proxy) runProxyTest(proxy)
-  })
-  document.getElementById('diagAddProxy')!.addEventListener('click', () => {
-    const proxy = getCustomProxyInput()
-    if (!proxy) return
-    openProxyEditor({ prefill: proxy })
-  })
   document.getElementById('openExportConfig')!.addEventListener('click', openExportConfigModal)
   document.getElementById('exportConfigConfirm')!.addEventListener('click', exportConfigFromModal)
   document.getElementById('exportConfigCancel')!.addEventListener('click', closeExportConfigModal)

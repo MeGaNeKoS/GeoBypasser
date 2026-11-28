@@ -1,13 +1,14 @@
 import { supportsProxyOnRequest } from '@utils/env'
-import { canSaveDefaultProxy, canSaveTestUrl } from '@utils/saveDecisions'
+import { canSaveDefaultProxy } from '@utils/saveDecisions'
 import { getConfig, saveTabProxyMap, updateConfig } from '@utils/storage'
 import { button } from '../components/button'
 import { switchControl } from '../components/controls'
 import { badge } from '../components/feedback'
-import { switchField, textField } from '../components/fields'
+import { switchField } from '../components/fields'
 import { inlineConfirm } from '../components/inline-confirm'
 import { otherExtensionsNote } from '../components/other-extensions-note'
 import { proxySelectField } from '../components/proxy-select'
+import { testUrlField } from '../components/test-url-field'
 import { element, replaceContent, requireElement } from '../dom'
 
 const DEFAULTS_CONTAINER_ID = 'defaultsContent'
@@ -15,8 +16,6 @@ const HEADING = 'Defaults'
 const DEFAULT_PROXY_LABEL = 'Default proxy'
 const NONE_LABEL = 'None'
 const FALLBACK_LABEL = 'If a proxy fails, connect directly'
-const TEST_URL_LABEL = 'Test URL'
-const TEST_URL_FAULT = 'Test URL must be an http or https address.'
 const TAB_PROXIES_LABEL = 'Tab proxies'
 const CLEAR_TAB_PROXIES_LABEL = 'Clear all tab proxies'
 const CLEAR_TAB_PROXIES_QUESTION = 'Clear all tab proxies?'
@@ -25,7 +24,6 @@ const CHROME_TAB_PROXIES_REASON = 'Chrome cannot set a proxy per tab.'
 
 type StoredConfig = Awaited<ReturnType<typeof getConfig>>
 
-let testUrlDraft: string | undefined
 let clearTabProxiesPending = false
 
 export async function renderDefaultsSection (focusKey?: string): Promise<void> {
@@ -60,36 +58,13 @@ function cardFields (config: StoredConfig): Node[] {
         focusKey: 'fallback-direct',
       }),
     }),
-    testUrlField(config),
+    testUrlField(config.testProxyUrl, renderDefaultsSection),
     tabProxiesField(),
   ]
 }
 
 function saveDefaultProxy (config: StoredConfig, proxyId: string): void {
   if (canSaveDefaultProxy(proxyId, config.proxyList)) void updateConfig({ defaultProxy: proxyId })
-}
-
-function testUrlField (config: StoredConfig): HTMLDivElement {
-  return textField({
-    name: 'testProxyUrl',
-    label: TEST_URL_LABEL,
-    type: 'url',
-    value: testUrlDraft ?? config.testProxyUrl,
-    mono: true,
-    fault: testUrlDraft === undefined ? undefined : TEST_URL_FAULT,
-    focusKey: 'test-url',
-    onChange: saveTestUrl,
-  })
-}
-
-function saveTestUrl (url: string): void {
-  if (!canSaveTestUrl(url)) {
-    testUrlDraft = url
-    void renderDefaultsSection()
-    return
-  }
-  testUrlDraft = undefined
-  void updateConfig({ testProxyUrl: url })
 }
 
 function tabProxiesField (): HTMLDivElement {

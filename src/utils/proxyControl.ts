@@ -15,3 +15,9 @@ export function proxyControlStateFor (levelOfControl: Types.LevelOfControl): Pro
 export function canApplyPac (state: ProxyControlState): boolean {
   return state === 'available'
 }
+
+const PROXY_TEST_CONTROL_STATES: readonly ProxyControlState[] = ['active', 'available']
+
+export function canRunProxyTests (state: ProxyControlState | undefined): boolean {
+  return state === undefined || PROXY_TEST_CONTROL_STATES.includes(state)
+}

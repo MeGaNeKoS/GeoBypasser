@@ -32,6 +32,10 @@ export function readAttributeSelector (selector, attribute) {
   return document.querySelector(selector).getAttribute(attribute)
 }
 
+export function showTestSection () {
+  location.hash = '#test'
+}
+
 export function checkEveryConfigExportItem () {
   for (const box of document.querySelectorAll('#exportConfigItems input[type="checkbox"]')) box.checked = true
 }
