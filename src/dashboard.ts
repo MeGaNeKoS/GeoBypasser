@@ -539,18 +539,8 @@ async function renderNetwork () {
   container.appendChild(buildList(stats.domains))
 }
 
-function renderAbout () {
-  const { name, version, description } = browser.runtime.getManifest()
-  const nameEl = document.getElementById('aboutName')!
-  const versionEl = document.getElementById('aboutVersion')!
-  nameEl.textContent = name
-  versionEl.textContent = version
-  document.getElementById('aboutSummary')!.textContent = description ?? ''
-}
-
 function renderAll () {
   renderNetwork()
-  renderAbout()
 }
 
 
@@ -565,10 +555,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAll()
 
   if (!supportsProxyOnRequest) {
-    document.getElementById('aboutTabRule')?.remove()
-    document.getElementById('aboutMainSiteRule')?.remove()
-    document.getElementById('aboutTabAssignment')?.remove()
-    document.getElementById('aboutDomainOverrides')?.remove()
     document.getElementById('networkHint')?.classList.remove('hidden')
   }
 
