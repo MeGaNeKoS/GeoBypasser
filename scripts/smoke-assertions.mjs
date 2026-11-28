@@ -1,7 +1,11 @@
 import { canon, CREDENTIAL_PROXY, FIXTURE, serveImportFile, SET_ASIDE_EDIT_INDEXES, SET_ASIDE_PROXY, SET_ASIDE_RULE, sleep, STORAGE_WAIT_MS, UI_SETTLE_MS, URL_IMPORT_FILE, waitFor } from './smoke-fixture.mjs'
-import { clickKeepAliveActiveFor, clickKeepAliveDeleteSelected, clickKeepAliveFocusKey, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, clickSiteRowAction, confirmKeepAliveInlineDelete, confirmRuleInlineDelete, confirmSiteInlineDelete, fillAndSaveOpenKeepAliveSheet, fillAndSaveOpenRuleSheet, fillAndSaveOpenSiteSheet, importFromUrl, openNewKeepAliveSheet, openNewRuleSheet, openNewSiteSheet, proxyHostMarkedInvalid, readLocalStorage, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectKeepAliveRowFor, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
+import { clickKeepAliveActiveFor, clickKeepAliveDeleteSelected, clickKeepAliveFocusKey, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, clickSiteRowAction, confirmKeepAliveInlineDelete, confirmRuleInlineDelete, confirmSiteInlineDelete, fillAndSaveOpenKeepAliveSheet, fillAndSaveOpenRuleSheet, fillAndSaveOpenSiteSheet, importFromUrl, isSheetOpen, openNewKeepAliveSheet, openNewRuleSheet, openNewSiteSheet, proxyHostMarkedInvalid, readLocalStorage, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectKeepAliveRowFor, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
 
 const PROXY_LABEL_AFTER_EDIT = 'edited in proxies'
+
+async function waitForOpenSheet (run, what) {
+  await waitFor(() => run(isSheetOpen), STORAGE_WAIT_MS, what)
+}
 
 async function setFirstProxyLabel (run, label) {
   await run(clickSelector, ['[data-tab="proxy"]'])
@@ -74,6 +78,7 @@ const SMOKE_RULE_PROXY = 'proxy-good'
 export async function checkRuleAddEditDelete (run, failures) {
   const before = await run(readLocalStorage)
   await run(openNewRuleSheet)
+  await waitForOpenSheet(run, 'the rule sheet to open')
   await run(fillAndSaveOpenRuleSheet, [SMOKE_RULE_NAME, SMOKE_RULE_MATCH, SMOKE_RULE_PROXY])
   await waitFor(async () => (await run(readLocalStorage)).rules.length === before.rules.length + 1, STORAGE_WAIT_MS, 'the added rule to reach storage.local')
   const added = (await run(readLocalStorage)).rules.at(-1)
@@ -100,6 +105,7 @@ export async function checkSiteAddEditDelete (run, failures) {
   const before = await run(readLocalStorage)
   const startingSites = before.perWebsiteOverride ?? {}
   await run(openNewSiteSheet)
+  await waitForOpenSheet(run, 'the site sheet to open')
   await run(fillAndSaveOpenSiteSheet, [SMOKE_SITE_DOMAIN, SMOKE_SITE_PROXY])
   await waitFor(async () => (await run(readLocalStorage)).perWebsiteOverride?.[SMOKE_SITE_DOMAIN] === SMOKE_SITE_PROXY, STORAGE_WAIT_MS, 'the added site to reach storage.local')
   await sleep(UI_SETTLE_MS)
@@ -206,6 +212,7 @@ const KEEP_ALIVE_SMOKE_TAB_URL_EDITED = 'smoke-edited.example'
 export async function checkKeepAliveAddEditDelete (run, failures) {
   const startingRules = (await run(readLocalStorage)).keepAliveRules ?? {}
   await run(openNewKeepAliveSheet)
+  await waitForOpenSheet(run, 'the keep-alive sheet to open')
   await run(fillAndSaveOpenKeepAliveSheet, [KEEP_ALIVE_SMOKE_PROXY, KEEP_ALIVE_SMOKE_TAB_URL])
   await waitFor(async () => (await run(readLocalStorage)).keepAliveRules?.[KEEP_ALIVE_SMOKE_PROXY]?.tabUrls?.includes(KEEP_ALIVE_SMOKE_TAB_URL) === true, STORAGE_WAIT_MS, 'the added keep-alive rule to reach storage.local')
   await sleep(UI_SETTLE_MS)

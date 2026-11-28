@@ -232,6 +232,10 @@ export function openNewSiteSheet () {
   Array.from(document.querySelectorAll('#overrideContent button')).find(button => button.textContent.trim() === 'Add site').click()
 }
 
+export function isSheetOpen () {
+  return document.querySelector('dialog.sheet[open]') !== null
+}
+
 export function fillAndSaveOpenSiteSheet (domain, proxyId) {
   document.querySelector('dialog.sheet input[name="domain"]').value = domain
   document.querySelector('dialog.sheet select[name="proxyId"]').value = proxyId
