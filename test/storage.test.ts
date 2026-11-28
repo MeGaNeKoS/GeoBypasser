@@ -1,4 +1,4 @@
-import { compileRules, getConfig, saveConfig, updateConfig } from '@utils/storage'
+import { compileRules, getConfig, updateConfig } from '@utils/storage'
 import { DEFAULT_SETTINGS } from '@constant/defaults'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 import type { GeoBypassRuntimeSettings, GeoBypassSettings } from '@customTypes/settings'
@@ -37,7 +37,7 @@ describe('getConfig', () => {
   })
 })
 
-describe('saveConfig and updateConfig', () => {
+describe('updateConfig saves', () => {
   const runtimeConfig: GeoBypassRuntimeSettings = {
     proxyList: [{ id: 'p1', type: 'http', host: 'h', port: 1, proxyDNS: true }],
     defaultProxy: 'p1',
@@ -50,7 +50,7 @@ describe('saveConfig and updateConfig', () => {
   it('stores only non-compiled fields', async () => {
     browser.storage.local.set.mockResolvedValue(undefined)
 
-    await saveConfig(runtimeConfig as unknown as GeoBypassSettings)
+    await updateConfig({ rules: runtimeConfig.rules as unknown as GeoBypassSettings['rules'] })
     expect(browser.storage.local.set).toHaveBeenCalled()
     const arg = browser.storage.local.set.mock.calls[0][0]
     expect(arg[STORAGE_KEYS.rules][0]).not.toHaveProperty('compiledMatch')

@@ -1,4 +1,4 @@
-import { getConfig, saveConfig } from '@utils/storage'
+import { getConfig, updateConfig } from '@utils/storage'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 import { browser } from './setup'
 
@@ -24,7 +24,7 @@ describe('a stored rule field named like a compiled field', () => {
     loadStored({ [STORAGE_KEYS.rules]: [{ name: 'ok', match: ['https://example.com/*'], proxyId: 'p1', compiledNote: 'kept' }] })
     const config = await getConfig()
     config.rules[0].active = false
-    await saveConfig(config)
+    await updateConfig({ rules: config.rules })
     expect(writtenValue(STORAGE_KEYS.rules)[0]).toHaveProperty('compiledNote', 'kept')
   })
 })
@@ -39,7 +39,7 @@ describe('stored proxy scope fields on a rule that is not edited', () => {
     loadStored({ [STORAGE_KEYS.rules]: [scoped, other] })
     const config = await getConfig()
     config.rules[1].active = false
-    await saveConfig(config)
+    await updateConfig({ rules: config.rules })
     expect(writtenValue(STORAGE_KEYS.rules)[0]).toEqual(scoped)
   })
 })

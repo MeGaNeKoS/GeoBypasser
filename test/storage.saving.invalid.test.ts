@@ -1,4 +1,4 @@
-import { getConfig, saveConfig, StorageWriteError, updateConfig } from '@utils/storage'
+import { getConfig, StorageWriteError, updateConfig } from '@utils/storage'
 import { STORAGE_KEYS } from '@constant/storageKeys'
 import { browser } from './setup'
 
@@ -8,8 +8,10 @@ const rawRules = [
   { name: 'third', match: ['https://example.org/*'], proxyId: 'p1', active: true },
 ]
 
+const setAsideProxy = { id: 'p1', type: 'http', host: 'a:1; PROXY x:8080', port: 80, proxyDNS: false }
+
 const stored: Record<string, unknown> = {
-  [STORAGE_KEYS.proxyList]: [{ id: 'p1', type: 'http', host: 'a:1; PROXY x:8080', port: 80, proxyDNS: false }],
+  [STORAGE_KEYS.proxyList]: [setAsideProxy],
   [STORAGE_KEYS.rules]: rawRules,
   [STORAGE_KEYS.perWebsiteOverride]: { 'example.com': 'p1' },
 }
@@ -31,12 +33,12 @@ beforeEach(() => {
   jest.clearAllMocks()
 })
 
-describe('saveConfig after a user edit', () => {
+describe('a rule edit saved through updateConfig', () => {
   it('stores every entry the user did not edit exactly as it was and in order', async () => {
     loadStored(stored)
     const config = await getConfig()
     config.rules[2].name = 'renamed'
-    await saveConfig(config)
+    await updateConfig({ rules: config.rules })
 
     const saved = writtenValue(STORAGE_KEYS.rules)
     expect(saved).toHaveLength(3)
@@ -45,20 +47,21 @@ describe('saveConfig after a user edit', () => {
     expect(saved[1]).not.toHaveProperty('compiledMatch')
     expect(saved[2]).toEqual({ ...rawRules[2], name: 'renamed' })
   })
+})
 
-  it('does not rewrite an unchanged proxy list, so a set aside proxy stays as stored', async () => {
+describe('a proxy list saved through updateConfig', () => {
+  it('keeps a set aside proxy exactly as stored', async () => {
     loadStored(stored)
     const config = await getConfig()
-    await saveConfig(config)
-    expect(browser.storage.local.set).not.toHaveBeenCalled()
+    await updateConfig({ proxyList: config.proxyList })
+    expect(writtenValue(STORAGE_KEYS.proxyList)).toEqual([setAsideProxy])
   })
 
   it('writes a changed proxy list with the set aside proxy still in it', async () => {
     loadStored(stored)
     const config = await getConfig()
     config.proxyList.push({ id: 'p2', type: 'http', host: 'two.lan', port: 3128, proxyDNS: false } as any)
-    await saveConfig(config)
-    const setAsideProxy = { id: 'p1', type: 'http', host: 'a:1; PROXY x:8080', port: 80, proxyDNS: false }
+    await updateConfig({ proxyList: config.proxyList })
     const added = { id: 'p2', type: 'http', host: 'two.lan', port: 3128, proxyDNS: false }
     expect(writtenValue(STORAGE_KEYS.proxyList)).toEqual([setAsideProxy, added])
   })
@@ -83,8 +86,8 @@ describe('a save whose write fails', () => {
     const config = await getConfig()
     config.perWebsiteOverride['example.com'] = 'p1'
     browser.storage.local.set.mockRejectedValueOnce(new Error('quota exceeded'))
-    await expect(saveConfig(config)).rejects.toBeInstanceOf(StorageWriteError)
-    await saveConfig(config)
+    await expect(updateConfig({ perWebsiteOverride: config.perWebsiteOverride })).rejects.toBeInstanceOf(StorageWriteError)
+    await updateConfig({ perWebsiteOverride: config.perWebsiteOverride })
     expect(browser.storage.local.set).toHaveBeenCalledTimes(2)
   })
 })
@@ -96,14 +99,6 @@ describe('a section of the wrong type that is not saved', () => {
     const written = (browser.storage.local.set.mock.calls as any[][]).flatMap(call => Object.keys(call[0]))
     expect(written).not.toContain(STORAGE_KEYS.rules)
   })
-
-  it('is not written by a full save that did not change it', async () => {
-    loadStored({ [STORAGE_KEYS.rules]: 'oops' })
-    const config = await getConfig()
-    await saveConfig(config)
-    const written = (browser.storage.local.set.mock.calls as any[][]).flatMap(call => Object.keys(call[0]))
-    expect(written).not.toContain(STORAGE_KEYS.rules)
-  })
 })
 
 describe('a section of the wrong type that the user saves', () => {
@@ -111,7 +106,7 @@ describe('a section of the wrong type that the user saves', () => {
     loadStored({ [STORAGE_KEYS.rules]: 'oops' })
     const config = await getConfig()
     config.rules.push({ name: 'new', match: ['https://example.net/*'], proxyId: 'p1' } as any)
-    await saveConfig(config)
+    await updateConfig({ rules: config.rules })
     const last = (browser.storage.local.set.mock.calls as any[][]).slice(-1)[0][0]
     expect(last[STORAGE_KEYS.rules]).toEqual([{ name: 'new', match: ['https://example.net/*'], proxyId: 'p1' }])
   })

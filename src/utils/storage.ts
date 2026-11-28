@@ -29,7 +29,6 @@ function safeCompile (pattern: string[] | string, options?: Partial<MatchPattern
   }
 }
 
-const storedSnapshot = new Map<string, string | undefined>()
 
 export function compileRules (rules: unknown[] = []): RuntimeProxyRule[] {
   return rules.map(rule => {
@@ -88,37 +87,16 @@ function toStoredRules (rules: unknown): unknown {
   return Array.isArray(rules) ? rules.map(omitCompiledFields) : rules
 }
 
-function sections (config: GeoBypassSettings): Record<string, unknown> {
-  return {
-    [STORAGE_KEYS.proxyList]: config.proxyList,
-    [STORAGE_KEYS.defaultProxy]: config.defaultProxy,
-    [STORAGE_KEYS.fallbackDirect]: config.fallbackDirect,
-    [STORAGE_KEYS.testProxyUrl]: config.testProxyUrl,
-    [STORAGE_KEYS.rules]: toStoredRules(config.rules),
-    [STORAGE_KEYS.keepAliveRules]: config.keepAliveRules,
-    [STORAGE_KEYS.perWebsiteOverride]: config.perWebsiteOverride,
-  }
-}
-
 export class StorageWriteError extends Error {}
 
-async function writeSections (values: Record<string, unknown>, onlyChanged: boolean) {
-  const update: Record<string, unknown> = {}
-  const serializedUpdate = new Map<string, string>()
-  for (const [key, value] of Object.entries(values)) {
-    const serialized = JSON.stringify(value)
-    if (onlyChanged && storedSnapshot.get(key) === serialized) continue
-    update[key] = value
-    serializedUpdate.set(key, serialized)
-  }
-  if (serializedUpdate.size === 0) return
+async function writeSections (values: Record<string, unknown>) {
+  if (Object.keys(values).length === 0) return
   try {
-    await browser.storage.local.set(update)
+    await browser.storage.local.set(values)
   } catch (cause) {
     const detail = cause instanceof Error ? cause.message : String(cause)
     throw new StorageWriteError(`Your last change was not saved to local storage: ${detail}`)
   }
-  for (const [key, serialized] of serializedUpdate) storedSnapshot.set(key, serialized)
   console.info(`[${APP_NAME}] Saved config to local storage.`)
 }
 
@@ -164,18 +142,9 @@ export function settingsFromSections (sections: StoredSections): GeoBypassRuntim
 
 export async function getConfig (): Promise<GeoBypassRuntimeSettings> {
   const config = settingsFromSections(await readStoredSections())
-
-  storedSnapshot.clear()
-  for (const [key, value] of Object.entries(sections(config))) {
-    storedSnapshot.set(key, JSON.stringify(value))
-  }
   console.info(`[${APP_NAME}] Compiled ${config.rules.length} rule(s) with patterns.`)
 
   return config
-}
-
-export async function saveConfig (config: GeoBypassSettings) {
-  await writeSections(sections(config), true)
 }
 
 export async function updateConfig (config: Partial<GeoBypassSettings>) {
@@ -187,7 +156,7 @@ export async function updateConfig (config: Partial<GeoBypassSettings>) {
   if ('rules' in config) update[STORAGE_KEYS.rules] = toStoredRules(config.rules)
   if ('keepAliveRules' in config) update[STORAGE_KEYS.keepAliveRules] = config.keepAliveRules
   if ('perWebsiteOverride' in config) update[STORAGE_KEYS.perWebsiteOverride] = config.perWebsiteOverride
-  await writeSections(update, false)
+  await writeSections(update)
 }
 
 export async function getTabProxyMap (): Promise<Record<number, ProxyId>> {
