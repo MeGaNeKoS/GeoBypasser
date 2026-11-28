@@ -1,8 +1,16 @@
 import { DIRECT_PROXY_ID } from '@constant/proxy'
-import type { KeepAliveProxyRule, ProxyRule } from '@customTypes/proxy'
-import { isProxyShownInvalid, isRuleShownInvalid } from '@utils/validity'
+import type { ProxyRule } from '@customTypes/proxy'
+import { isProxyShownInvalid, isRuleShownInvalid, isValidKeepAliveRule, isValidOverrideEntry } from '@utils/validity'
 import { isRuleActive, usableKeepAliveRules, usableOverrides, usableProxies, usableRules } from '@utils/usable'
-import { failoverTimeoutIgnoredNote, proxyReasons, ruleReasons, staticExtensionsIgnoredNote } from '@utils/setAsideReasons'
+import {
+  failoverTimeoutIgnoredNote,
+  keepAliveReasons,
+  keepAliveTestUrlIgnoredNote,
+  overrideReasons,
+  proxyReasons,
+  ruleReasons,
+  staticExtensionsIgnoredNote,
+} from '@utils/setAsideReasons'
 
 type Entry = Record<string, any>
 
@@ -76,26 +84,36 @@ export function ruleRows (list: unknown, proxyList: unknown) {
 
 export function overrideRows (map: unknown, proxyList: unknown) {
   const proxies = usableProxies(proxyList)
-  return Object.entries(usableOverrides(map)).map(([domain, proxyId]) => {
+  return Object.entries(asEntry(map)).map(([domain, proxyId]) => {
     const proxy = proxies.find(p => p.id === proxyId)
+    const invalid = !isValidOverrideEntry(domain, proxyId)
     return {
       domain,
-      proxyLabel: proxy ? asText(proxy.label || proxy.host) : proxyId,
+      invalid,
+      faults: invalid ? overrideReasons(domain, proxyId) : [],
+      rawEntry: rawEntryText(proxyId),
+      proxyLabel: proxy ? asText(proxy.label || proxy.host) : asText(proxyId),
+      missingProxy: !proxy,
     }
   })
 }
 
 export function keepAliveRows (map: unknown, proxyList: unknown) {
   const proxies = usableProxies(proxyList)
-  const raw = map as Record<string, KeepAliveProxyRule[string]>
-  return Object.entries(usableKeepAliveRules(map)).map(([proxyId, rule]) => {
+  return Object.entries(asEntry(map)).map(([proxyId, value]) => {
+    const rule = asEntry(value)
     const proxy = proxies.find(p => p.id === proxyId)
+    const invalid = !isValidKeepAliveRule(value)
     return {
       proxyId,
-      raw: raw[proxyId],
-      active: rule.active,
-      tabUrls: rule.tabUrls.join(', '),
-      testProxyUrl: rule.testProxyUrl || '',
+      raw: value,
+      invalid,
+      faults: invalid ? keepAliveReasons(value) : [],
+      ignoredNote: invalid ? undefined : keepAliveTestUrlIgnoredNote(value),
+      rawEntry: rawEntryText(value),
+      active: rule.active === true,
+      tabUrls: Array.isArray(rule.tabUrls) ? rule.tabUrls.map(asText).join(', ') : '',
+      testProxyUrl: asText(rule.testProxyUrl),
       proxyLabel: proxy ? asText(proxy.label || proxy.host) : proxyId,
       missingProxy: !proxy,
     }

@@ -69,14 +69,18 @@ describe('page views built from a config with wrong-type and set aside entries',
     expect(inactive.map(r => r.name)).toEqual(['off'])
   })
 
-  it('lists only usable website overrides with their proxy label', () => {
-    expect(overrideRows(perWebsiteOverride, proxyList)).toEqual([{ domain: 'c.example', proxyLabel: 'Good' }])
+  it('keeps every website override row and marks the set aside ones invalid', () => {
+    const rows = overrideRows(perWebsiteOverride, proxyList)
+    expect(rows.map(r => r.domain)).toEqual(['a.example', 'b.example', 'c.example', 'bad domain.example'])
+    expect(rows.map(r => r.invalid)).toEqual([true, true, false, true])
+    expect(rows[2]).toMatchObject({ proxyLabel: 'Good', missingProxy: false })
   })
 
-  it('lists only usable keep-alive rules, and each row writes to the stored entry', () => {
+  it('keeps every keep-alive row and marks the set aside ones invalid, each row writing to the stored entry', () => {
     const rows = keepAliveRows(keepAliveRules, proxyList)
-    expect(rows.map(r => r.proxyId)).toEqual(['good'])
-    expect(rows[0]).toMatchObject({ tabUrls: 'example.com', proxyLabel: 'Good', active: true })
-    expect(rows[0].raw).toBe(keepAliveRules.good)
+    expect(rows.map(r => r.proxyId)).toEqual(['a', 'b', 'c', 'd', 'good'])
+    expect(rows.map(r => r.invalid)).toEqual([true, true, true, true, false])
+    expect(rows[4]).toMatchObject({ tabUrls: 'example.com', proxyLabel: 'Good', active: true })
+    expect(rows[4].raw).toBe(keepAliveRules.good)
   })
 })
