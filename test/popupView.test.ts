@@ -1,12 +1,16 @@
 import {
   canTestFromPopup,
+  chromeSiteNote,
   defaultPopupScope,
   emptyRuleListText,
   hostForTabUrl,
+  monitorHintFor,
   needsFixingLine,
+  popupControlWarning,
   popupRuleRows,
   popupRuleSummary,
   popupScopeOptions,
+  popupTestResultLine,
   popupUsingLine,
 } from '@utils/popupView'
 import { compileRules } from '@utils/storage'
@@ -117,5 +121,30 @@ describe('the popup rule list text', () => {
   it('says how many rules need fixing, in the singular and the plural', () => {
     expect(needsFixingLine(1)).toBe('1 rule needs fixing.')
     expect(needsFixingLine(3)).toBe('3 rules need fixing.')
+  })
+})
+
+describe('popup copy for control, tests, and Chrome', () => {
+  it('offers the extensions page only when another extension is the cause', () => {
+    expect(popupControlWarning('overridden')).toEqual({
+      message: 'GeoBypass is not routing. Another extension controls proxy settings. Turn it off or remove it.',
+      actionLabel: 'Open extensions page',
+    })
+    expect(popupControlWarning('unavailable')).toEqual({
+      message: 'GeoBypass is not routing. A browser policy controls proxy settings. GeoBypass cannot change it.',
+    })
+  })
+
+  it('names the proxy a successful test connected through', () => {
+    expect(popupTestResultLine({ success: true, proxy: '203.0.113.7:1080' } as any)).toBe('Connected through 203.0.113.7:1080')
+  })
+
+  it('names the domain in the Chrome site note', () => {
+    expect(chromeSiteNote('video.example.com')).toContain('requests to video.example.com and its subdomains')
+  })
+
+  it('asks for DevTools to stay open only where monitoring needs it', () => {
+    expect(monitorHintFor(false)).toBe('Keep DevTools open while monitoring.')
+    expect(monitorHintFor(true)).toBeUndefined()
   })
 })

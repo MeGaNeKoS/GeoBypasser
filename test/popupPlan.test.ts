@@ -1,4 +1,4 @@
-import { canTestProxyId, planClearProxy, planSetProxy, ruleListWithActive } from '@utils/popupPlan'
+import { canTestProxyId, isRowStillAt, planClearProxy, planSetProxy, ruleListWithActive } from '@utils/popupPlan'
 import type { ProxyRule } from '@customTypes/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 
@@ -44,5 +44,10 @@ describe('toggling a rule in the popup', () => {
   it('returns the stored list with only the rule at that position changed', () => {
     const list = [rule('a'), rule('b', { active: false })]
     expect(ruleListWithActive(list, 1, true)).toEqual([rule('a'), rule('b', { active: true })])
+  })
+
+  it('finds a shown row still at its position when the stored rule has the same name and state', () => {
+    const list = [rule('a'), rule('b', { active: false })]
+    expect(isRowStillAt(list, { position: 1, name: 'b', active: false })).toBe(true)
   })
 })

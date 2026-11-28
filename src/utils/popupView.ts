@@ -1,4 +1,6 @@
 import { DIRECT_PROXY_ID } from '@constant/proxy'
+import type { ProxyTestResult } from '@customTypes/proxy'
+import type { NotInEffectState } from '@utils/controlNotice'
 import { DIRECT_LABEL, navCounts, popupRules } from '@utils/pageView'
 import { isRuleActive, usableProxies } from '@utils/usable'
 import { isValidRule } from '@utils/validity'
@@ -98,4 +100,31 @@ export function hostForTabUrl (url: string | undefined): string | undefined {
 export function needsFixingLine (needsFixing: number): string | null {
   if (needsFixing === 0) return null
   return needsFixing === 1 ? '1 rule needs fixing.' : `${needsFixing} rules need fixing.`
+}
+
+export type PopupWarning = { message: string; actionLabel?: string }
+
+const OTHER_EXTENSION_WARNING: PopupWarning = {
+  message: 'GeoBypass is not routing. Another extension controls proxy settings. Turn it off or remove it.',
+  actionLabel: 'Open extensions page',
+}
+
+const POLICY_WARNING: PopupWarning = {
+  message: 'GeoBypass is not routing. A browser policy controls proxy settings. GeoBypass cannot change it.',
+}
+
+export function popupControlWarning (state: NotInEffectState): PopupWarning {
+  return state === 'overridden' ? OTHER_EXTENSION_WARNING : POLICY_WARNING
+}
+
+export function popupTestResultLine (result: ProxyTestResult): string {
+  return result.success ? `Connected through ${result.proxy}` : `Failed: ${result.error}`
+}
+
+export function chromeSiteNote (domain: string): string {
+  return `A site proxy covers requests to ${domain} and its subdomains, not other hosts the page loads from. Per tab proxies and Test proxy here are Firefox only.`
+}
+
+export function monitorHintFor (supportsPerTabProxy: boolean): string | undefined {
+  return supportsPerTabProxy ? undefined : 'Keep DevTools open while monitoring.'
 }

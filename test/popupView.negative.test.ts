@@ -1,4 +1,4 @@
-import { hostForTabUrl, needsFixingLine, popupRuleRows, popupRuleSummary, popupUsingLine } from '@utils/popupView'
+import { hostForTabUrl, needsFixingLine, popupRuleRows, popupRuleSummary, popupTestResultLine, popupUsingLine } from '@utils/popupView'
 import type { ProxyListItem } from '@customTypes/proxy'
 
 const setAside: ProxyListItem = { id: 'broken', label: 'Broken' } as any
@@ -60,5 +60,11 @@ describe('the popup host without a usable URL', () => {
   it('has no host when the tab has no URL or it does not parse', () => {
     expect(hostForTabUrl(undefined)).toBeUndefined()
     expect(hostForTabUrl('not a url')).toBeUndefined()
+  })
+})
+
+describe('the popup test result line when the test fails', () => {
+  it('names the error instead of a proxy', () => {
+    expect(popupTestResultLine({ success: false, proxy: '', error: 'Connection refused' } as any)).toBe('Failed: Connection refused')
   })
 })

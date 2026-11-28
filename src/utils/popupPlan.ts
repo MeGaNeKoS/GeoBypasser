@@ -1,7 +1,9 @@
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import type { ProxyRule } from '@customTypes/proxy'
-import type { PopupScope } from '@utils/popupView'
+import type { PopupRuleRow, PopupScope } from '@utils/popupView'
 import { canSaveOverride, canToggleRule } from '@utils/saveDecisions'
+import { isRuleActive } from '@utils/usable'
+import { isValidRule } from '@utils/validity'
 
 export type PopupTarget = {
   scope: PopupScope
@@ -40,4 +42,9 @@ export function canTestProxyId (proxyId: string): boolean {
 export function ruleListWithActive (list: ProxyRule[], position: number, active: boolean): ProxyRule[] | undefined {
   if (!canToggleRule({ ...list[position], active })) return undefined
   return list.map((rule, index) => (index === position ? { ...rule, active } : rule))
+}
+
+export function isRowStillAt (list: unknown[], row: PopupRuleRow): boolean {
+  const rule: unknown = list[row.position]
+  return isValidRule(rule) && rule.name === row.name && isRuleActive(rule) === row.active
 }
