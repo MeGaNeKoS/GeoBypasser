@@ -15,6 +15,7 @@ import { COMPONENT_TEST_PAGE, firefoxKeyActions, runComponentTestPage } from './
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
 import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkKeepAliveAddEditDelete, checkRuleRowsAfterReread, checkSiteAddEditDelete, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
+import { checkAboutDescription, checkDefaultReadBack, checkTestAgainstListener } from './smoke-sections.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -291,6 +292,9 @@ async function runFirefoxSmoke (settings) {
   await checkSetAsideOnlyAndFocus(evaluate, failures)
   await checkRevealAndRowExport(evaluate, failures)
   await checkNetworkStatsNames(evaluate, failures, FIREFOX_NETWORK_SCENARIO)
+  await checkDefaultReadBack(evaluate, failures)
+  await checkTestAgainstListener(evaluate, failures)
+  await checkAboutDescription(evaluate, 'firefox', failures)
   await checkMixedOverrideInDashboard({ run: evaluate, reopenDashboard: () => navigate(`${second.origin}dashboard.html`) }, failures)
   await runStep('popup clears a mixed case override for the tab it is opened beside', () => checkPopupClearOnMixedTab(second), failures)
   await setTabProxyFromPopup(second)

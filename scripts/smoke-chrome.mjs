@@ -14,6 +14,7 @@ import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkKeepAliveAddEditDelete, checkRuleRowsAfterReread, checkSiteAddEditDelete, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
+import { checkAboutDescription, checkDefaultReadBack, checkNotInControlTest, checkTestAgainstListener } from './smoke-sections.mjs'
 import { clickSelector, siteSectionShowsChromeLimit } from './smoke-dashboard.mjs'
 import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
 
@@ -278,6 +279,14 @@ async function runSmoke (options) {
   await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO)
   await checkMixedOverrideInPac({ evalIn, worker: findWorker() }, failures)
   await checkPacRoute({ evalIn, worker: findWorker(), dashboard }, failures)
+  await checkDefaultReadBack(runOnDashboard, failures)
+  await checkTestAgainstListener(runOnDashboard, failures)
+  await checkAboutDescription(runOnDashboard, 'chrome', failures)
+  const controlSender = await openTab('popup.html')
+  await checkNotInControlTest({
+    run: runOnDashboard,
+    sendFromOtherPage: message => evalIn(controlSender, `chrome.runtime.sendMessage(${JSON.stringify(message)}).catch(() => null).then(() => true)`),
+  }, failures)
 
   const componentTest = await openTab(COMPONENT_TEST_PAGE)
   const componentFailures = await runComponentTestPage(componentDriver(componentTest))
