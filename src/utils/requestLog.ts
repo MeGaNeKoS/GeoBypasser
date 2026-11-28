@@ -51,6 +51,7 @@ export type RequestLogPage = {
 
 const BLOCKED_STATUSES = [403, 451];
 const UNKNOWN_ROUTE_TEXT = 'Unknown route';
+const FAILED_BEFORE_ROUTE_TEXT = 'No route: the request failed first.';
 const DIRECT_TEXT = 'Direct';
 const PAC_KEYWORD = /^\S+\s+/;
 
@@ -79,6 +80,7 @@ export function resultLines (usage: HostUsage): ResultLine[] {
 }
 
 export function routeLabel (route: RecordedRoute, proxies: ProxyListItem[]): string {
+  if (route.reason === 'failed') return FAILED_BEFORE_ROUTE_TEXT;
   if (route.route === '') return UNKNOWN_ROUTE_TEXT;
   const text = route.route === DIRECT_ROUTE ? DIRECT_TEXT : proxiedLabel(route, proxies);
   return route.inferred ? `${text} (inferred)` : text;
@@ -161,6 +163,7 @@ function reasonPhrase (route: RecordedRoute): string | undefined {
     case 'default':
       return 'default proxy';
     case 'unknown':
+    case 'failed':
       return undefined;
   }
 }
@@ -171,7 +174,7 @@ function failedLine (reason: string, count: number): ResultLine {
 
 function statusLine (code: number, count: number): ResultLine {
   if (BLOCKED_STATUSES.includes(code)) return { kind: 'blocked', text: `${count} blocked (${code})` };
-  return { kind: 'error', text: `${count} errors (${code})` };
+  return { kind: 'error', text: `${formatCount(count, 'error')} (${code})` };
 }
 
 function typeCountsOf (types: Record<string, number>): TypeCount[] {

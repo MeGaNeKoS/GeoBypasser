@@ -1,5 +1,5 @@
 import type { ProxyListItem } from '@customTypes/proxy'
-import { addRequestToTab, emptyTabUsage, type NetworkUsage, type RecordedRoute, type RequestObservation } from '@utils/networkUsage'
+import { addRequestToTab, emptyTabUsage, FAILED_BEFORE_ROUTE, type NetworkUsage, type RecordedRoute, type RequestObservation } from '@utils/networkUsage'
 import { formatCount, formatProxiedShare, requestLogPages, resultLines, routeLabel } from '@utils/requestLog'
 
 const PAGE = 'page.example'
@@ -72,7 +72,7 @@ describe('request log', () => {
     expect(row.results).toEqual([
       { kind: 'ok', text: '2 OK' },
       { kind: 'blocked', text: '1 blocked (403)' },
-      { kind: 'error', text: '1 errors (500)' },
+      { kind: 'error', text: '1 error (500)' },
       { kind: 'failed', text: '1 failed: net::ERR_CONNECTION_RESET' },
       { kind: 'cache', text: '1 from cache' },
     ])
@@ -119,6 +119,16 @@ describe('request log', () => {
     expect(page.proxiedBytes).toBe(1000)
     expect(page.totalBytes).toBe(5000)
     expect(formatProxiedShare(page)).toBe('1000 B of 4.88 KB')
+  })
+
+  it('pluralizes the error count by its number', () => {
+    const [row] = requestLogPages(usageOf(observation({ statusCode: 500 }), observation({ statusCode: 500 })), PROXIES)[0].rows
+
+    expect(row.results).toEqual([{ kind: 'error', text: '2 errors (500)' }])
+  })
+
+  it('words a request that failed before routing as having no route', () => {
+    expect(routeLabel(FAILED_BEFORE_ROUTE, PROXIES)).toBe('No route: the request failed first.')
   })
 
   it('words a direct default route as Direct', () => {

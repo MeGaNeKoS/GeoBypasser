@@ -26,14 +26,10 @@ export function hostMatchPattern (host: string): string {
 export function ruleFormForSelection (selection: LogSelection, perTypeRules: boolean): RuleForm {
   const base: RuleForm = { ...ruleFormOf(), name: selection.page, match: selection.hosts.map(hostMatchPattern) }
   if (!perTypeRules) return base
+  const pageLimited: RuleForm = { ...base, proxyOnlyPageHostnames: [selection.page] }
   const types = knownTypesOf(selection.types.map(entry => entry.type))
-  if (types.length === 0) return base
-  return {
-    ...base,
-    proxyOnlyPageHostnames: [selection.page],
-    resourceTypeMode: 'only',
-    onlyResourceTypes: types,
-  }
+  if (types.length === 0) return pageLimited
+  return { ...pageLimited, resourceTypeMode: 'only', onlyResourceTypes: types }
 }
 
 export function selectionOnPage (selection: LogSelection | undefined, page: string): LogSelection {

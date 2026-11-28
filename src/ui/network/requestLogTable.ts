@@ -4,7 +4,7 @@ import type { SkipRule } from '@utils/requestLogRule'
 import { button } from '../components/button'
 import { checkbox, checkboxWithHiddenLabel } from '../components/controls'
 import { usageTree, type TreeNode } from '../components/tree'
-import { element } from '../dom'
+import { element, type Child } from '../dom'
 import { icon, type IconName } from '../icons'
 
 export type LogRowActions = {
@@ -73,7 +73,7 @@ function logRow (row: RequestLogRow, context: TableContext, key: string): HTMLTa
   },
     element('td', {}, hostCheckbox(row, actions, key)),
     element('td', { 'data-label': 'Host' },
-      element('span', { class: 'mono log-host' }, row.host),
+      element('span', { class: 'mono log-host' }, ...hostNodes(row.host)),
       button(actions.isExpanded(key) ? 'Hide details' : 'Details', {
         variant: 'quiet',
         focusKey: `details-${key}`,
@@ -88,6 +88,10 @@ function logRow (row: RequestLogRow, context: TableContext, key: string): HTMLTa
       ? element('td', { 'data-label': ACTION_COLUMN_TITLE }, rule ? skipButton(row, rule, actions) : null)
       : null,
   )
+}
+
+function hostNodes (host: string): Child[] {
+  return host.split('.').flatMap((label, index) => (index === 0 ? [label] : ['.', element('wbr', {}), label]));
 }
 
 function hostCheckbox (row: RequestLogRow, actions: LogRowActions, key: string): HTMLLabelElement {

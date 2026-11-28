@@ -2,6 +2,7 @@ import type { ProxyRule } from '@customTypes/proxy'
 import type { RequestLogRow, RouteLine } from '@utils/requestLog'
 import { ruleFormForSelection, ruleFormSkippingHost, selectionOnPage, skippableRuleOf, withHostToggled, withTypeToggled } from '@utils/requestLogRule'
 import { ruleFormOf } from '@utils/ruleDraft'
+import { tuningPhrasesOf } from '@utils/ruleTuning'
 
 const PAGE = 'page.example'
 const HOST = 'cdn.example.com'
@@ -53,6 +54,14 @@ describe('rule from a request log selection', () => {
       onlyResourceTypes: ['script', 'image'],
       proxyOnlyPageHostnames: [PAGE],
     })
+  })
+
+  it('limits the rule to the page on Firefox when no type is selected, and reads the same summary', () => {
+    const form = ruleFormForSelection({ page: PAGE, hosts: ['cdn.example.com'], types: [] }, true)
+
+    expect(form.proxyOnlyPageHostnames).toEqual([PAGE])
+    expect(form.resourceTypeMode).not.toBe('only')
+    expect(tuningPhrasesOf(form).map(phrase => phrase.text)).toEqual(['on 1 site'])
   })
 
   it('starts an empty selection when the page changes', () => {

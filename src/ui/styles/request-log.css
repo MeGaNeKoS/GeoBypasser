@@ -54,7 +54,6 @@
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius-2);
   background: var(--surface);
-  overflow-x: auto;
 }
 
 .log-page__head {
@@ -157,6 +156,7 @@
 
   .log-table tr {
     display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: var(--space-1);
     padding: var(--space-2) 0;
     border-top: var(--hairline) solid var(--border);
@@ -166,6 +166,17 @@
   .log-table .log-detail td {
     padding: 0;
     border: 0;
+    grid-column: 1 / -1;
+  }
+
+  .log-table td:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .log-table td[data-label='Host'] {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .log-table .log-detail td {
@@ -185,10 +196,22 @@
     white-space: nowrap;
   }
 
-  .log-table .log-host,
-  .log-table .result,
-  .log-table td button {
+  .log-table td button,
+  .log-bytes span {
     white-space: nowrap;
+  }
+
+  .log-table td[data-label='Types'] {
+    min-width: 100px;
+  }
+
+  .log-table td[data-label='Results'] {
+    min-width: 160px;
+  }
+
+  .log-table td[data-label='Route'] {
+    width: 100%;
+    min-width: 180px;
   }
 
   .log-table .num {

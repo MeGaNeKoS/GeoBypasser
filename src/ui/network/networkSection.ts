@@ -118,7 +118,7 @@ function networkContent (): Node[] {
 }
 
 function bodyNodes (): Node[] {
-  if (view.kind === 'loading') return [toolbarNode(undefined), skeletonRows(LOADING_ROW_COUNT)];
+  if (view.kind === 'loading') return [toolbarNode(undefined), loadingCard()];
   if (view.kind === 'error') return [toolbarNode(undefined), loadErrorBlock()];
   return [
     tabsCard(view.tabs, toggleMonitoring),
@@ -126,6 +126,10 @@ function bodyNodes (): Node[] {
     toolbarNode(view),
     ...logNodes(view),
   ];
+}
+
+function loadingCard (): HTMLElement {
+  return element('section', { class: 'log-page' }, skeletonRows(LOADING_ROW_COUNT));
 }
 
 function toolbarNode (ready: ReadyView | undefined): HTMLElement {

@@ -46,7 +46,7 @@ describe('rule from a request log selection, negative cases', () => {
 
     expect(form.resourceTypeMode).toBe('never')
     expect(form.onlyResourceTypes).toEqual([])
-    expect(form.proxyOnlyPageHostnames).toEqual([])
+    expect(form.proxyOnlyPageHostnames).toEqual([PAGE])
   })
 
   it('creates no match and keeps the page name when no host is selected', () => {

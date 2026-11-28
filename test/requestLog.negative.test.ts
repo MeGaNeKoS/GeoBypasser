@@ -49,7 +49,7 @@ describe('request log negative cases', () => {
     const [row] = requestLogPages(usageOf(observation({ statusCode: 451 }), observation({ statusCode: 404 })), [])[0].rows
 
     expect(row.results).toEqual([
-      { kind: 'error', text: '1 errors (404)' },
+      { kind: 'error', text: '1 error (404)' },
       { kind: 'blocked', text: '1 blocked (451)' },
     ])
   })
