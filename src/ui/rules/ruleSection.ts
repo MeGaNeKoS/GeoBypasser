@@ -3,6 +3,7 @@ import { getConfig } from '@utils/storage'
 import { ruleRows } from '@utils/pageView'
 import { ruleFormOf, storedRuleOf } from '@utils/ruleDraft'
 import { exportedRules } from '@utils/ruleExport'
+import { ruleKeyAt } from '@utils/ruleKeys'
 import { button } from '../components/button'
 import { lockedSwitchText, switchControl } from '../components/controls'
 import { banner } from '../components/feedback'
@@ -156,12 +157,6 @@ function onEditorSaved (saved: boolean, entry: RuleEntry | undefined): void {
   if (!saved) notices = [...notices, CHANGED_ELSEWHERE_MESSAGE]
   if (saved && entry) focusHandoff = { position: entry.position, control: 'edit' }
   rerender()
-}
-
-function ruleKeyAt (list: ProxyRule[], index: number): string {
-  const content = JSON.stringify(list[index])
-  const occurrence = list.slice(0, index).filter(rule => JSON.stringify(rule) === content).length
-  return `${content}#${occurrence}`
 }
 
 async function setActive (index: number, active: boolean): Promise<void> {
