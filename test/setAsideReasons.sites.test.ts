@@ -9,8 +9,8 @@ describe('site and keep-alive set aside reasons name what is wrong', () => {
     expect(overrideReasons('a.example', '')).toEqual(['No proxy is chosen for this site.'])
   })
 
-  it('asks for a tab URL pattern when a keep-alive rule has none', () => {
-    expect(keepAliveReasons({ active: true })).toEqual(['Add at least one tab URL pattern.'])
+  it('states that a keep-alive rule has no tab URL pattern', () => {
+    expect(keepAliveReasons({ active: true })).toEqual(['No tab URL pattern.'])
   })
 
   it('numbers the tab URL pattern that is not valid', () => {
@@ -18,8 +18,8 @@ describe('site and keep-alive set aside reasons name what is wrong', () => {
       .toEqual(['Tab URL pattern 2 is not valid.'])
   })
 
-  it('asks for on or off when a keep-alive rule has no active state', () => {
-    expect(keepAliveReasons({ tabUrls: ['example.com'] })).toEqual(['Choose on or off.'])
+  it('states that a keep-alive rule has no active state', () => {
+    expect(keepAliveReasons({ tabUrls: ['example.com'] })).toEqual(['Active state is missing.'])
   })
 
   it('gives the test URL note for a keep-alive test URL that is not http or https', () => {

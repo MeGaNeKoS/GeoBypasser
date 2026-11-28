@@ -77,6 +77,7 @@ export type SwitchFieldOptions = {
   badge?: HTMLElement;
   control: HTMLElement;
   help?: Child;
+  fault?: string;
   showWhen?: string;
 };
 
@@ -87,7 +88,12 @@ export function switchField (options: SwitchFieldOptions): HTMLDivElement {
       options.control,
     ),
     options.help === undefined ? null : element('p', { class: 'help' }, options.help),
+    options.fault === undefined ? null : faultLine(options.fault),
   )
+}
+
+export function faultLine (message: string, id?: string): HTMLParagraphElement {
+  return element('p', { class: 'field__error', id }, icon('alert'), message)
 }
 
 export function passwordField (options: FieldOptions & { value: string }): HTMLDivElement {
@@ -122,7 +128,7 @@ function fieldFrame (id: string, options: FieldOptions, control: Node, input: HT
     ),
     control,
     options.help ? element('p', { class: 'help', id: `${id}-help` }, options.help) : null,
-    options.fault ? element('p', { class: 'field__error', id: `${id}-error` }, icon('alert'), options.fault) : null,
+    options.fault ? faultLine(options.fault, `${id}-error`) : null,
   )
 }
 

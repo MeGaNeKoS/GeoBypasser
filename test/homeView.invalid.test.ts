@@ -58,14 +58,13 @@ describe('homeViewFor with set aside entries of every kind', () => {
     expect(view.status).toEqual({ tone: 'ok', sentence: 'Routing is on. 1 active rule, 1 site. Everything else connects directly.' })
   })
 
-  it('leaves the sites link out on Chrome, where the sites section is not shown', () => {
+  it('links the sites row on Chrome, where the sections are shown with a limited badge', () => {
     const view = homeViewFor(inputFor(settingsWithEverySetAsideKind(), 'chrome'))
 
     expect(view.routes[1]).toEqual(expect.objectContaining({
-      label: 'Sites', value: '1 site', fixNote: '1 needs fixing', badge: 'limited',
+      label: 'Sites', section: 'sites', value: '1 site', fixNote: '1 needs fixing', badge: 'limited',
     }))
-    expect(view.routes[1].section).toBeUndefined()
-    expect(view.setAside.links.map(link => link.section)).toEqual(['proxies', 'rules', undefined, 'keep-alive'])
+    expect(view.setAside.links.map(link => link.section)).toEqual(['proxies', 'rules', 'sites', 'keep-alive'])
   })
 
   it('keeps every other count the same on Chrome', () => {
@@ -101,10 +100,10 @@ describe('homeViewFor with only set aside entries', () => {
 })
 
 describe('homeViewFor set aside links on Chrome', () => {
-  it('shows the set aside site count without a link, since the Sites section is not shown on Chrome', () => {
+  it('links the set aside site count on Chrome to the Sites section', () => {
     const view = homeViewFor(inputFor(settingsWithEverySetAsideKind(), 'chrome'))
 
-    expect(view.setAside.links).toContainEqual({ label: '1 site' })
+    expect(view.setAside.links).toContainEqual({ label: '1 site', section: 'sites' })
     expect(view.setAside.links).toContainEqual({ label: '1 proxy', section: 'proxies' })
   })
 

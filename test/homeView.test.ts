@@ -98,14 +98,13 @@ describe('homeViewFor routes on each browser', () => {
     expect(chrome.routes[0].section).toBeUndefined()
   })
 
-  it('links the sites row only on Firefox, where the sites section exists', () => {
+  it('links the sites row on both browsers, with the limited badge on Chrome', () => {
     const settings = { proxyList: [tokyo], perWebsiteOverride: { 'news.example': 'p1' } }
     const firefox = homeViewFor(input({ settings }))
     const chrome = homeViewFor(input({ settings, browser: 'chrome' }))
 
     expect(firefox.routes[1]).toEqual(expect.objectContaining({ label: 'Sites', section: 'sites', value: '1 site' }))
-    expect(chrome.routes[1]).toEqual(expect.objectContaining({ label: 'Sites', badge: 'limited', value: '1 site' }))
-    expect(chrome.routes[1].section).toBeUndefined()
+    expect(chrome.routes[1]).toEqual(expect.objectContaining({ label: 'Sites', section: 'sites', badge: 'limited', value: '1 site' }))
   })
 
   it('marks keep-alive as Firefox only on Chrome', () => {

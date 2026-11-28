@@ -1,4 +1,10 @@
-import { keepAliveFormFaults, keepAliveFormOf, keepAliveMapAfterSave, keepAliveMapWithout, keepAliveRuleFaults, keepAliveStoredFaults } from '@utils/keepAliveDraft'
+import { keepAliveFormFaults, keepAliveFormOf, keepAliveMapAfterSave, keepAliveMapWithout, keepAliveRuleFaults, keepAliveStoredFaults, newKeepAliveForm } from '@utils/keepAliveDraft'
+
+describe('a new keep-alive form', () => {
+  it('starts with no proxy, no tab URL patterns, and Active on', () => {
+    expect(newKeepAliveForm()).toEqual({ proxyId: '', active: true, tabUrls: [], testProxyUrl: '' })
+  })
+})
 
 describe('keep-alive form faults for a rule that can be saved', () => {
   it('reports no fault for a chosen proxy, a host pattern, and an on or off choice', () => {

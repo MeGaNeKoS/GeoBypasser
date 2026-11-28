@@ -57,8 +57,16 @@ export function overrideReasons (domain: string, proxyId: unknown): string[] {
   return siteFormFaults({ domain, proxyId: chosenProxy }).map(fault => fault.message)
 }
 
+const NO_TAB_URL_STATEMENT = 'No tab URL pattern.'
+const ACTIVE_MISSING_STATEMENT = 'Active state is missing.'
+
 export function keepAliveReasons (entry: unknown): string[] {
-  return keepAliveRuleFaults(recordOf(entry)).map(fault => fault.message)
+  return keepAliveRuleFaults(recordOf(entry)).map(keepAliveStatement)
+}
+
+function keepAliveStatement (fault: { field: string; message: string; row?: number }): string {
+  if (fault.field === 'active') return ACTIVE_MISSING_STATEMENT
+  return fault.field === 'tabUrls' && fault.row === undefined ? NO_TAB_URL_STATEMENT : fault.message
 }
 
 export function keepAliveTestUrlIgnoredNote (entry: unknown): string | undefined {

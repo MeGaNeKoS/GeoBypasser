@@ -22,7 +22,7 @@ import { changeKeepAliveMap } from './keepAliveStore'
 const KEEP_ALIVE_CONTAINER_ID = 'keepAliveContent'
 const KEEP_ALIVE_IMPORT_INPUT_ID = 'keepAliveImportInput'
 const KEEP_ALIVE_SECTION_HASH = 'keep-alive'
-const KEEP_ALIVE_HELP = 'Ping URLs periodically to keep proxies active.'
+const KEEP_ALIVE_HELP = 'Checks a proxy while tabs matching its patterns are open.'
 const CHROME_SCOPE_NOTE = 'Firefox only. Keep-alive rules are saved and can be edited, imported and exported here, but checks and down notices run only in Firefox.'
 const EMPTY_TEXT = 'Add a keep-alive rule for a proxy, or import a file of rules.'
 const EXPORT_FILENAME = 'keepalive.json'
@@ -31,17 +31,21 @@ type KeepAliveRow = ReturnType<typeof keepAliveRows>[number]
 
 let importNotes: string[] = []
 
-export async function renderKeepAliveSection (setAsideOnly = false): Promise<void> {
+export async function renderKeepAliveSection (setAsideOnly = false, focusKey?: string): Promise<void> {
   const container = requireElement(KEEP_ALIVE_CONTAINER_ID)
   const config = await getConfig()
   replaceContent(container, [element('div', { class: 'stack' },
     importNotesBanner(importNotes, dismissImportNotes),
     keepAliveSection(config.keepAliveRules ?? {}, config.proxyList, setAsideOnly),
-  )])
+  )], focusKey)
 }
 
 function rerender (): void {
   void renderKeepAliveSection(isSetAsideOnlyHash(location.hash))
+}
+
+function rerenderFocusingRule (proxyId: string): void {
+  void renderKeepAliveSection(isSetAsideOnlyHash(location.hash), `edit-${proxyId}`)
 }
 
 function keepAliveSection (map: KeepAliveMap, proxyList: unknown, setAsideOnly: boolean): HTMLElement {
@@ -77,11 +81,11 @@ function keepAliveSection (map: KeepAliveMap, proxyList: unknown, setAsideOnly: 
         title: 'No keep-alive rules yet',
         text: EMPTY_TEXT,
         actions: [
-          button('Add keep-alive rule', { variant: 'primary', onClick: () => void openKeepAliveEditor({ onSaved: rerender }) }),
+          button('Add keep-alive rule', { variant: 'primary', onClick: () => void openKeepAliveEditor({ onSaved: rerenderFocusingRule }) }),
           button('Import', { onClick: () => picker.click() }),
         ],
       },
-    onAdd: () => void openKeepAliveEditor({ onSaved: rerender }),
+    onAdd: () => void openKeepAliveEditor({ onSaved: rerenderFocusingRule }),
     onImport: () => picker.click(),
     onRetry: rerender,
     onRemove: proxyIds => void removeKeepAliveRules(proxyIds),
@@ -104,7 +108,7 @@ function rowFor (row: KeepAliveRow): ListRow {
         row.invalid
           ? lockedSwitchText(row.proxyLabel)
           : switchControl(`Active: ${row.proxyLabel}`, row.active, checked => void setActive(row.proxyId, checked), { focusKey: `switch-${row.proxyId}` }),
-        element('strong', {}, row.proxyLabel),
+        element('strong', row.proxyLabelIsId ? { class: 'mono' } : {}, row.proxyLabel),
         ...(row.invalid ? [setAsideBadge()] : []),
         ...(row.ignoredNote === undefined ? [] : [ignoredSettingBadge()]),
         ...(row.missingProxy && !row.invalid ? [badge('unavailable')] : []),
@@ -119,7 +123,7 @@ function rowFor (row: KeepAliveRow): ListRow {
         focusKey: `edit-${row.proxyId}`,
         onClick: () => void openKeepAliveEditor({
           entry: { proxyId: row.proxyId, rule: row.raw, needsReview: row.invalid || row.ignoredNote !== undefined },
-          onSaved: rerender,
+          onSaved: rerenderFocusingRule,
         }),
       }),
     ],

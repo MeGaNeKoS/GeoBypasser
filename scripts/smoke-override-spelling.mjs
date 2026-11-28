@@ -59,7 +59,12 @@ async function overrideRowLabels () {
   return [...document.querySelectorAll('#overrideContent li.row strong')].map(name => name.textContent)
 }
 
+async function dashboardIsMounted () {
+  return document.querySelector('section.tab.active') !== null
+}
+
 async function openOverrideTab (run) {
+  await waitFor(() => run(dashboardIsMounted), STORAGE_WAIT_MS, 'the dashboard to mount')
   await run(clickSelector, ['[data-tab="override"]'])
   await sleep(TAB_SETTLE_MS)
 }

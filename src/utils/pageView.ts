@@ -34,6 +34,17 @@ function rawEntryText (value: unknown): string | undefined {
   return typeof value === 'object' || value === undefined ? undefined : String(value)
 }
 
+function findStoredProxy (proxyList: unknown, proxyId: unknown): Entry | undefined {
+  if (typeof proxyId !== 'string') return undefined
+  const items = Array.isArray(proxyList) ? proxyList : []
+  return items.map(asEntry).find(proxy => proxy.id === proxyId)
+}
+
+export function storedProxyLabel (proxyList: unknown, proxyId: unknown): string | undefined {
+  const proxy = findStoredProxy(proxyList, proxyId)
+  return proxy === undefined ? undefined : asText(proxy.label || proxy.host)
+}
+
 export function proxyRows (list: unknown, isRevealed: (index: number) => boolean = () => false) {
   const items = Array.isArray(list) ? list : []
   return items.map((value, index) => {
@@ -77,7 +88,7 @@ export function ruleRows (list: unknown, proxyList: unknown) {
       match: Array.isArray(rule.match) ? rule.match.join(', ') : '',
       proxyLabel: rule.proxyId === DIRECT_PROXY_ID
         ? DIRECT_LABEL
-        : proxy ? asText(proxy.label || proxy.host) : asText(rule.proxyId),
+        : storedProxyLabel(proxyList, rule.proxyId) ?? asText(rule.proxyId),
       missingProxy: !proxy,
     }
   })
@@ -85,16 +96,19 @@ export function ruleRows (list: unknown, proxyList: unknown) {
 
 export function overrideRows (map: unknown, proxyList: unknown) {
   const proxies = usableProxies(proxyList)
-  return Object.entries(asEntry(map)).map(([domain, proxyId]) => {
+  return Object.entries(asEntry(map)).sort(byDomain).map(([domain, proxyId]) => {
     const proxy = proxies.find(p => p.id === proxyId)
     const invalid = !isValidOverrideEntry(domain, proxyId)
     const direct = proxyId === DIRECT_PROXY_ID
+    const storedLabel = storedProxyLabel(proxyList, proxyId)
     return {
       domain,
       invalid,
       faults: invalid ? overrideReasons(domain, proxyId) : [],
       rawEntry: rawEntryText(proxyId),
-      proxyLabel: direct ? DIRECT_LABEL : proxy ? asText(proxy.label || proxy.host) : asText(proxyId),
+      direct,
+      proxyLabel: direct ? DIRECT_LABEL : storedLabel ?? asText(proxyId),
+      proxyLabelIsId: !direct && storedLabel === undefined,
       missingProxy: !direct && !proxy,
     }
   })
@@ -102,10 +116,11 @@ export function overrideRows (map: unknown, proxyList: unknown) {
 
 export function keepAliveRows (map: unknown, proxyList: unknown) {
   const proxies = usableProxies(proxyList)
-  return Object.entries(asEntry(map)).map(([proxyId, value]) => {
+  return Object.entries(asEntry(map)).sort(byProxyOrder(proxyList)).map(([proxyId, value]) => {
     const rule = asEntry(value)
     const proxy = proxies.find(p => p.id === proxyId)
     const invalid = !isValidKeepAliveRule(value)
+    const storedLabel = storedProxyLabel(proxyList, proxyId)
     return {
       proxyId,
       raw: value,
@@ -116,10 +131,24 @@ export function keepAliveRows (map: unknown, proxyList: unknown) {
       active: rule.active === true,
       tabUrls: Array.isArray(rule.tabUrls) ? rule.tabUrls.map(asText).join(', ') : '',
       testProxyUrl: asText(rule.testProxyUrl),
-      proxyLabel: proxy ? asText(proxy.label || proxy.host) : proxyId,
+      proxyLabel: storedLabel ?? proxyId,
+      proxyLabelIsId: storedLabel === undefined,
       missingProxy: !proxy,
     }
   })
+}
+
+function byDomain ([left]: [string, unknown], [right]: [string, unknown]): number {
+  return left.localeCompare(right, undefined, { sensitivity: 'base' })
+}
+
+function byProxyOrder (proxyList: unknown): (left: [string, unknown], right: [string, unknown]) => number {
+  const orderedIds = (Array.isArray(proxyList) ? proxyList : []).map(entry => asEntry(entry).id)
+  const rankOf = (proxyId: string): number => {
+    const index = orderedIds.indexOf(proxyId)
+    return index === -1 ? orderedIds.length : index
+  }
+  return ([left], [right]) => rankOf(left) - rankOf(right) || left.localeCompare(right)
 }
 
 export function proxyOptions (list: unknown) {

@@ -149,10 +149,15 @@
   font-family: var(--font-mono);
 }
 
+.field--mono input::placeholder {
+  font-family: var(--font-ui);
+}
+
 .field--invalid input,
 .field--invalid select,
 .field[data-invalid="true"] input,
-.field[data-invalid="true"] select {
+.field[data-invalid="true"] select,
+.input.input--invalid {
   border: var(--line-strong) solid var(--danger);
 }
 

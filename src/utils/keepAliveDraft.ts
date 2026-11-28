@@ -64,6 +64,10 @@ export function keepAliveFormOf (proxyId: string, rule: unknown): KeepAliveForm 
   }
 }
 
+export function newKeepAliveForm (): KeepAliveForm {
+  return { proxyId: '', active: true, tabUrls: [], testProxyUrl: '' }
+}
+
 export function keepAliveMapAfterSave (map: KeepAliveMap, form: KeepAliveForm, previousProxyId: string | undefined): KeepAliveMap {
   const others = Object.entries(map).filter(([proxyId]) => proxyId !== previousProxyId)
   const stored = previousProxyId === undefined ? undefined : map[previousProxyId]

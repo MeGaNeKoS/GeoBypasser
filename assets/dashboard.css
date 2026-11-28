@@ -121,7 +121,6 @@ th, td { border: 1px solid #555; padding: 4px; }
   overflow-y: auto;
 }
 @media (max-width: 600px) {
-  #content button:not(#home button, #proxyContent button, #rulesContent button, table button),
   .modal button {
     min-width: 100%;
     font-size: 1em;

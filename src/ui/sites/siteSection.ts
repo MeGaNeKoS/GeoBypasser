@@ -94,6 +94,11 @@ function chromeScopeBanner (): Node[] {
   return [banner({ tone: 'info', text: CHROME_SCOPE_NOTE })]
 }
 
+function proxyMention (row: SiteRow): HTMLSpanElement {
+  if (row.direct) return element('span', { class: 'help' }, row.proxyLabel)
+  return element('span', { class: 'help' }, 'via ', element('span', row.proxyLabelIsId ? { class: 'mono' } : {}, row.proxyLabel))
+}
+
 function rowFor (map: SiteMap, row: SiteRow): ListRow {
   return {
     id: row.domain,
@@ -104,9 +109,9 @@ function rowFor (map: SiteMap, row: SiteRow): ListRow {
         element('strong', { class: 'mono' }, row.domain),
         ...(row.invalid ? [setAsideBadge()] : []),
         ...(row.missingProxy && !row.invalid ? [badge('unavailable')] : []),
+        proxyMention(row),
       ),
       ...(row.invalid ? [setAsideReason(row.faults)] : []),
-      element('div', { class: 'row__meta' }, element('span', { class: 'help' }, row.proxyLabel)),
       ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
     ],
     actions: [

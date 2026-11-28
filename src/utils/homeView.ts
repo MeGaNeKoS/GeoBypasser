@@ -110,7 +110,7 @@ export function homeViewFor (input: HomeInput): HomeView {
   return {
     case: homeCase,
     status: statusFor(homeCase, facts),
-    setAside: setAsideSummary(facts.setAside, input.browser),
+    setAside: setAsideSummary(facts.setAside),
     routes: routeRows(facts, input.browser),
     failureNote: input.settings.fallbackDirect === false ? REQUEST_FAILS_NOTE : CONNECTS_DIRECTLY_NOTE,
     proxies: proxiesSummary(facts, input.browser),
@@ -196,12 +196,12 @@ function routingSentence (facts: HomeFacts): string {
   return sentences.join(' ')
 }
 
-function setAsideSummary (counts: SetAsideCounts, browser: HomeBrowser): SetAsideSummary {
+function setAsideSummary (counts: SetAsideCounts): SetAsideSummary {
   const links = SET_ASIDE_KINDS
     .filter(kind => kind.countOf(counts) > 0)
     .map(kind => ({
       label: countPhrase(kind.countOf(counts), kind.singular, kind.plural),
-      section: linkedSection(kind.section, browser),
+      section: kind.section,
     }))
   const total = SET_ASIDE_KINDS.reduce((sum, kind) => sum + kind.countOf(counts), 0)
   return { total, sentence: total === 0 ? '' : setAsideSentence(total), links }
@@ -225,7 +225,7 @@ function routeRows (facts: HomeFacts, browser: HomeBrowser): RouteRow[] {
     },
     {
       label: 'Sites',
-      section: isFirefox ? 'sites' : undefined,
+      section: 'sites',
       value: countPhrase(facts.sites, 'site', 'sites'),
       fixNote: fixNoteFor(facts.setAside.sites),
       badge: isFirefox ? undefined : 'limited',
@@ -269,10 +269,6 @@ function proxiesSummary (facts: HomeFacts, browser: HomeBrowser): ProxiesSummary
 function tabProxyValue (tabs: number): string {
   if (tabs === 0) return 'No tab has a proxy'
   return `${tabs} ${tabs === 1 ? 'tab has' : 'tabs have'} a proxy`
-}
-
-function linkedSection (section: string, browser: HomeBrowser): string | undefined {
-  return section === SITES_SECTION && browser === 'chrome' ? undefined : section
 }
 
 function fixNoteFor (count: number): string | undefined {
