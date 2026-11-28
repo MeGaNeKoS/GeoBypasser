@@ -4,9 +4,7 @@ import {
 } from '@utils/storage'
 import { ProxyListItem, ProxyRule } from '@customTypes/proxy'
 import browser from 'webextension-polyfill'
-import { supportsProxyOnRequest } from '@utils/env'
 import type { GeoBypassSettings } from '@customTypes/settings'
-import { formatBytes, NetworkStats, NetworkStatsNode } from '@utils/network'
 import { findSettingChanges, refuseConfigFile, withAppliedSettings } from '@utils/importFiles'
 import { chooseAppliedSettingChanges } from './settingChangeModal'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
@@ -18,7 +16,6 @@ import { mountDashboardFrame } from '@ui/shell/frame'
 import { downloadJsonFile } from '@ui/download'
 
 let config: Awaited<ReturnType<typeof getConfig>>
-let networkAutoInterval: ReturnType<typeof setInterval> | null = null
 
 // Helper to generate a signature for comparing proxy entries
 
@@ -138,7 +135,6 @@ async function mergeConfigData (cfg: Partial<GeoBypassSettings>) {
 
   await saveConfig(updated)
   config = await getConfig()
-  renderAll()
 }
 
 function alertImportMessages (messages: string[]) {
@@ -507,43 +503,6 @@ function handleImportConfig (files: FileList | null) {
   })
 }
 
-async function renderNetwork () {
-  const container = document.getElementById('networkTree') as HTMLElement
-  if (!container) return
-  container.innerHTML = ''
-  const stats = await browser.runtime.sendMessage({ type: 'getNetworkStats' }).catch(() => null) as NetworkStats | null
-  if (!stats) return
-
-  function buildList (nodes: Record<string, NetworkStatsNode>): HTMLUListElement {
-    const ul = document.createElement('ul')
-    for (const [name, node] of Object.entries(nodes)) {
-      if (node.sent === 0 && node.received === 0) continue
-      const li = document.createElement('li')
-      const hasChildren = node.children && Object.keys(node.children).length > 0
-      if (hasChildren) {
-        const details = document.createElement('details')
-        details.open = true
-        const summary = document.createElement('summary')
-        summary.textContent = `${name} - sent: ${formatBytes(node.sent)}, received: ${formatBytes(node.received)}`
-        details.appendChild(summary)
-        details.appendChild(buildList(node.children!))
-        li.appendChild(details)
-      } else {
-        li.textContent = `${name} - sent: ${formatBytes(node.sent)}, received: ${formatBytes(node.received)}`
-      }
-      ul.appendChild(li)
-    }
-    return ul
-  }
-
-  container.appendChild(buildList(stats.domains))
-}
-
-function renderAll () {
-  renderNetwork()
-}
-
-
 alertUnsavedChanges(window, alert)
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -552,17 +511,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (area !== 'local') return
     config = await getConfig()
   })
-  renderAll()
 
-  if (!supportsProxyOnRequest) {
-    document.getElementById('networkHint')?.classList.remove('hidden')
-  }
-
-  mountDashboardFrame({
-    onSectionShown: sectionId => {
-      if (sectionId === 'network') renderNetwork()
-    },
-  })
+  mountDashboardFrame()
 
   document.getElementById('openExportConfig')!.addEventListener('click', openExportConfigModal)
   document.getElementById('exportConfigConfirm')!.addEventListener('click', exportConfigFromModal)
@@ -593,27 +543,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('remoteImportCancel')!.addEventListener('click', closeRemoteImportModal)
   document.getElementById('remoteImportSelectAll')!.addEventListener('click', remoteSelectAll)
   document.getElementById('remoteImportUnselectAll')!.addEventListener('click', remoteUnselectAll)
-  document.getElementById('refreshNetwork')!.addEventListener('click', renderNetwork)
-  document.getElementById('clearNetwork')!.addEventListener('click', async () => {
-    await browser.runtime.sendMessage({ type: 'clearNetworkStats' }).catch(() => {})
-    renderNetwork()
-  })
-  const toggleAuto = document.getElementById('toggleNetworkAuto') as HTMLButtonElement | null
-
-  function updateAutoLabel () {
-    if (!toggleAuto) return
-    toggleAuto.textContent = networkAutoInterval ? 'Auto Refresh: On' : 'Auto Refresh: Off'
-  }
-
-  toggleAuto?.addEventListener('click', () => {
-    if (networkAutoInterval) {
-      clearInterval(networkAutoInterval)
-      networkAutoInterval = null
-    } else {
-      networkAutoInterval = setInterval(renderNetwork, 5000)
-    }
-    updateAutoLabel()
-  })
-
-  updateAutoLabel()
 })

@@ -5,6 +5,7 @@ export const SITE_SECTION_ID = 'override'
 export const KEEP_ALIVE_SECTION_ID = 'keepalive'
 export const GENERAL_SECTION_ID = 'general'
 export const TEST_SECTION_ID = 'diagnostics'
+export const NETWORK_SECTION_ID = 'network'
 export const ABOUT_SECTION_ID = 'about'
 
 const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> = [
@@ -15,7 +16,7 @@ const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> 
   [KEEP_ALIVE_SECTION_ID, 'keep-alive'],
   [GENERAL_SECTION_ID, 'defaults'],
   [TEST_SECTION_ID, 'test'],
-  ['network', 'network'],
+  [NETWORK_SECTION_ID, 'network'],
   ['impexp', 'import-export'],
   [ABOUT_SECTION_ID, 'about'],
 ]

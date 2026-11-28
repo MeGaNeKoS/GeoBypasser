@@ -23,7 +23,7 @@ export async function recordNetworkRequest (url) {
 }
 
 export function readNetworkTreeText () {
-  return document.getElementById('networkTree').textContent
+  return document.getElementById('networkContent').textContent
 }
 
 async function showRecordedRequests (run, { requestUrls, labels }) {

@@ -13,14 +13,11 @@ import { renderSiteSection } from '../sites/siteSection'
 import { renderKeepAliveSection } from '../keep-alive/keepAliveSection'
 import { renderAboutSection } from '../about/aboutSection'
 import { renderProxyTestSection } from '../proxy-test/proxyTestSection'
+import { renderNetworkSection } from '../network/networkSection'
 import { onProxyControlStateChanged } from '../proxyControlState'
 import { mountControlNotice } from './control-notice'
 import { clearSelections } from '../components/list-section'
-import { ABOUT_SECTION_ID, GENERAL_SECTION_ID, HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, TEST_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
-
-export type FrameOptions = {
-  onSectionShown?: (sectionId: string) => void
-}
+import { ABOUT_SECTION_ID, GENERAL_SECTION_ID, HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, NETWORK_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, TEST_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
 
 type FrameNav = {
   menu: HTMLElement
@@ -36,7 +33,7 @@ const COUNTED_SECTIONS: Partial<Record<string, keyof NavCounts>> = {
   [KEEP_ALIVE_SECTION_ID]: 'keepAlive',
 }
 
-export function mountDashboardFrame (options: FrameOptions = {}): void {
+export function mountDashboardFrame (): void {
   installSprite()
   const menu = requireElement('tabs')
   const nav: FrameNav = {
@@ -44,7 +41,7 @@ export function mountDashboardFrame (options: FrameOptions = {}): void {
     menuToggle: requireElement('navToggle'),
     buttons: Array.from(menu.querySelectorAll<HTMLButtonElement>('button[data-tab]')),
   }
-  const showCurrentHash = (): void => { void showSection(sectionIdForHash(location.hash), nav, options) }
+  const showCurrentHash = (): void => { void showSection(sectionIdForHash(location.hash), nav) }
 
   for (const button of nav.buttons) {
     button.addEventListener('click', () => chooseSection(sectionIdOf(button), showCurrentHash))
@@ -67,7 +64,7 @@ function chooseSection (sectionId: string, showCurrentHash: () => void): void {
   location.hash = hashForSection(sectionId)
 }
 
-async function showSection (requestedId: string, nav: FrameNav, options: FrameOptions): Promise<void> {
+async function showSection (requestedId: string, nav: FrameNav): Promise<void> {
   const menuWasOpen = nav.menu.classList.contains('open')
   const shownId = document.getElementById(requestedId) ? requestedId : HOME_SECTION_ID
   document.querySelectorAll<HTMLElement>('section.tab').forEach(section => {
@@ -84,7 +81,6 @@ async function showSection (requestedId: string, nav: FrameNav, options: FrameOp
   if (shownId !== PROXY_SECTION_ID) resetPasswordReveal()
   await renderSection(shownId)
   if (menuWasOpen) focusSectionHeading(shownId)
-  options.onSectionShown?.(shownId)
 }
 
 function focusSectionHeading (sectionId: string): void {
@@ -104,6 +100,7 @@ async function renderSection (sectionId: string): Promise<void> {
   if (sectionId === KEEP_ALIVE_SECTION_ID) await renderKeepAliveSection(setAsideOnly)
   if (sectionId === GENERAL_SECTION_ID) await renderDefaultsSection()
   if (sectionId === TEST_SECTION_ID) await renderProxyTestSection()
+  if (sectionId === NETWORK_SECTION_ID) await renderNetworkSection()
   if (sectionId === ABOUT_SECTION_ID) renderAboutSection()
 }
 
