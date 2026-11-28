@@ -2,9 +2,8 @@ import { monitorHintFor } from '@utils/popupView'
 import { switchControl } from '../components/controls'
 import { element, replaceContent } from '../dom'
 import { icon } from '../icons'
-import { readTabNetworkMonitored } from '../networkMonitorState'
+import { readTabNetworkMonitored, setTabMonitoring } from '../networkMonitorState'
 import type { PopupContext } from './popupContext'
-import { setTabMonitoring } from './popupEffects'
 
 const MONITOR_LABEL = 'Monitor this tab'
 

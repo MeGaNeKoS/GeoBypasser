@@ -30,10 +30,6 @@ export function setRuleRowActive (row: PopupRuleRow, active: boolean): Promise<b
   return changeRuleList((list: ProxyRule[]) => (isRowStillAt(list, row) ? ruleListWithActive(list, row.position, active) : undefined))
 }
 
-export async function setTabMonitoring (tabId: number, monitored: boolean): Promise<void> {
-  await sendRuntimeMessage({ type: monitored ? 'monitorTabNetwork' : 'unmonitorTabNetwork', tabId })
-}
-
 export async function openDashboardAt (hash: string): Promise<void> {
   await browser.tabs.create({ url: `${browser.runtime.getURL('dashboard.html')}${hash}` })
 }
