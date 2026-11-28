@@ -44,12 +44,6 @@ describe('rule form faults for invalid values', () => {
     expect(faultRowsOf(faults, 'forceProxyUrlPatterns')).toEqual({ 1: 'Pattern 2 is not a valid match pattern.' })
   })
 
-  it('refuses both resource type lists at once', () => {
-    expect(faultsOf({ neverResourceTypes: ['image'], onlyResourceTypes: ['media'] })).toEqual([
-      { field: 'resourceTypeMode', message: 'Resource type mode is not valid.' },
-    ])
-  })
-
   it('marks the site row that is not a host name', () => {
     const faults = faultsOf({ proxyOnlyPageHostnames: ['example.com', 'http://bad/path'] })
 

@@ -17,7 +17,6 @@ export type RuleFault = {
 const NAME_FAULT = 'Give the rule a name.'
 const MATCH_EMPTY_FAULT = 'Add at least one match pattern.'
 const PROXY_FAULT = 'Choose the proxy this rule sends requests through.'
-const RESOURCE_MODE_FAULT = 'Resource type mode is not valid.'
 const STATIC_EXTENSIONS_FAULT = 'Not a valid regular expression. Write it between slashes, such as /\\.(jpg|png)$/.'
 
 function patternRowFault (row: number): string {
@@ -33,7 +32,6 @@ export function ruleFormFaults (form: RuleForm): RuleFault[] {
     ...nameFaults(form),
     ...matchFaults(form.match),
     ...proxyFaults(form),
-    ...resourceTypeModeFaults(form),
     ...rowFaults('bypassUrlPatterns', form.bypassUrlPatterns, isValidPattern, patternRowFault),
     ...rowFaults('forceProxyUrlPatterns', form.forceProxyUrlPatterns, isValidPattern, patternRowFault),
     ...rowFaults('proxyOnlyPageHostnames', form.proxyOnlyPageHostnames, validateHostnamePattern, siteRowFault),
@@ -60,11 +58,6 @@ function matchFaults (match: string[]): RuleFault[] {
 
 function proxyFaults (form: RuleForm): RuleFault[] {
   return form.proxyId === '' ? [{ field: 'proxyId', message: PROXY_FAULT }] : []
-}
-
-function resourceTypeModeFaults (form: RuleForm): RuleFault[] {
-  const bothSet = form.neverResourceTypes.length > 0 && form.onlyResourceTypes.length > 0
-  return bothSet ? [{ field: 'resourceTypeMode', message: RESOURCE_MODE_FAULT }] : []
 }
 
 function staticExtensionsFaults (value: string): RuleFault[] {

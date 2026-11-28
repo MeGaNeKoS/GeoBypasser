@@ -23,6 +23,7 @@ const NEVER_HOSTS_HELP = 'Matching requests connect directly. Matched by scheme 
 const ALWAYS_HOSTS_HELP = "Wins over 'Never proxy these hosts', 'Never proxy files matching', and the limits below."
 const HOST_PLACEHOLDER = '*://cdn.example.com/*'
 const RESOURCE_TYPES_CHROME_NOTE = 'Chrome does not tell extensions the kind of request, so it ignores this.'
+const BOTH_LISTS_TEXT = "This rule has both a 'never proxy' and an 'only proxy' type list. Saving keeps the mode shown here."
 const FILES_HELP = 'A JavaScript regular expression tested against the path, such as /\\.(jpg|png|css)$/.'
 const FILES_CHROME_NOTE = 'On Chrome this works for http:// addresses only. Chrome hides the path of https:// addresses from extensions.'
 const PAGE_HELP = 'The rule applies only to requests made by pages on these sites or their subdomains. Requests that belong to no page connect directly. Leave empty to apply on every page.'
@@ -89,6 +90,7 @@ function resourceTypeGroup (form: RuleForm, faults: Fault[], chrome: boolean): H
       chrome ? element('p', { class: 'help' }, RESOURCE_TYPES_CHROME_NOTE) : null,
       modeFault ? element('p', { class: 'field__error' }, modeFault) : null,
     ),
+    bothListsBanner(form),
     element('div', { 'data-show-when': 'resourceTypeMode=never' },
       typeGrid('neverResourceTypes', 'Types that connect directly', form.neverResourceTypes)),
     element('div', { 'data-show-when': 'resourceTypeMode=only' },
@@ -100,6 +102,11 @@ function resourceTypeGroup (form: RuleForm, faults: Fault[], chrome: boolean): H
     }),
     chrome ? element('p', { class: 'help' }, FILES_CHROME_NOTE) : null,
   )
+}
+
+function bothListsBanner (form: RuleForm): HTMLElement | null {
+  const bothListsStored = form.neverResourceTypes.length > 0 && form.onlyResourceTypes.length > 0
+  return bothListsStored ? banner({ tone: 'info', text: BOTH_LISTS_TEXT }) : null
 }
 
 function resourceTypesLegend (chrome: boolean): Child {

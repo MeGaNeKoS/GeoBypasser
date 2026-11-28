@@ -30,6 +30,10 @@ describe('rule form faults for valid values', () => {
     expect(ruleFormFaults(form)).toEqual([])
   })
 
+  it('accepts both resource type lists at once, since each routes on its own', () => {
+    expect(ruleFormFaults(validForm({ neverResourceTypes: ['image'], onlyResourceTypes: ['media'] }))).toEqual([])
+  })
+
   it('ignores blank pattern and site rows', () => {
     expect(ruleFormFaults(validForm({ bypassUrlPatterns: [''], proxyOnlyPageHostnames: ['  '] }))).toEqual([])
   })
