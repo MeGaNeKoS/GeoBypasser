@@ -46,6 +46,15 @@
   margin-left: auto;
 }
 
+.log-toolbar .button--primary[disabled],
+.log-toolbar .button--primary[disabled]:hover {
+  background: var(--surface-sunken);
+  border-color: var(--border);
+  color: var(--text-muted);
+  filter: none;
+  opacity: 1;
+}
+
 .log-page {
   display: flex;
   flex-direction: column;
@@ -201,17 +210,23 @@
     white-space: nowrap;
   }
 
-  .log-table td[data-label='Types'] {
-    min-width: 100px;
+  .log-table td[data-label='Host'] {
+    width: 1%;
+  }
+
+  .log-table .log-host {
+    display: block;
+    width: max-content;
+    max-width: 28ch;
+    white-space: normal;
   }
 
   .log-table td[data-label='Results'] {
-    min-width: 160px;
+    min-width: 130px;
   }
 
   .log-table td[data-label='Route'] {
-    width: 100%;
-    min-width: 180px;
+    min-width: 120px;
   }
 
   .log-table .num {
