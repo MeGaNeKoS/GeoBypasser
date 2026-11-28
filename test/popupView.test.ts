@@ -44,23 +44,28 @@ describe('popup scope on each browser', () => {
 })
 
 describe('the Using line in the This tab block', () => {
-  it('names the proxy and the scope it is set for', () => {
-    expect(popupUsingLine({ scope: 'tab', proxyId: 'tokyo', proxyList: [tokyo], notInEffect: false }))
+  it('names the tab proxy as the one the tab uses', () => {
+    expect(popupUsingLine({ scope: 'tab', tabProxyId: 'tokyo', siteProxyId: undefined, proxyList: [tokyo], notInEffect: false }))
       .toBe('Using: Tokyo SOCKS (set for this tab)')
   })
 
-  it('falls back to the host when a proxy has no label', () => {
-    expect(popupUsingLine({ scope: 'site', proxyId: 'bare', proxyList: [bare], notInEffect: false }))
+  it('names the site proxy when the tab has none of its own', () => {
+    expect(popupUsingLine({ scope: 'tab', tabProxyId: undefined, siteProxyId: 'bare', proxyList: [bare], notInEffect: false }))
       .toBe('Using: bare.lan (set for this site)')
   })
 
+  it('prefers the tab proxy over the site proxy', () => {
+    expect(popupUsingLine({ scope: 'site', tabProxyId: 'tokyo', siteProxyId: 'bare', proxyList: [tokyo, bare], notInEffect: false }))
+      .toBe('Using: Tokyo SOCKS (set for this tab)')
+  })
+
   it('reads Direct for the direct choice without a stored proxy', () => {
-    expect(popupUsingLine({ scope: 'site', proxyId: 'direct', proxyList: [], notInEffect: false }))
+    expect(popupUsingLine({ scope: 'site', tabProxyId: undefined, siteProxyId: 'direct', proxyList: [], notInEffect: false }))
       .toBe('Using: Direct (set for this site)')
   })
 
   it('says the setting is saved but not in effect when control is elsewhere', () => {
-    expect(popupUsingLine({ scope: 'site', proxyId: 'tokyo', proxyList: [tokyo], notInEffect: true }))
+    expect(popupUsingLine({ scope: 'site', tabProxyId: undefined, siteProxyId: 'tokyo', proxyList: [tokyo], notInEffect: true }))
       .toBe('Saved, not in effect: Tokyo SOCKS (set for this site)')
   })
 })

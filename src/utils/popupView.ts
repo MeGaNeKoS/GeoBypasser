@@ -32,17 +32,25 @@ export function canTestFromPopup (supportsPerTabProxy: boolean): boolean {
 
 type PopupUsingInput = {
   scope: PopupScope
-  proxyId: string | undefined
+  tabProxyId: string | undefined
+  siteProxyId: string | undefined
   proxyList: unknown
   notInEffect: boolean
 }
 
-export function popupUsingLine ({ scope, proxyId, proxyList, notInEffect }: PopupUsingInput): string {
-  if (proxyId === undefined) return `No ${scope} proxy`
-  const setting = `set for this ${scope}`
-  const label = proxyLabelFor(proxyId, proxyList)
-  if (label === undefined) return `Unavailable: ${proxyId} (${setting})`
-  return `${notInEffect ? 'Saved, not in effect' : 'Using'}: ${label} (${setting})`
+export function popupUsingLine (input: PopupUsingInput): string {
+  const applied = appliedProxy(input)
+  if (applied === undefined) return `No ${input.scope} proxy`
+  const setting = `set for this ${applied.scope}`
+  const label = proxyLabelFor(applied.proxyId, input.proxyList)
+  if (label === undefined) return `Unavailable: ${applied.proxyId} (${setting})`
+  return `${input.notInEffect ? 'Saved, not in effect' : 'Using'}: ${label} (${setting})`
+}
+
+function appliedProxy (input: PopupUsingInput): { scope: PopupScope; proxyId: string } | undefined {
+  if (input.tabProxyId !== undefined) return { scope: 'tab', proxyId: input.tabProxyId }
+  if (input.siteProxyId !== undefined) return { scope: 'site', proxyId: input.siteProxyId }
+  return undefined
 }
 
 function proxyLabelFor (proxyId: string, proxyList: unknown): string | undefined {
