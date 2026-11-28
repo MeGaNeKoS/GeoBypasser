@@ -16,7 +16,7 @@ export function tuningPhrasesOf (form: RuleForm): TuningPhrase[] {
   const candidates: (TuningPhrase | undefined)[] = [
     countPhrase(nonBlank(form.bypassUrlPatterns).length, 'skips', 'host', 'hosts', false),
     countPhrase(nonBlank(form.forceProxyUrlPatterns).length, 'forces', 'host', 'hosts', false),
-    resourceTypePhrase(form),
+    ...resourceTypePhrases(form),
     form.staticExtensions.trim() !== '' ? { text: 'skips files', firefoxOnly: false } : undefined,
     countPhrase(nonBlank(form.proxyOnlyPageHostnames).length, 'on', 'site', 'sites', true),
   ]
@@ -39,6 +39,14 @@ export function resourceTypeHelpOf (form: RuleForm): string {
 export function chromeIgnoresLimits (form: RuleForm): boolean {
   const onlyTypesTicked = form.resourceTypeMode === 'only' && form.onlyResourceTypes.length > 0
   return onlyTypesTicked || nonBlank(form.proxyOnlyPageHostnames).length > 0
+}
+
+function resourceTypePhrases (form: RuleForm): TuningPhrase[] {
+  const neverPhrase = countPhrase(form.neverResourceTypes.length, 'skips', 'type', 'types', true)
+  const onlyPhrase = countPhrase(form.onlyResourceTypes.length, 'only', 'type', 'types', true)
+  if (neverPhrase && onlyPhrase) return [neverPhrase, onlyPhrase]
+  const phrase = resourceTypePhrase(form)
+  return phrase ? [phrase] : []
 }
 
 function resourceTypePhrase (form: RuleForm): TuningPhrase | undefined {

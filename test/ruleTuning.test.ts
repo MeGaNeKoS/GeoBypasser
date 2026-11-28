@@ -20,6 +20,16 @@ describe('tuning phrases for options in use', () => {
       .toEqual([{ text: 'only 3 types', firefoxOnly: true }])
   })
 
+  it('names both type lists, never first, when a rule stores both', () => {
+    const form = formWith({
+      resourceTypeMode: 'only',
+      neverResourceTypes: ['image', 'font'],
+      onlyResourceTypes: ['media'],
+    })
+
+    expect(tuningPhrasesOf(form).map(phrase => phrase.text)).toEqual(['skips 2 types', 'only 1 type'])
+  })
+
   it('names one type and one site in the singular', () => {
     expect(tuningPhrasesOf(formWith({ resourceTypeMode: 'only', onlyResourceTypes: ['media'] }))[0].text).toBe('only 1 type')
     expect(tuningPhrasesOf(formWith({ proxyOnlyPageHostnames: ['example.com'] }))[0].text).toBe('on 1 site')
