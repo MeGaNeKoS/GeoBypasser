@@ -38,12 +38,6 @@ input.invalid { border-color: #c44; }
   margin: 4px 0;
 }
 
-.section-help {
-  font-size: 0.9em;
-  opacity: 0.8;
-  margin: 4px 0 12px;
-}
-
 .hidden { display: none; }
 
 

@@ -2,6 +2,7 @@ import { button } from '../components/button'
 import { textField } from '../components/fields'
 import { statusLine } from '../components/feedback'
 import { importNotesBanner } from '../components/import-notes'
+import { sectionHeading } from '../components/section-heading'
 import { draftOf, draftValue, faultFor, openSheet } from '../components/sheet'
 import type { Fault } from '../components/sheet'
 import { element, replaceContent, requireElement } from '../dom'
@@ -13,6 +14,8 @@ import { COMMUNITY_RULES, openRepositoryRules, parseGitHubRepositoryUrl } from '
 import type { GitHubRepository } from './repositoryImport'
 
 const CARDS_ID = 'importExportCards'
+const HEADING = 'Import and export'
+const HELP = 'Backup or restore configuration and import community rules.'
 const CONFIG_INPUT_ID = 'configImportInput'
 const URL_FIELD = 'url'
 const JSON_ADDRESS_PATTERN = /\.json$/
@@ -23,30 +26,29 @@ const LIST_FAILED_MESSAGE = 'Could not load the list of rules from GitHub.'
 let lastResult: ImportReport | null = null
 
 export function renderImportExportSection (): void {
+  replaceContent(requireElement(IMPORT_EXPORT_SECTION_ID), [
+    element('div', { class: 'stack' },
+      sectionHeading(HEADING),
+      element('p', { class: 'help' }, HELP),
+      element('div', { id: CARDS_ID, class: 'stack' }),
+    ),
+  ])
   renderCard()
 }
 
 function renderCard (): void {
-  replaceContent(cardsHost(), [importCard(), exportCard()])
-}
-
-function cardsHost (): HTMLElement {
-  const existing = document.getElementById(CARDS_ID)
-  if (existing) return existing
-  const host = element('div', { id: CARDS_ID })
-  requireElement(IMPORT_EXPORT_SECTION_ID).prepend(host)
-  return host
+  replaceContent(requireElement(CARDS_ID), [importCard(), exportCard()])
 }
 
 function exportCard (): HTMLElement {
-  return element('div', { class: 'card export-card' },
+  return element('div', { class: 'settings-card' },
     element('h3', {}, 'Export'),
     row('Configuration file', 'Choose what goes into the file. Leave out usernames and passwords when you will share it.', button('Export config', { onClick: () => void openExportSheet(), focusKey: 'export-config' })),
   )
 }
 
 function importCard (): HTMLElement {
-  return element('div', { class: 'card import-card' },
+  return element('div', { class: 'settings-card' },
     element('h3', {}, 'Import'),
     fileRow(),
     row('From a URL', 'A direct link to a .json file, or a GitHub repository or folder.', button('Enter address', { onClick: openUrlSheet, focusKey: 'import-url' })),
