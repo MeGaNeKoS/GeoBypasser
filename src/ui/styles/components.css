@@ -145,7 +145,7 @@
 
 .field--mono input,
 .field--mono select,
-.input--mono {
+.input.input--mono {
   font-family: var(--font-mono);
 }
 
