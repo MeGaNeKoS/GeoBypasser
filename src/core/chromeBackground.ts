@@ -22,6 +22,7 @@ export type ChromeBackgroundPorts = {
   onRuntimeMessage: (listener: (message: unknown) => unknown) => void;
   onStorageChanged: (listener: (changes: StorageChanges, areaName: string) => Promise<void>) => void;
   registerNetworkMonitor: (monitor: NetworkMonitor, routeFor: RouteForRequest) => void;
+  broadcastNetworkMonitoring: (tabId: number, monitored: boolean) => void;
   onTabRemoved: (listener: (tabId: number) => void) => void;
 };
 
@@ -51,7 +52,7 @@ export function startChromeBackground (ports: ChromeBackgroundPorts) {
     await gate.whenReady(context => reapplyPacForSectionChanges(context, changes, areaName))
   })
 
-  const networkMonitor = createNetworkMonitor()
+  const networkMonitor = createNetworkMonitor(ports.broadcastNetworkMonitoring)
   ports.registerNetworkMonitor(networkMonitor, requestUrl => configGate.whenReady(config => expectedRecordedRoute(expectedRoute(config.settings, requestUrl))))
   ports.onRuntimeMessage(message => {
     if (isNetworkMessage(message)) return Promise.resolve(networkMonitor.answerNetworkMessage(message))

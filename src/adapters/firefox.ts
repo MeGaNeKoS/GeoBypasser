@@ -7,6 +7,7 @@ import { pageHostFor } from '@utils/networkUsage'
 import { DIRECT_ROUTE, routeOfProxyInfo } from '@utils/pacRoute'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { saveTabProxyMap } from '@utils/storage'
+import { APP_NAME } from '@constant/defaults'
 
 export { readStoredSections, getTabProxyMap as readStoredTabProxyMap } from '@utils/storage'
 
@@ -75,6 +76,11 @@ export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
     },
     { urls: ['<all_urls>'] },
   )
+}
+
+export function broadcastFirefoxNetworkMonitoring (tabId: number, monitored: boolean): void {
+  void browser.runtime.sendMessage({ type: 'networkMonitoringChanged', tabId, monitored })
+    .catch(() => console.debug(`[${APP_NAME}BG] No extension page is listening for network monitoring changes`))
 }
 
 export function firefoxKeepAlivePorts (): KeepAlivePorts {

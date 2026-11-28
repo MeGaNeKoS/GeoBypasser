@@ -1,4 +1,4 @@
-import { NetworkUsageSchema } from '@schemas/networkUsage'
+import { networkUsageToWire, parseNetworkUsageReply } from '@schemas/networkUsage'
 import {
   addRequestToTab,
   emptyTabUsage,
@@ -132,10 +132,10 @@ describe('network usage for a page', () => {
     expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(before)
   })
 
-  it('serializes to a payload the schema accepts', () => {
-    const payload = JSON.parse(JSON.stringify({ '7': usageAfter(observation(), observation({ statusCode: 403 })) }))
+  it('round trips through the wire format and the reply parser', () => {
+    const wire = JSON.parse(JSON.stringify(networkUsageToWire({ '7': usageAfter(observation(), observation({ statusCode: 403 })) })))
 
-    expect(NetworkUsageSchema.parse(payload)['7'][PAGE][REQUEST_HOST].count).toBe(2)
+    expect(parseNetworkUsageReply(wire)['7'][PAGE][REQUEST_HOST].count).toBe(2)
   })
 })
 

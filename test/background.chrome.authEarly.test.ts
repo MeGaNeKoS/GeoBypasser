@@ -34,6 +34,7 @@ function chromePortsWithDeferredRead () {
     onRuntimeMessage: () => {},
     onStorageChanged: () => {},
     registerNetworkMonitor: () => {},
+    broadcastNetworkMonitoring: () => {},
     onTabRemoved: () => {},
   }
   return {

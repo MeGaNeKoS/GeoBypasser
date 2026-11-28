@@ -1,6 +1,7 @@
 import { browser } from './setup'
 import { registerChromeNetworkMonitor } from '@adapters/chrome'
 import { createNetworkMonitor } from '@core/networkMonitor'
+import { parseNetworkUsageReply } from '@schemas/networkUsage'
 import type { NetworkUsage, RecordedRoute } from '@utils/networkUsage'
 
 const TAB_ID = 4
@@ -20,7 +21,7 @@ function header (name: string, value: string) {
 }
 
 function setUp () {
-  const monitor = createNetworkMonitor()
+  const monitor = createNetworkMonitor(() => undefined)
   monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
   const routes: string[] = []
   registerChromeNetworkMonitor(monitor, async requestUrl => {
@@ -31,7 +32,7 @@ function setUp () {
 }
 
 function usageOf (monitor: ReturnType<typeof createNetworkMonitor>): NetworkUsage {
-  return monitor.answerNetworkMessage({ type: 'getNetworkStats' }) as NetworkUsage
+  return parseNetworkUsageReply(monitor.answerNetworkMessage({ type: 'getNetworkStats' }))
 }
 
 function hostUsage (monitor: ReturnType<typeof createNetworkMonitor>) {

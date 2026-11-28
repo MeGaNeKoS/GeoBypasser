@@ -1,4 +1,5 @@
 import { createNetworkMonitor, type RequestOutcome } from '@core/networkMonitor'
+import { parseNetworkUsageReply } from '@schemas/networkUsage'
 import type { NetworkUsage, RecordedRoute } from '@utils/networkUsage'
 
 const TAB_ID = 7
@@ -25,13 +26,13 @@ function outcome (overrides: Partial<RequestOutcome> = {}): RequestOutcome {
 }
 
 function monitorTab (tabId = TAB_ID) {
-  const monitor = createNetworkMonitor()
+  const monitor = createNetworkMonitor(() => undefined)
   monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId })
   return monitor
 }
 
 function usageOf (monitor: ReturnType<typeof createNetworkMonitor>): NetworkUsage {
-  return monitor.answerNetworkMessage({ type: 'getNetworkStats' }) as NetworkUsage
+  return parseNetworkUsageReply(monitor.answerNetworkMessage({ type: 'getNetworkStats' }))
 }
 
 describe('network monitor recording', () => {

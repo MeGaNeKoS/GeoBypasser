@@ -1,6 +1,7 @@
 import type { NetworkMessage } from '@customTypes/messages'
 import { addRequestToTab, emptyTabUsage, UNKNOWN_ROUTE, type NetworkUsage, type RecordedRoute, type RequestObservation, type TabUsage } from '@utils/networkUsage'
 import { DIRECT_ROUTE } from '@utils/pacRoute'
+import { networkUsageToWire } from '@schemas/networkUsage'
 
 export type RequestOutcome = Omit<RequestObservation, 'route'> & { observedRoute?: string; expectedRoute?: RecordedRoute };
 
@@ -10,7 +11,7 @@ type RouteCandidate = { precedence: number; route: RecordedRoute };
 
 export type RouteForRequest = (requestUrl: string) => Promise<RecordedRoute>;
 
-export function createNetworkMonitor () {
+export function createNetworkMonitor (broadcastMonitoring: (tabId: number, monitored: boolean) => void) {
   const monitoredTabs = new Set<number>()
   const usageByTab = new Map<number, TabUsage>()
   const candidatesByTab = new Map<number, Map<string, RouteCandidate[]>>()
@@ -20,9 +21,10 @@ export function createNetworkMonitor () {
   }
 
   function forgetTab (tabId: number) {
-    monitoredTabs.delete(tabId)
+    const wasMonitored = monitoredTabs.delete(tabId)
     usageByTab.delete(tabId)
     candidatesByTab.delete(tabId)
+    if (wasMonitored) broadcastMonitoring(tabId, false)
   }
 
   function noteRoute (requestId: string, tabId: number, route: RecordedRoute, precedence = 0) {
@@ -56,15 +58,17 @@ export function createNetworkMonitor () {
   function answerNetworkMessage (message: NetworkMessage): unknown {
     switch (message.type) {
       case 'getNetworkStats':
-        return usageSnapshot()
+        return networkUsageToWire(usageSnapshot())
       case 'clearNetworkStats':
         usageByTab.clear()
         return undefined
       case 'monitorTabNetwork':
         monitoredTabs.add(message.tabId)
+        broadcastMonitoring(message.tabId, true)
         return undefined
       case 'unmonitorTabNetwork':
         monitoredTabs.delete(message.tabId)
+        broadcastMonitoring(message.tabId, false)
         return undefined
       case 'isTabNetworkMonitored':
         return monitoredTabs.has(message.tabId)

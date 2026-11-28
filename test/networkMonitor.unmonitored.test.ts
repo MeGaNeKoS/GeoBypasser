@@ -1,4 +1,5 @@
 import { createNetworkMonitor, type RequestOutcome } from '@core/networkMonitor'
+import { parseNetworkUsageReply } from '@schemas/networkUsage'
 import type { NetworkUsage, RecordedRoute } from '@utils/networkUsage'
 
 const TAB_ID = 7
@@ -20,12 +21,12 @@ function outcome (): RequestOutcome {
 }
 
 function usageOf (monitor: ReturnType<typeof createNetworkMonitor>): NetworkUsage {
-  return monitor.answerNetworkMessage({ type: 'getNetworkStats' }) as NetworkUsage
+  return parseNetworkUsageReply(monitor.answerNetworkMessage({ type: 'getNetworkStats' }))
 }
 
 describe('network monitor without a monitored tab', () => {
   it('ignores a request for a tab that was never monitored', () => {
-    const monitor = createNetworkMonitor()
+    const monitor = createNetworkMonitor(() => undefined)
 
     monitor.recordRequest(TAB_ID, REQUEST_ID, outcome())
 
@@ -33,7 +34,7 @@ describe('network monitor without a monitored tab', () => {
   })
 
   it('drops a route noted before the tab was monitored', () => {
-    const monitor = createNetworkMonitor()
+    const monitor = createNetworkMonitor(() => undefined)
     monitor.noteRoute(REQUEST_ID, TAB_ID, ROUTE)
     monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
 
@@ -44,7 +45,7 @@ describe('network monitor without a monitored tab', () => {
   })
 
   it('stops recording once the tab is unmonitored', () => {
-    const monitor = createNetworkMonitor()
+    const monitor = createNetworkMonitor(() => undefined)
     monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
     monitor.answerNetworkMessage({ type: 'unmonitorTabNetwork', tabId: TAB_ID })
 
@@ -54,7 +55,7 @@ describe('network monitor without a monitored tab', () => {
   })
 
   it('stops recording once the tab is forgotten after it closes', () => {
-    const monitor = createNetworkMonitor()
+    const monitor = createNetworkMonitor(() => undefined)
     monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
     monitor.recordRequest(TAB_ID, REQUEST_ID, outcome())
     monitor.forgetTab(TAB_ID)

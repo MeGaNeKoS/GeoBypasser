@@ -20,6 +20,7 @@ export type FirefoxBackgroundPorts = {
   setKeepAliveListeners: (listeners: KeepAliveTabListeners | undefined) => void;
   registerProxyAuth: (listener: (details: AuthChallenge) => Promise<ProxyAuthResponse>) => void;
   registerNetworkMonitor: (monitor: NetworkMonitor) => void;
+  broadcastNetworkMonitoring: (tabId: number, monitored: boolean) => void;
   onRuntimeMessage: (listener: (message: unknown) => unknown) => void;
   onTabRemoved: (listener: (tabId: number) => void) => void;
   onProxyError: (listener: (error: Proxy.OnErrorErrorType) => void) => void;
@@ -27,7 +28,7 @@ export type FirefoxBackgroundPorts = {
 };
 
 export function startFirefoxBackground (ports: FirefoxBackgroundPorts) {
-  const networkMonitor = createNetworkMonitor()
+  const networkMonitor = createNetworkMonitor(ports.broadcastNetworkMonitoring)
   const routing = createRouting({ ...ports.routingPorts, noteRoute: networkMonitor.noteRoute })
   const keepAlive = createKeepAlive(ports.keepAlivePorts)
   const configChangePorts: ConfigChangePorts = {

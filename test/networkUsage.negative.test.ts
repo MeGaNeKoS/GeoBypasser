@@ -1,4 +1,4 @@
-import { assertNetworkUsage } from '@schemas/networkUsage'
+import { parseNetworkUsageReply } from '@schemas/networkUsage'
 import { addRequestToTab, emptyTabUsage, pageHostFor, type RecordedRoute, type RequestObservation } from '@utils/networkUsage'
 
 const UNROUTED: RecordedRoute = { reason: 'unknown', route: '', expected: false }
@@ -35,30 +35,34 @@ describe('network usage that is not recorded', () => {
 describe('network usage payload rejection', () => {
   const validHost = {
     count: 1,
-    types: {},
+    types: [],
     ok: 1,
-    statuses: {},
-    failures: {},
+    statuses: [],
+    failures: [],
     fromCache: 0,
     sent: 0,
     received: 0,
     unsizedCount: 0,
-    routes: {},
-    paths: {},
+    routes: [],
+    paths: [],
   }
 
   it('rejects a payload that is not keyed by tab, page and host', () => {
-    expect(() => assertNetworkUsage({ '7': { 'page.example': validHost } })).toThrow()
+    expect(() => parseNetworkUsageReply([['7', [['page.example', validHost]]]])).toThrow()
   })
 
   it('rejects a host with a negative byte count', () => {
-    expect(() => assertNetworkUsage({ '7': { 'page.example': { 'cdn.example.com': { ...validHost, sent: -1 } } } })).toThrow()
+    expect(() => parseNetworkUsageReply([['7', [['page.example', [['cdn.example.com', { ...validHost, sent: -1 }]]]]]])).toThrow()
   })
 
   it('rejects a route with a reason the recorder does not write', () => {
     const route = { reason: 'bogus', route: 'DIRECT', expected: true }
-    const host = { ...validHost, routes: { k: { route, count: 1 } } }
+    const host = { ...validHost, routes: [['k', { route, count: 1, bytes: 0 }]] }
 
-    expect(() => assertNetworkUsage({ '7': { 'page.example': { 'cdn.example.com': host } } })).toThrow()
+    expect(() => parseNetworkUsageReply([['7', [['page.example', [['cdn.example.com', host]]]]]])).toThrow()
+  })
+
+  it('rejects a name-keyed map sent as a plain object instead of pairs', () => {
+    expect(() => parseNetworkUsageReply([['7', [['page.example', [['cdn.example.com', { ...validHost, paths: {} }]]]]]])).toThrow()
   })
 })

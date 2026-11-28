@@ -30,6 +30,7 @@ function chromePortsWithDeferredRead () {
     onRuntimeMessage: listener => { runtimeListeners.push(listener) },
     onStorageChanged: () => {},
     registerNetworkMonitor: () => {},
+    broadcastNetworkMonitoring: () => {},
     onTabRemoved: () => {},
   }
   return {

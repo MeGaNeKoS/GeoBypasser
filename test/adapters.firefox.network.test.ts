@@ -1,7 +1,8 @@
 import { browser } from './setup'
 import { registerFirefoxNetworkMonitor } from '@adapters/firefox'
 import { createNetworkMonitor, type NetworkMonitor } from '@core/networkMonitor'
-import type { NetworkUsage, RecordedRoute, RouteTally } from '@utils/networkUsage'
+import { parseNetworkUsageReply } from '@schemas/networkUsage'
+import type { NetworkUsage, PathNode, RecordedRoute, RouteTally } from '@utils/networkUsage'
 
 const TAB_ID = 3
 const URL = 'https://cdn.example.com/a/file.bin'
@@ -16,7 +17,7 @@ function fire (event: { _listeners: Listener[] }, details: unknown) {
 }
 
 function usageOf (monitor: ReturnType<typeof createNetworkMonitor>): NetworkUsage {
-  return monitor.answerNetworkMessage({ type: 'getNetworkStats' }) as NetworkUsage
+  return parseNetworkUsageReply(monitor.answerNetworkMessage({ type: 'getNetworkStats' }))
 }
 
 describe('Firefox network adapter', () => {
@@ -26,8 +27,31 @@ describe('Firefox network adapter', () => {
     }
   })
 
+  it('keeps a request whose path segments are named constructor and __proto__', () => {
+    const monitor = createNetworkMonitor(() => undefined)
+    monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
+    registerFirefoxNetworkMonitor(monitor)
+
+    fire(browser.webRequest.onCompleted, {
+      tabId: TAB_ID,
+      requestId: 'req-proto',
+      url: 'http://127.0.0.1:8080/constructor/__proto__/',
+      documentUrl: 'http://127.0.0.1:8080/page/',
+      type: 'xmlhttprequest',
+      statusCode: 200,
+      fromCache: false,
+      requestSize: 100,
+      responseSize: 200,
+    })
+
+    const tree: Record<string, PathNode> = usageOf(monitor)[TAB_ID]['127.0.0.1']['127.0.0.1'].paths
+    expect(Object.keys(tree)).toEqual(['constructor'])
+    expect(Object.keys(tree['constructor'].children)).toEqual(['__proto__'])
+    expect(tree['constructor'].children['__proto__'].received).toBe(200)
+  })
+
   it('records the request size sent and the response size received', () => {
-    const monitor = createNetworkMonitor()
+    const monitor = createNetworkMonitor(() => undefined)
     monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
     registerFirefoxNetworkMonitor(monitor)
 
@@ -50,7 +74,7 @@ describe('Firefox network adapter', () => {
   })
 
   it('records a failed request under its error', () => {
-    const monitor = createNetworkMonitor()
+    const monitor = createNetworkMonitor(() => undefined)
     monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
     registerFirefoxNetworkMonitor(monitor)
 
@@ -68,7 +92,7 @@ describe('Firefox network adapter', () => {
   })
 
   it('records nothing for a tab that is not monitored', () => {
-    const monitor = createNetworkMonitor()
+    const monitor = createNetworkMonitor(() => undefined)
     registerFirefoxNetworkMonitor(monitor)
 
     fire(browser.webRequest.onCompleted, {
@@ -136,7 +160,7 @@ describe('Firefox network adapter', () => {
 })
 
 function monitorWithNotedRoute (requestId: string, route: RecordedRoute): NetworkMonitor {
-  const monitor = createNetworkMonitor()
+  const monitor = createNetworkMonitor(() => undefined)
   monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
   monitor.noteRoute(requestId, TAB_ID, route)
   registerFirefoxNetworkMonitor(monitor)
