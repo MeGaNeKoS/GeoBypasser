@@ -10,6 +10,7 @@ import { IMPORT_EXPORT_SECTION_ID } from '../shell/routes'
 import { importConfigFromUrl, importConfigText } from './configImport'
 import type { ImportReport } from './configImport'
 import { openExportSheet } from './exportSheet'
+import { showImportFailure } from '../review/reviewSheet'
 import { COMMUNITY_RULES, openRepositoryRules, parseGitHubRepositoryUrl } from './repositoryImport'
 import type { GitHubRepository } from './repositoryImport'
 
@@ -61,7 +62,7 @@ function fileRow (): HTMLElement {
   const input = element('input', { id: CONFIG_INPUT_ID, type: 'file', accept: '.json,application/json', hidden: '' })
   input.addEventListener('change', () => {
     const file = input.files?.[0]
-    if (file) void runImport(async () => importConfigText(await file.text()))
+    if (file) void runImport(async () => importConfigText(await file.text()), chooseConfigFile)
   })
   return row(
     'From a file',
@@ -97,12 +98,25 @@ function publish (result: ImportReport | null): void {
   renderCard()
 }
 
-async function runImport (task: () => Promise<ImportReport>, failure = IMPORT_FAILED_MESSAGE): Promise<void> {
+function chooseConfigFile (): void {
+  requireElement(CONFIG_INPUT_ID).click()
+}
+
+function clearResult (): void {
+  if (lastResult !== null) publish(null)
+}
+
+async function runImport (task: () => Promise<ImportReport>, chooseAnother: () => void): Promise<void> {
+  clearResult()
   try {
     publish(await task())
-  } catch {
-    publish({ messages: [failure], summary: null })
+  } catch (error) {
+    showImportFailure(failureMessage(error), chooseAnother)
   }
+}
+
+function failureMessage (error: unknown): string {
+  return error instanceof Error ? error.message : IMPORT_FAILED_MESSAGE
 }
 
 function openUrlSheet (): void {
@@ -145,17 +159,18 @@ function isHttpAddress (value: string): boolean {
 
 function importFromAddress (address: string): void {
   if (JSON_ADDRESS_PATTERN.test(address)) {
-    void runImport(() => importConfigFromUrl(address))
+    void runImport(() => importConfigFromUrl(address), openUrlSheet)
     return
   }
   const repository = parseGitHubRepositoryUrl(address)
-  if (repository) openRepository(repository)
+  if (repository) openRepository(repository, openUrlSheet)
 }
 
 function openCommunity (): void {
-  openRepository(COMMUNITY_RULES)
+  openRepository(COMMUNITY_RULES, openCommunity)
 }
 
-function openRepository (repository: GitHubRepository): void {
-  openRepositoryRules(repository, publish).catch(() => publish({ messages: [LIST_FAILED_MESSAGE], summary: null }))
+function openRepository (repository: GitHubRepository, chooseAnother: () => void): void {
+  clearResult()
+  openRepositoryRules(repository, publish).catch(() => showImportFailure(LIST_FAILED_MESSAGE, chooseAnother))
 }

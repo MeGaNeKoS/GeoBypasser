@@ -1,7 +1,7 @@
 import type { ProxyListItem } from '@customTypes/proxy'
 import { refuseConfigFile } from '@utils/importFiles'
-import { applyImportDecisions, defaultDecisions, describePlanned, reviewImport } from '@utils/importReview'
-import type { ReviewTargets } from '@utils/importReview'
+import { applyImportDecisions, defaultDecisions, describePlanned, plannedGroupShown, reviewImport } from '@utils/importReview'
+import type { ImportReview, ReviewTargets } from '@utils/importReview'
 
 const office: ProxyListItem = { id: 'p1', label: 'Office', type: 'http', proxyDNS: false, host: 'office.lan', port: 8080 }
 
@@ -84,8 +84,25 @@ describe('applying decisions leaves stored data alone unless told otherwise', ()
   })
 })
 
-describe('the status line after an import with nothing added', () => {
-  it('says nothing was imported', () => {
-    expect(describePlanned({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 0 })).toBe('Nothing new to add')
+describe('the planned group when nothing can be added', () => {
+  it('says nothing in the file can be imported', () => {
+    expect(describePlanned({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 0 })).toBe('Nothing in this file can be imported')
+  })
+
+  it('is left out when only a duplicate is offered', () => {
+    const review: ImportReview = {
+      adds: { proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 0 },
+      notes: { refused: [], ignored: [] },
+      duplicates: [{
+        key: 'proxy:0',
+        kind: 'proxy',
+        label: 'office.lan:8080',
+        allowedResolutions: ['keepExisting', 'useNew', 'keepBoth'],
+        resolution: 'keepExisting',
+      }],
+      settingChanges: [],
+      canImport: true,
+    }
+    expect(plannedGroupShown(review)).toBe(false)
   })
 })

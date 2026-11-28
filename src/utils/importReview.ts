@@ -63,8 +63,7 @@ const COUNT_PHRASES: [keyof AddCounts, string, string][] = [
   ['siteOverrides', 'site', 'sites'],
 ]
 const NO_DECISIONS: ImportDecisions = { duplicates: {}, settings: [] }
-const NOTHING_NEW_TO_ADD = 'Nothing new to add'
-const TO_ADD_PREFIX = 'To add: '
+const NOTHING_IMPORTABLE = 'Nothing in this file can be imported'
 const NOTHING_IMPORTED = 'Nothing was imported'
 const IMPORTED_PREFIX = 'Imported '
 const PLANNED_COPY_ID_PREFIX = 'planned-copy-'
@@ -145,7 +144,11 @@ export function applyImportDecisions (
 
 export function describePlanned (counts: AddCounts): string {
   const parts = countPhrases(counts)
-  return parts.length === 0 ? NOTHING_NEW_TO_ADD : `${TO_ADD_PREFIX}${parts.join(', ')}`
+  return parts.length === 0 ? NOTHING_IMPORTABLE : parts.join(', ')
+}
+
+export function plannedGroupShown (review: ImportReview): boolean {
+  return totalOf(review.adds) > 0 || review.duplicates.length + review.settingChanges.length === 0
 }
 
 export function describeImported (counts: AddCounts): string {

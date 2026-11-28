@@ -49,16 +49,17 @@ export function readReviewSheetText () {
 }
 
 export function readReviewSettingLabels () {
-  return Array.from(document.querySelectorAll('dialog.sheet input[type="checkbox"]'))
-    .map(box => box.closest('label').textContent.trim())
+  return Array.from(document.querySelectorAll('dialog.sheet fieldset.segmented'))
+    .filter(group => group.querySelector('input[value="keepCurrent"]'))
+    .map(group => group.querySelector('legend').textContent.trim())
 }
 
-export function setReviewSettingChecked (label, checked) {
-  const box = Array.from(document.querySelectorAll('dialog.sheet label'))
-    .find(item => item.textContent.trim() === label)
-    ?.querySelector('input[type="checkbox"]')
-  if (!box) throw new Error(`the Review sheet has no setting labelled ${label}`)
-  if (box.checked !== checked) box.click()
+export function setReviewSettingImported (label, imported) {
+  const group = Array.from(document.querySelectorAll('dialog.sheet fieldset.segmented'))
+    .find(item => item.querySelector('legend').textContent.trim() === label)
+  const radio = group?.querySelector(`input[value="${imported ? 'useImported' : 'keepCurrent'}"]`)
+  if (!radio) throw new Error(`the Review sheet has no setting labelled ${label}`)
+  if (!radio.checked) radio.click()
 }
 
 export function clickReviewImport () {

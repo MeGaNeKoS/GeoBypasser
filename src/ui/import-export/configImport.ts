@@ -13,13 +13,13 @@ export type ImportReport = {
 
 export async function importConfigFromUrl (url: string): Promise<ImportReport> {
   const response = await fetch(url)
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  if (!response.ok) throw new Error(`Could not download the configuration (HTTP ${response.status}).`)
   return importConfigText(await response.text())
 }
 
 export async function importConfigText (text: string): Promise<ImportReport> {
   const parsed = parseImportJson(text)
-  if (parsed === undefined) return { messages: [NOT_JSON_MESSAGE], summary: null }
+  if (parsed === undefined) throw new Error(NOT_JSON_MESSAGE)
   const verdict = refuseConfigFile(parsed)
   const stored = await getConfig()
   const incoming = {

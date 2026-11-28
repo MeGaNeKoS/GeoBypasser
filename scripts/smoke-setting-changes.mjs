@@ -1,5 +1,5 @@
 import { serveImportFile, STORAGE_WAIT_MS, UI_SETTLE_MS, sleep, waitFor } from './smoke-fixture.mjs'
-import { clickReviewImport, clickSelector, fillAndSaveOpenUrlSheet, isReviewSheetOpen, openImportUrlSheet, readFieldValue, readLocalStorage, readReviewSettingLabels, setReviewSettingChecked } from './smoke-dashboard.mjs'
+import { clickReviewImport, fillAndSaveOpenUrlSheet, isReviewSheetOpen, openImportUrlSheet, readLocalStorage, readReviewSettingLabels, setReviewSettingImported } from './smoke-dashboard.mjs'
 
 const CHANGE_CHECK_URL = 'https://settings-check.example/'
 const CHANGE_CHECK_RULE = 'settings check rule'
@@ -11,15 +11,11 @@ const SETTINGS_IMPORT_FILE = {
   rules: [{ active: true, name: CHANGE_CHECK_RULE, match: ['*://settings.example/*'], proxyId: 'proxy-good' }]
 }
 
-function settingLabel (title, oldText, newText) {
-  return `${title}: ${oldText}, becomes ${newText}`
-}
-
-function settingDecisionsFor (before) {
+function settingDecisionsFor () {
   return [
-    { label: settingLabel('Default proxy', 'good', 'creds.lan'), apply: false },
-    { label: settingLabel('Connect directly when a proxy fails', 'Off', 'On'), apply: true },
-    { label: settingLabel('Test URL', before.testProxyUrl, CHANGE_CHECK_URL), apply: false },
+    { label: 'Default proxy', apply: false },
+    { label: 'Connect directly when a proxy fails', apply: true },
+    { label: 'Test URL', apply: false },
   ]
 }
 
@@ -29,18 +25,11 @@ async function chooseSettingChanges (run, failures, decisions) {
   if (JSON.stringify(shown) !== JSON.stringify(expected)) {
     failures.push(`the Review sheet listed ${JSON.stringify(shown)}, expected ${JSON.stringify(expected)}`)
   }
-  for (const decision of decisions) await run(setReviewSettingChecked, [decision.label, decision.apply])
+  for (const decision of decisions) await run(setReviewSettingImported, [decision.label, decision.apply])
 }
 
 function expectedSettingsAfterChoices (before) {
   return { defaultProxy: before.defaultProxy, fallbackDirect: true, testProxyUrl: before.testProxyUrl }
-}
-
-async function readShownTestUrl (run) {
-  await run(clickSelector, ['[data-tab="general"]'])
-  const shown = await waitFor(() => run(readFieldValue, ['testProxyUrl']), STORAGE_WAIT_MS, 'the Defaults test URL field')
-  await run(clickSelector, ['[data-tab="impexp"]'])
-  return shown
 }
 
 async function importSettingsThroughReview (run, failures, settingsUrl, decisions) {
@@ -53,12 +42,11 @@ async function importSettingsThroughReview (run, failures, settingsUrl, decision
 
 export async function checkSettingChanges (run, failures) {
   const before = await run(readLocalStorage)
-  const current = { ...before, testProxyUrl: await readShownTestUrl(run) }
   const failuresBefore = failures.length
   const settingsFile = await serveImportFile(JSON.stringify(SETTINGS_IMPORT_FILE))
   try {
     await sleep(UI_SETTLE_MS)
-    await importSettingsThroughReview(run, failures, settingsFile.url, settingDecisionsFor(current))
+    await importSettingsThroughReview(run, failures, settingsFile.url, settingDecisionsFor())
     await waitFor(async () => {
       const stored = await run(readLocalStorage)
       return stored.rules.some(rule => rule?.name === CHANGE_CHECK_RULE)

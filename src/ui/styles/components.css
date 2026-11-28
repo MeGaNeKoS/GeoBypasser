@@ -550,6 +550,22 @@
   background: var(--surface);
 }
 
+.attention-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.attention-item {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.setting-choice {
+  display: grid;
+  gap: var(--space-1);
+}
+
 .note-block {
   display: grid;
   gap: var(--space-1);

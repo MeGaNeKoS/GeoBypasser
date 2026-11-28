@@ -86,8 +86,8 @@ describe('import review counts and offers', () => {
   })
 
   it('describes what was added in the status line', () => {
-    expect(describePlanned({ proxies: 1, rules: 4, keepAliveRules: 2, siteOverrides: 0 })).toBe('To add: 4 rules, 1 proxy, 2 keep-alive rules')
-    expect(describePlanned({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 1 })).toBe('To add: 1 site')
+    expect(describePlanned({ proxies: 1, rules: 4, keepAliveRules: 2, siteOverrides: 0 })).toBe('4 rules, 1 proxy, 2 keep-alive rules')
+    expect(describePlanned({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 1 })).toBe('1 site')
     expect(describeImported({ proxies: 1, rules: 4, keepAliveRules: 2, siteOverrides: 0 })).toBe('Imported 4 rules, 1 proxy, 2 keep-alive rules')
     expect(describeImported({ proxies: 0, rules: 0, keepAliveRules: 0, siteOverrides: 0 })).toBe('Nothing was imported')
   })
