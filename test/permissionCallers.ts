@@ -32,6 +32,7 @@ export const FIREFOX_PERMISSION_CALLERS: PermissionCallers = {
   tabs: [
     { file: 'src/adapters/firefox.ts', pattern: /browser\.tabs\./ },
     { file: 'src/popup.ts', pattern: /browser\.tabs\./ },
+    { file: 'src/ui/networkMonitorState.ts', pattern: /browser\.tabs\.query\(/ },
   ],
   notifications: [{ file: 'src/adapters/firefox.ts', pattern: /browser\.notifications\./ }],
   webRequest: [{ file: 'src/adapters/firefox.ts', pattern: /browser\.webRequest\./ }],
@@ -45,6 +46,7 @@ export const CHROME_PERMISSION_CALLERS: PermissionCallers = {
   tabs: [
     { file: 'src/adapters/chrome.ts', pattern: /browser\.tabs\./ },
     { file: 'src/popup.ts', pattern: /browser\.tabs\./ },
+    { file: 'src/ui/networkMonitorState.ts', pattern: /browser\.tabs\.query\(/ },
   ],
   webRequest: [{ file: 'src/adapters/chrome.ts', pattern: /chrome\.webRequest\.onAuthRequired\.addListener\(/ }],
   webRequestAuthProvider: [{ file: 'src/adapters/chrome.ts', pattern: /chrome\.webRequest\.onAuthRequired\.addListener\(/ }],

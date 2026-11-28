@@ -22,7 +22,7 @@ import { banner, skeletonRows, stateBlock } from '../components/feedback'
 import { element, replaceContent, requireElement } from '../dom'
 import { NETWORK_SECTION_ID } from '../shell/routes'
 import { openRuleEditor } from '../rules/ruleSheet'
-import { readOpenTabs, readTabNetworkMonitored, setTabMonitoring } from '../networkMonitorState'
+import { onNetworkMonitoringChanged, onOpenTabsChanged, readOpenTabs, readTabNetworkMonitored, setTabMonitoring } from '../networkMonitorState'
 import { clearNetworkUsage, readNetworkUsage } from './networkStore'
 import { requestLogPageGroup, type PageGroupOptions } from './requestLogPage'
 import { expansionKey, type LogRowActions } from './requestLogTable'
@@ -33,6 +33,7 @@ const HEADING = 'Network'
 const CHROME_NOTE = 'Chrome does not report the route each request used. Routes shown are the ones your settings expect.'
 const AUTO_REFRESH_LABEL = 'Auto refresh'
 const AUTO_REFRESH_INTERVAL_MS = 5000
+const OPEN_TABS_DEBOUNCE_MS = 250
 const LOADING_ROW_COUNT = 4
 const LOAD_ERROR_TITLE = 'Could not read usage from the extension.'
 const NO_TRAFFIC_TITLE = 'No traffic recorded yet. Turn on a tab above, or use Monitor this tab in the popup.'
@@ -69,7 +70,11 @@ let clearFailed = false;
 let autoRefresh = false;
 let autoRefreshTimer: ReturnType<typeof setInterval> | undefined;
 
+let stopWatchingOpenTabs: (() => void) | undefined;
+let openTabsDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
 export async function renderNetworkSection (focusKey?: string): Promise<void> {
+  stopWatchingOpenTabs ??= onOpenTabsChanged(refreshAfterOpenTabsChange);
   if (view.kind === 'loading') paint(focusKey);
   view = await readView();
   paint(focusKey);
@@ -135,7 +140,7 @@ function logNodes (ready: ReadyView): Node[] {
 function emptyLogTitle (ready: ReadyView): string {
   const monitoring = ready.tabs.filter(tab => tab.monitored).length;
   if (monitoring === 0) return NO_TRAFFIC_TITLE;
-  return `Monitoring ${monitoring} ${monitoring === 1 ? 'tab' : 'tabs'}. Nothing recorded yet. Load or reload the page.`;
+  return `Monitoring ${monitoring} tabs. Nothing recorded yet. Load or reload the page.`;
 }
 
 function pageGroupOptions (ready: ReadyView, page: RequestLogPage): PageGroupOptions {
@@ -278,6 +283,17 @@ function setAutoRefresh (enabled: boolean): void {
 }
 
 function refreshWhenShown (): void {
-  if (!requireElement(NETWORK_SECTION_ID).classList.contains('active')) return;
-  void renderNetworkSection(AUTO_REFRESH_KEY);
+  if (!requireElement(NETWORK_SECTION_ID).classList.contains('active')) {
+    stopWatchingOpenTabs?.();
+    stopWatchingOpenTabs = undefined;
+    return;
+  }
+  void renderNetworkSection();
 }
+
+function refreshAfterOpenTabsChange (): void {
+  clearTimeout(openTabsDebounceTimer);
+  openTabsDebounceTimer = setTimeout(refreshWhenShown, OPEN_TABS_DEBOUNCE_MS);
+}
+
+onNetworkMonitoringChanged(refreshWhenShown);
