@@ -1,0 +1,6 @@
+#stage {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  align-items: start;
+}
