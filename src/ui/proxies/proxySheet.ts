@@ -1,18 +1,21 @@
 import type { ProxyListItem } from '@customTypes/proxy'
 import type { ProxyType } from '@customTypes/generic'
+import { supportsProxyOnRequest } from '@utils/env'
 import { proxyFormFaults, proxyFormOf, proxyFromForm, proxyListReplacingAt, proxyListWith } from '@utils/proxyDraft'
 import type { ProxyForm } from '@utils/proxyDraft'
-import { lockedSwitchText, segmented, switchControl } from '../components/controls'
+import { segmented, switchControl } from '../components/controls'
 import type { SegmentOption } from '../components/controls'
+import { badge } from '../components/feedback'
 import { disclosure } from '../components/disclosure'
-import { passwordField, textField } from '../components/fields'
+import { passwordField, switchField, textField } from '../components/fields'
 import { draftFlag, draftOf, draftValue, faultFor, openSheet } from '../components/sheet'
 import type { Draft, Fault } from '../components/sheet'
 import { element } from '../dom'
+import type { Child } from '../dom'
 import { changeProxyList } from './proxyStore'
 
 export type ProxyEditorOptions = {
-  entry?: { proxy?: ProxyListItem; position: number };
+  entry?: { proxy?: ProxyListItem; position: number; needsReview?: boolean };
   prefill?: ProxyListItem;
   onSaved?: () => void;
 }
@@ -22,10 +25,12 @@ const TYPE_OPTIONS: SegmentOption<ProxyType>[] = [
   { value: 'socks', label: 'SOCKS5' },
 ]
 const NOTIFY_HELP = 'Needs a keep-alive rule for this proxy. You are told after 3 failed checks in a row, and again when it responds.'
+const DNS_LABEL = 'Resolve DNS through the proxy'
 const DNS_HELP = 'Site names are looked up by the proxy, not by this device.'
-const DNS_LOCKED_HELP = 'HTTP proxies always resolve names on the proxy side.'
+const DNS_LOCKED_TEXT = 'Always on the proxy side for HTTP proxies.'
 const FAILOVER_HELP = 'How long to wait on this proxy before treating it as failed. Leave empty for the default: 3 seconds, or 30 for an HTTP proxy with a username.'
 const FAILOVER_UNITS = 'seconds'
+const FIREFOX_ONLY_NOTE = 'Chrome ignores both settings. They are saved and take effect in Firefox.'
 
 export function openProxyEditor (options: ProxyEditorOptions): void {
   const form = proxyFormOf(options.entry?.proxy ?? options.prefill)
@@ -33,6 +38,7 @@ export function openProxyEditor (options: ProxyEditorOptions): void {
     title: options.entry ? 'Edit proxy' : 'Add proxy',
     saveLabel: 'Save',
     draft: draftOf({ ...form }),
+    initialFaults: options.entry?.needsReview ? proxyFormFaults(form) : undefined,
     render: (draft, faults) => renderFields(formFromDraft(draft), faults),
     validate: draft => proxyFormFaults(formFromDraft(draft)),
     save: draft => {
@@ -68,11 +74,13 @@ function renderFields (form: ProxyForm, faults: Fault[]): Node[] {
   return [
     textField({ name: 'label', label: 'Label', value: form.label, fault: faultFor(faults, 'label') }),
     typeField(form, faults),
-    textField({ name: 'host', label: 'Host', value: form.host, mono: true, fault: faultFor(faults, 'host') }),
-    textField({
-      name: 'port', label: 'Port', type: 'number', inputMode: 'numeric', value: form.port, mono: true,
-      fault: faultFor(faults, 'port'),
-    }),
+    element('div', { class: 'field-pair' },
+      textField({ name: 'host', label: 'Host', value: form.host, mono: true, fault: faultFor(faults, 'host') }),
+      textField({
+        name: 'port', label: 'Port', type: 'number', inputMode: 'numeric', value: form.port, mono: true,
+        fault: faultFor(faults, 'port'),
+      }),
+    ),
     textField({ name: 'username', label: 'Username', value: form.username, autocomplete: 'off', fault: faultFor(faults, 'username') }),
     passwordField({ name: 'password', label: 'Password', value: form.password, fault: faultFor(faults, 'password') }),
     notifyField(form),
@@ -89,20 +97,26 @@ function typeField (form: ProxyForm, faults: Fault[]): HTMLElement {
 }
 
 function notifyField (form: ProxyForm): HTMLElement {
-  return element('div', { class: 'field' },
-    element('span', { class: 'field__label' }, 'Notify if down'),
-    switchControl('Notify if down', form.notifyIfDown, undefined, { field: 'notifyIfDown' }),
-    element('p', { class: 'help' }, NOTIFY_HELP),
-  )
+  return switchField({
+    label: 'Notify if down',
+    control: switchControl('Notify if down', form.notifyIfDown, undefined, { field: 'notifyIfDown' }),
+    help: supportsProxyOnRequest ? NOTIFY_HELP : element('span', {}, badge('firefox'), ' ', NOTIFY_HELP),
+  })
 }
 
 function advancedGroup (form: ProxyForm, faults: Fault[]): HTMLDetailsElement {
   const changes = changedCount(form)
   const failoverFault = faultFor(faults, 'failoverTimeout')
   return disclosure('Advanced', changes === 0 ? 'Defaults in use' : `${changes} changed`, changes > 0 || failoverFault !== undefined,
-    dnsField(form),
+    ...advancedNotes(),
+    ...dnsFields(form),
     failoverField(form, failoverFault),
   )
+}
+
+function advancedNotes (): Child[] {
+  if (supportsProxyOnRequest) return []
+  return [element('p', { class: 'help' }, badge('firefox'), ' ', FIREFOX_ONLY_NOTE)]
 }
 
 function changedCount (form: ProxyForm): number {
@@ -111,18 +125,16 @@ function changedCount (form: ProxyForm): number {
   return Number(dnsChanged) + Number(failoverChanged)
 }
 
-function dnsField (form: ProxyForm): HTMLElement {
-  return element('div', { class: 'field' },
-    element('span', { class: 'field__label' }, 'Resolve DNS through the proxy'),
-    element('div', { 'data-show-when': 'type=socks' },
-      switchControl('Resolve DNS through the proxy', form.proxyDNS, undefined, { field: 'proxyDNS' }),
-      element('p', { class: 'help' }, DNS_HELP),
-    ),
-    element('div', { 'data-show-when': 'type=http' },
-      lockedSwitchText('Resolve DNS through the proxy'),
-      element('p', { class: 'help' }, DNS_LOCKED_HELP),
-    ),
-  )
+function dnsFields (form: ProxyForm): HTMLElement[] {
+  return [
+    switchField({
+      label: DNS_LABEL,
+      control: switchControl(DNS_LABEL, form.proxyDNS, undefined, { field: 'proxyDNS' }),
+      help: DNS_HELP,
+      showWhen: 'type=socks',
+    }),
+    switchField({ label: DNS_LABEL, control: element('span', {}, DNS_LOCKED_TEXT), showWhen: 'type=http' }),
+  ]
 }
 
 function failoverField (form: ProxyForm, fault: string | undefined): HTMLDivElement {

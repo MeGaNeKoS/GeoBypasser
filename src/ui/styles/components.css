@@ -97,8 +97,26 @@
   min-width: 0;
 }
 
+.field[hidden] {
+  display: none;
+}
+
 .field__label {
   font-weight: 600;
+}
+
+.field__switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.field-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem;
+  align-items: start;
+  gap: var(--space-3);
 }
 
 .field__label-row {
@@ -692,6 +710,20 @@
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
   font-weight: 600;
+}
+
+.disclosure__chevron {
+  display: inline-flex;
+  transition: transform 150ms ease;
+}
+
+.disclosure[open] > .disclosure__summary > .disclosure__chevron {
+  transform: rotate(90deg);
+}
+
+.disclosure__name {
+  flex: 1;
+  min-width: 0;
 }
 
 .disclosure__state {

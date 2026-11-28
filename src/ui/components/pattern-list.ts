@@ -10,13 +10,14 @@ export type PatternListOptions = {
   placeholder: string;
   help?: string;
   addRowAside?: HTMLElement;
+  addLabel?: string;
 }
 
 export function patternList (options: PatternListOptions): HTMLDivElement {
   const rows = element('div', { class: 'pattern-list' },
     ...(options.patterns.length ? options.patterns : ['']).map((pattern, index) => patternRow(options, pattern, options.faults?.[index])),
   )
-  const add = button('Add pattern', { onClick: () => rows.append(patternRow(options, '', undefined, true)) })
+  const add = button(options.addLabel ?? 'Add pattern', { onClick: () => rows.append(patternRow(options, '', undefined, true)) })
   return element('div', { class: 'field' },
     element('span', { class: 'field__label' }, options.label),
     rows,

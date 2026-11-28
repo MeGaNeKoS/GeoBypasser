@@ -1,4 +1,5 @@
 import { element } from '../dom'
+import type { Child } from '../dom'
 import { icon } from '../icons'
 
 let sequence = 0
@@ -69,6 +70,23 @@ export function selectField (options: SelectFieldOptions): HTMLDivElement {
     disabled: option.disabled,
   }, option.label)))
   return fieldFrame(id, options, select, select)
+}
+
+export type SwitchFieldOptions = {
+  label: string;
+  control: HTMLElement;
+  help?: Child;
+  showWhen?: string;
+};
+
+export function switchField (options: SwitchFieldOptions): HTMLDivElement {
+  return element('div', { class: 'field field--switch', 'data-show-when': options.showWhen },
+    element('div', { class: 'field__switch-row' },
+      element('span', { class: 'field__label' }, options.label),
+      options.control,
+    ),
+    options.help === undefined ? null : element('p', { class: 'help' }, options.help),
+  )
 }
 
 export function passwordField (options: FieldOptions & { value: string }): HTMLDivElement {

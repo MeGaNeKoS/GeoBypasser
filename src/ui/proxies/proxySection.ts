@@ -139,7 +139,10 @@ function rowFor (list: ProxyListItem[], row: ProxyRow): ListRow {
     actions: [
       button(row.invalid ? 'Fix' : 'Edit', {
         focusKey: `edit-${key}`,
-        onClick: () => openProxyEditor({ entry: { proxy: storedProxyOf(proxy), position: row.index }, onSaved: rerender }),
+        onClick: () => openProxyEditor({
+          entry: { proxy: storedProxyOf(proxy), position: row.index, needsReview: row.invalid || row.ignoredNote !== undefined },
+          onSaved: rerender,
+        }),
       }),
     ],
   }

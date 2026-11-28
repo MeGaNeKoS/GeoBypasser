@@ -4,7 +4,7 @@ import { proxyOptions } from '@utils/pageView'
 import { faultFor, draftFlag, draftOf, draftValue, draftValues, openSheet } from '../components/sheet'
 import type { Draft, Fault } from '../components/sheet'
 import { switchControl } from '../components/controls'
-import { selectField, textField } from '../components/fields'
+import { selectField, switchField, textField } from '../components/fields'
 import { patternList } from '../components/pattern-list'
 import { element } from '../dom'
 import { faultRowsOf, ruleFormFaults } from '@utils/ruleFaults'
@@ -80,10 +80,7 @@ function renderFields (form: RuleForm, faults: Fault[], proxyList: unknown): Nod
 }
 
 function activeField (form: RuleForm): HTMLElement {
-  return element('div', { class: 'field' },
-    element('span', { class: 'field__label' }, 'Active'),
-    switchControl('Active', form.active, undefined, { field: 'active' }),
-  )
+  return switchField({ label: 'Active', control: switchControl('Active', form.active, undefined, { field: 'active' }) })
 }
 
 function sendThroughField (form: RuleForm, proxyList: unknown, fault: string | undefined): HTMLElement {

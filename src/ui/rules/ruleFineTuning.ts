@@ -8,7 +8,7 @@ import type { Fault } from '../components/sheet'
 import { switchControl, segmented } from '../components/controls'
 import type { SegmentOption } from '../components/controls'
 import { disclosure } from '../components/disclosure'
-import { textField } from '../components/fields'
+import { switchField, textField } from '../components/fields'
 import { patternList } from '../components/pattern-list'
 import { typeGrid } from '../components/type-grid'
 import { element } from '../dom'
@@ -110,7 +110,7 @@ function pageGroup (form: RuleForm, faults: Fault[], chrome: boolean): HTMLEleme
   return group('By page', chrome ? badge('firefox') : null,
     patternList({
       field: 'proxyOnlyPageHostnames', label: 'Only when the page is on', patterns: form.proxyOnlyPageHostnames,
-      faults: faultRowsOf(faults, 'proxyOnlyPageHostnames'), placeholder: SITE_PLACEHOLDER, help: PAGE_HELP,
+      faults: faultRowsOf(faults, 'proxyOnlyPageHostnames'), placeholder: SITE_PLACEHOLDER, help: PAGE_HELP, addLabel: 'Add site',
     }),
     chrome ? element('p', { class: 'help' }, PAGE_CHROME_NOTE) : null,
   )
@@ -118,11 +118,11 @@ function pageGroup (form: RuleForm, faults: Fault[], chrome: boolean): HTMLEleme
 
 function connectDirectlyGroup (form: RuleForm): HTMLElement {
   return group('If the proxy fails', null,
-    element('div', { class: 'field' },
-      element('span', { class: 'field__label' }, 'Connect directly instead'),
-      switchControl('Connect directly instead', form.fallbackDirect, undefined, { field: 'fallbackDirect' }),
-      element('p', { class: 'help' }, CONNECT_DIRECTLY_HELP),
-    ),
+    switchField({
+      label: 'Connect directly instead',
+      control: switchControl('Connect directly instead', form.fallbackDirect, undefined, { field: 'fallbackDirect' }),
+      help: CONNECT_DIRECTLY_HELP,
+    }),
   )
 }
 
