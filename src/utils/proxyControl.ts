@@ -21,3 +21,9 @@ const PROXY_TEST_CONTROL_STATES: readonly ProxyControlState[] = ['active', 'avai
 export function canRunProxyTests (state: ProxyControlState | undefined): boolean {
   return state === undefined || PROXY_TEST_CONTROL_STATES.includes(state)
 }
+
+const NOT_IN_EFFECT_CONTROL_STATES: readonly ProxyControlState[] = ['overridden', 'unavailable']
+
+export function isProxyNotInEffect (state: ProxyControlState | undefined): boolean {
+  return state !== undefined && NOT_IN_EFFECT_CONTROL_STATES.includes(state)
+}
