@@ -6,7 +6,6 @@ import {
   MonitorNetworkMessageSchema,
   UnmonitorNetworkMessageSchema,
   IsMonitoredMessageSchema,
-  DevtoolsNetworkDataMessageSchema,
   NetworkMessageSchema,
   GetProxyControlMessageSchema,
   ProxyControlChangedMessageSchema,
@@ -22,7 +21,6 @@ export type TabProxyMessage = z.infer<typeof TabProxyMessageSchema>
 export type MonitorNetworkMessage = z.infer<typeof MonitorNetworkMessageSchema>
 export type UnmonitorNetworkMessage = z.infer<typeof UnmonitorNetworkMessageSchema>
 export type IsMonitoredMessage = z.infer<typeof IsMonitoredMessageSchema>
-export type DevtoolsNetworkDataMessage = z.infer<typeof DevtoolsNetworkDataMessageSchema>
 export type NetworkMessage = z.infer<typeof NetworkMessageSchema>
 export type GetProxyControlMessage = z.infer<typeof GetProxyControlMessageSchema>
 export type ProxyControlChangedMessage = z.infer<typeof ProxyControlChangedMessageSchema>

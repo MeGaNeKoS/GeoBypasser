@@ -26,20 +26,4 @@ describe('network monitor recording', () => {
     expect(networkStats.total.sent).toBe(300)
     expect(networkStats.total.received).toBe(0)
   })
-
-  it('records the sizes of a devtools network report for a monitored tab', () => {
-    const monitor = createNetworkMonitor()
-    monitor.answerNetworkMessage({ type: 'monitorTabNetwork', tabId: TAB_ID })
-
-    monitor.answerNetworkMessage({
-      type: 'devtoolsNetworkData',
-      tabId: TAB_ID,
-      url: URL,
-      sentSize: 10,
-      receivedSize: 20,
-    })
-
-    expect(networkStats.domains['media.example.com'].sent).toBe(10)
-    expect(networkStats.domains['media.example.com'].received).toBe(20)
-  })
 })

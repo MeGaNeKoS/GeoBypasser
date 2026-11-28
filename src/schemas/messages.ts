@@ -34,21 +34,12 @@ export const IsMonitoredMessageSchema = z.object({
   tabId: z.number(),
 })
 
-export const DevtoolsNetworkDataMessageSchema = z.object({
-  type: z.literal('devtoolsNetworkData'),
-  tabId: z.number(),
-  url: z.string(),
-  sentSize: z.number(),
-  receivedSize: z.number(),
-})
-
 export const NetworkMessageSchema = z.union([
   z.object({ type: z.literal('getNetworkStats') }),
   z.object({ type: z.literal('clearNetworkStats') }),
   MonitorNetworkMessageSchema,
   UnmonitorNetworkMessageSchema,
   IsMonitoredMessageSchema,
-  DevtoolsNetworkDataMessageSchema,
 ])
 
 export const GetProxyControlMessageSchema = z.object({

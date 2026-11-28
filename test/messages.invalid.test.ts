@@ -18,8 +18,6 @@ describe('isNetworkMessage rejects messages of the wrong shape', () => {
   it.each([
     ['monitorTabNetwork with a string tab id', { type: 'monitorTabNetwork', tabId: '1' }],
     ['unmonitorTabNetwork without a tab id', { type: 'unmonitorTabNetwork' }],
-    ['devtoolsNetworkData without a sent size', { type: 'devtoolsNetworkData', tabId: 1, url: 'https://a/', receivedSize: 2 }],
-    ['devtoolsNetworkData with a string received size', { type: 'devtoolsNetworkData', tabId: 1, url: 'https://a/', sentSize: 1, receivedSize: '2' }],
     ['an array message', [{ type: 'getNetworkStats' }]],
   ])('rejects %s', (_name, msg) => {
     expect(isNetworkMessage(msg)).toBe(false)

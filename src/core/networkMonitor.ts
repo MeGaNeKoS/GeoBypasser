@@ -34,12 +34,6 @@ export function createNetworkMonitor () {
         return undefined
       case 'isTabNetworkMonitored':
         return monitoredTabs.has(message.tabId)
-      case 'devtoolsNetworkData':
-        recordTransfer(message.tabId, message.url, {
-          sentBytes: message.sentSize,
-          receivedBytes: message.receivedSize,
-        })
-        return undefined
     }
   }
 
