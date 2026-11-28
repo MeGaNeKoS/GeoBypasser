@@ -9,18 +9,28 @@ export function setAsideBanner (count: number, noun: string, nounPlural: string,
   return banner({ tone: 'warn', text: `${subject} not used because ${count === 1 ? 'it is' : 'they are'} invalid.`, action })
 }
 
+export function setAsideBadge (): HTMLSpanElement {
+  return badge('not-used')
+}
+
+export function setAsideReason (reasons: string[]): HTMLParagraphElement {
+  return element('p', { class: 'help set-aside__reason' }, reasons.join(' '))
+}
+
 export function setAsideNotes (reasons: string[]): Node[] {
-  return [
-    badge('not-used'),
-    element('p', { class: 'help set-aside__reason' }, reasons.join(' ')),
-  ]
+  return [setAsideBadge(), setAsideReason(reasons)]
+}
+
+export function ignoredSettingBadge (): HTMLSpanElement {
+  return badge('ignored')
+}
+
+export function ignoredSettingReason (note: string): HTMLParagraphElement {
+  return element('p', { class: 'help set-aside__reason' }, note)
 }
 
 export function ignoredSettingNotes (note: string): Node[] {
-  return [
-    badge('ignored'),
-    element('p', { class: 'help set-aside__reason' }, note),
-  ]
+  return [ignoredSettingBadge(), ignoredSettingReason(note)]
 }
 
 export type ListRow = {
@@ -198,7 +208,7 @@ class ListRegion {
     if (this.pendingRemoval === row.id) {
       return [this.confirm(`Delete this ${this.options.noun}?`, [row.id], row.id)]
     }
-    return [...row.actions, button('Delete', { focusKey: `delete-${row.id}`, onClick: () => this.askRemoval(row.id) })]
+    return [...row.actions, button('Delete', { variant: 'quiet', focusKey: `delete-${row.id}`, onClick: () => this.askRemoval(row.id) })]
   }
 
   private confirm (question: string, ids: string[], pendingKey: string): HTMLElement {

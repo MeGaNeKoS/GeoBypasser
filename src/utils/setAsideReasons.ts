@@ -4,14 +4,21 @@ import { proxyFormFaults, proxyFormOf, storedProxyOf } from '@utils/proxyDraft'
 import { ruleFormOf, storedRuleOf } from '@utils/ruleDraft'
 import { isValidFailoverTimeout, isValidProxyId, isValidStaticExtensions } from '@utils/validity'
 
-const PROXY_ID_FAULT = 'The proxy has no id, so rules cannot use it.'
-const FAILOVER_TIMEOUT_IGNORED_NOTE = 'Failover timeout is not a number, so the default is used.'
+const PROXY_ID_FAULT = 'This proxy has no internal id, so rules and sites cannot use it. Open Fix and save to repair it.'
+const FAILOVER_TIMEOUT_IGNORED_NOTE = 'Failover timeout is not a whole number of seconds, 1 or more, so the default is used.'
 const STATIC_EXTENSIONS_IGNORED_NOTE = 'Static extensions is not a valid pattern, so it is ignored. The rule still works.'
+
+const PROXY_FIELD_STATEMENTS: Record<string, string> = {
+  type: 'Type is not HTTP or SOCKS5.',
+  host: 'Host is missing.',
+  port: 'Port is not valid.',
+  failoverTimeout: 'Failover timeout is not valid.',
+}
 
 export function proxyReasons (entry: unknown): string[] {
   const proxy = storedProxyOf(entry)
   const idFaults = isValidProxyId(proxy?.id) ? [] : [PROXY_ID_FAULT]
-  return [...idFaults, ...proxyFormFaults(proxyFormOf(proxy)).map(fault => fault.message)]
+  return [...idFaults, ...proxyFormFaults(proxyFormOf(proxy)).map(fault => PROXY_FIELD_STATEMENTS[fault.field] ?? fault.message)]
 }
 
 export function ruleReasons (entry: unknown): string[] {

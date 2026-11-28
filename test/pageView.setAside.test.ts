@@ -13,7 +13,7 @@ describe('set aside rows carry the reasons and the stored text', () => {
   it('gives a proxy row without an id the id fault in addition to its other faults', () => {
     const { id: _id, ...withoutId } = goodProxy
     const [row] = proxyRows([{ ...withoutId, host: 'a:1; PROXY x:8080' }])
-    expect(row.faults).toContain('The proxy has no id, so rules cannot use it.')
+    expect(row.faults).toContain('This proxy has no internal id, so rules and sites cannot use it. Open Fix and save to repair it.')
   })
 
   it('shows a set aside rule its fault sentences', () => {

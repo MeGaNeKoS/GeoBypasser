@@ -6,7 +6,7 @@ import { isValidProxyId } from '@utils/validity'
 import { button } from '../components/button'
 import { switchControl } from '../components/controls'
 import { banner } from '../components/feedback'
-import { ignoredSettingNotes, listSection, setAsideNotes } from '../components/list-section'
+import { ignoredSettingBadge, ignoredSettingReason, listSection, setAsideBadge, setAsideReason } from '../components/list-section'
 import type { ListRow } from '../components/list-section'
 import { nothingLeftToFix, setAsideBanners } from '../components/set-aside-view'
 import type { SetAsideViewOptions } from '../components/set-aside-view'
@@ -20,7 +20,7 @@ import { changeProxyList, readProxyList } from './proxyStore'
 const PROXY_CONTAINER_ID = 'proxyContent'
 const PROXY_IMPORT_INPUT_ID = 'proxyImportInput'
 const PROXY_SECTION_HASH = 'proxies'
-const PROXY_HELP = 'Proxies that rules, site overrides and keep-alive checks can use.'
+const PROXY_HELP = 'Proxies that rules, sites and keep-alive checks can use.'
 const EMPTY_TEXT = 'Add a proxy, or import a file of proxies.'
 const EXPORT_FILENAME = 'proxies.json'
 
@@ -117,13 +117,24 @@ function rowFor (list: ProxyListItem[], row: ProxyRow): ListRow {
     name: row.label,
     setAside: row.invalid,
     body: [
-      element('strong', {}, row.label),
-      ...(row.invalid ? setAsideNotes(row.faults) : []),
-      ...(row.ignoredNote === undefined ? [] : ignoredSettingNotes(row.ignoredNote)),
+      element('div', { class: 'row__title' },
+        element('strong', {}, row.label),
+        ...(row.invalid ? [setAsideBadge()] : []),
+        ...(row.ignoredNote === undefined ? [] : [ignoredSettingBadge()]),
+      ),
+      element('div', { class: 'row__meta' },
+        element('span', { class: 'badge' }, row.type),
+        element('code', { class: 'mono' }, `${row.host}:${row.port}`),
+        element('span', { class: 'help' }, userLabelOf(row)),
+      ),
+      element('div', { class: 'row__line' },
+        ...passwordLine(key, row),
+        element('span', { class: 'help' }, 'Notify if down'),
+        switchControl('Notify if down', row.notifyIfDown, checked => void setNotify(key, checked), { focusKey: `switch-${key}` }),
+      ),
+      ...(row.invalid ? [setAsideReason(row.faults)] : []),
+      ...(row.ignoredNote === undefined ? [] : [ignoredSettingReason(row.ignoredNote)]),
       ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
-      element('p', { class: 'help' }, detailsOf(row)),
-      ...passwordLine(key, row),
-      switchControl(`Notify if ${row.label} is down`, row.notifyIfDown, checked => void setNotify(key, checked), { focusKey: `switch-${key}` }),
     ],
     actions: [
       button(row.invalid ? 'Fix' : 'Edit', {
@@ -145,10 +156,8 @@ function passwordLine (key: string, row: ProxyRow): Node[] {
   )]
 }
 
-function detailsOf (row: ProxyRow): string {
-  const endpoint = `${row.host}:${row.port}`
-  const user = row.username ? ` · ${row.username}` : ''
-  return `${row.type} · ${endpoint}${user}`
+function userLabelOf (row: ProxyRow): string {
+  return row.username ? `user: ${row.username}` : 'no sign in'
 }
 
 function keyOf (proxy: ProxyListItem, index: number): string {
