@@ -14,7 +14,7 @@ import { clearNetworkStats, readNetworkStats } from './networkStore'
 
 const CONTAINER_ID = 'networkContent'
 const HEADING = 'Network'
-const CHROME_NOTE = 'Chrome users: keep DevTools open to record network usage.'
+const CHROME_NOTE = 'Keep DevTools open while monitoring.'
 const AUTO_REFRESH_LABEL = 'Auto refresh'
 const AUTO_REFRESH_INTERVAL_MS = 5000
 const LOADING_ROW_COUNT = 4
@@ -63,7 +63,7 @@ function networkContent (): Node[] {
   return [
     element('div', { class: 'stack' },
       sectionHeading(HEADING),
-      supportsProxyOnRequest ? null : element('p', { class: 'help' }, CHROME_NOTE),
+      supportsProxyOnRequest ? null : banner({ tone: 'info', text: CHROME_NOTE }),
       clearFailed ? clearFailedBanner() : null,
       element('div', { class: 'settings-card' },
         buttonGroup(refreshButton(), clearControl()),

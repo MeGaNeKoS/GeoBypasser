@@ -8,13 +8,14 @@ export type ButtonOptions = {
   disabled?: boolean;
   busyLabel?: string;
   focusKey?: string;
+  type?: 'button' | 'submit';
   onClick?: (event: Event) => void;
 }
 
 export function button (label: string, options: ButtonOptions = {}): HTMLButtonElement {
   const busy = options.busyLabel !== undefined
   return element('button', {
-    type: 'button',
+    type: options.type ?? 'button',
     class: buttonClass(options.variant ?? 'secondary'),
     disabled: options.disabled || busy,
     'aria-busy': busy ? 'true' : undefined,

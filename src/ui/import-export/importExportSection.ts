@@ -14,7 +14,7 @@ import type { GitHubRepository } from './repositoryImport'
 
 const CARDS_ID = 'importExportCards'
 const HEADING = 'Import and export'
-const HELP = 'Backup or restore configuration and import community rules.'
+const HELP = 'Back up or restore configuration and import community rules.'
 const CONFIG_INPUT_ID = 'configImportInput'
 const URL_FIELD = 'url'
 const URL_ACTION_KEY = 'import-url'
@@ -87,7 +87,7 @@ function fileRow (): HTMLElement {
 function urlRow (): HTMLElement {
   return element('div', { class: 'import-url' },
     element('strong', {}, 'From a URL'),
-    element('div', { class: 'import-url__entry' },
+    element('form', { class: 'import-url__entry', onsubmit: submitAddress },
       textField({
         name: URL_FIELD,
         label: 'Address',
@@ -101,13 +101,14 @@ function urlRow (): HTMLElement {
           addressDraft = value
         },
       }),
-      button('Import', { onClick: submitAddress, focusKey: URL_ACTION_KEY }),
+      button('Import', { type: 'submit', focusKey: URL_ACTION_KEY }),
     ),
     element('p', { class: 'help' }, URL_HELP),
   )
 }
 
-function submitAddress (): void {
+function submitAddress (event: Event): void {
+  event.preventDefault()
   const address = addressDraft.trim()
   addressFault = isImportableAddress(address) ? null : URL_HELP
   renderCard(URL_FIELD)

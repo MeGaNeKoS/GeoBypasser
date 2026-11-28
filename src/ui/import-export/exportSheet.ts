@@ -34,8 +34,8 @@ export async function openExportSheet (): Promise<void> {
     saveLabel: EXPORT_LABEL,
     draft: draftOf({ ...defaultChoices(groups), [LEAVE_OUT_CREDENTIALS_FIELD]: false }),
     render: draft => [
-      button(SELECT_ENTIRE_CONFIG_LABEL, { onClick: event => setCheckedInputs(event, 'input[type="checkbox"]', true) }),
-      ...groups.map(group => groupFieldset(group, draft)),
+      element('div', {}, button(SELECT_ENTIRE_CONFIG_LABEL, { onClick: event => setCheckedInputs(event, 'input[type="checkbox"]', true) })),
+      ...groups.map(group => exportGroup(group, draft)),
       leaveOutCredentialsField(draft),
     ],
     validate: () => [],
@@ -57,7 +57,7 @@ function exportGroups (config: ConfigExportSource): ExportGroup[] {
     },
     {
       key: 'overrides',
-      title: 'Overrides',
+      title: 'Sites',
       choices: overrideRows(config.perWebsiteOverride, config.proxyList).map(({ domain }) => ({ value: domain, label: domain })),
     },
     {
@@ -81,16 +81,19 @@ function choiceValues (groups: ExportGroup[], key: ExportGroupKey): string[] {
   return groups.find(group => group.key === key)?.choices.map(choice => choice.value) ?? []
 }
 
-function groupFieldset (group: ExportGroup, draft: Draft): HTMLFieldSetElement {
-  const legend = element('legend', {}, group.title)
-  if (group.choices.length === 0) {
-    return element('fieldset', { class: 'export-group' }, legend, element('p', { class: 'help' }, EMPTY_GROUP_MESSAGE))
-  }
+function exportGroup (group: ExportGroup, draft: Draft): HTMLDivElement {
   const selected = draftValues(draft, group.key)
-  return element('fieldset', { class: 'export-group' },
-    legend,
-    button(SELECT_GROUP_LABEL, { onClick: event => setCheckedInputs(event, `input[name="${group.key}"]`, true) }),
+  return element('div', { class: 'export-group', role: 'group', 'aria-label': group.title },
+    exportGroupHeader(group),
+    group.choices.length === 0 ? element('p', { class: 'help' }, EMPTY_GROUP_MESSAGE) : null,
     ...group.choices.map(choice => choiceCheckbox(group.key, choice, selected.includes(choice.value))),
+  )
+}
+
+function exportGroupHeader (group: ExportGroup): HTMLDivElement {
+  return element('div', { class: 'export-group__header' },
+    element('h3', { class: 'group-label' }, group.title),
+    group.choices.length === 0 ? null : button(SELECT_GROUP_LABEL, { variant: 'quiet', onClick: event => setCheckedInputs(event, `input[name="${group.key}"]`, true) }),
   )
 }
 

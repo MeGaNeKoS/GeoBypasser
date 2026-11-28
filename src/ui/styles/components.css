@@ -550,62 +550,6 @@
   background: var(--surface);
 }
 
-.attention-list {
-  list-style: none;
-  padding-left: 0;
-}
-
-.attention-item {
-  display: flex;
-  gap: var(--space-2);
-  align-items: flex-start;
-}
-
-.setting-choice {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.import-url {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.import-url__entry {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: flex-end;
-}
-
-.choose-files__bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.choose-files__bar .help {
-  margin-inline-start: auto;
-}
-
-.choose-files__folders {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.choose-files__folder {
-  display: grid;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.choose-files__folder > .checkbox {
-  padding-inline-start: var(--space-4);
-}
-
 .note-block {
   display: grid;
   gap: var(--space-1);
@@ -940,9 +884,6 @@
 .tree {
   display: grid;
   gap: 0;
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius-2);
-  background: var(--surface);
 }
 
 .tree details {
@@ -955,8 +896,8 @@
 
 .tree summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
   align-items: center;
   min-height: var(--row-min-h);
   padding: var(--space-2) var(--space-3);
@@ -977,6 +918,7 @@
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  overflow-wrap: normal;
 }
 
 .tree__spacer {
@@ -989,5 +931,20 @@
 }
 
 .tree__numbers {
-  text-align: right;
+  text-align: left;
+}
+
+@media (min-width: 720px) {
+  .tree summary {
+    grid-template-columns: minmax(0, 1fr) 10rem 10rem;
+    gap: var(--space-3);
+  }
+
+  .tree__numbers {
+    text-align: right;
+  }
+}
+
+#networkContent .state-block__title {
+  font-weight: 400;
 }
