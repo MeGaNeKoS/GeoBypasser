@@ -167,6 +167,10 @@ function openTab (path) {
   return openUrl(`chrome-extension://${extId}/${path}`)
 }
 
+function closeTab (sessionId) {
+  return cdp.send('Page.close', {}, sessionId)
+}
+
 function componentDriver (sessionId) {
   return {
     read: readFn => evalIn(sessionId, `(${readFn})()`),
@@ -279,7 +283,13 @@ async function runSmoke (options) {
   await checkSetAsideExports(runOnDashboard, failures)
   await checkSetAsideOnlyAndFocus(runOnDashboard, failures)
   await checkRevealAndRowExport(runOnDashboard, failures)
-  await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO)
+  await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO, async () => {
+    const target = await openTab('dashboard.html')
+    return {
+      run: (fn, args = []) => evalIn(target, `(${fn.toString()})(...${JSON.stringify(args)})`),
+      close: () => closeTab(target),
+    }
+  })
   await checkMixedOverrideInPac({ evalIn, worker: findWorker() }, failures)
   await checkPacRoute({ evalIn, worker: findWorker(), dashboard }, failures)
   await checkDefaultReadBack(runOnDashboard, failures)

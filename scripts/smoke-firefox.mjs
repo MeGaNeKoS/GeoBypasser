@@ -117,7 +117,7 @@ function launchFirefox (port, settings) {
 
 const wrap = fn => `const done = arguments[arguments.length - 1];
 Promise.resolve().then(() => (${fn.toString()})(...Array.prototype.slice.call(arguments, 0, -1)))
-  .then(value => done({ ok: true, value }), error => done({ ok: false, error: String(error && error.stack || error) }))`
+  .then(value => done({ ok: true, value }), error => done({ ok: false, error: error && error.message !== undefined ? error.message + ' @ ' + error.stack : String(error) }))`
 
 async function evaluate (fn, args = [], context = 'content') {
   await marionette.send('Marionette:SetContext', { value: context })
@@ -259,6 +259,28 @@ async function setTabProxyFromPopup (session) {
   console.log(`popup set tab ${tabId} to proxy-good; tabProxyMap holds it`)
 }
 
+async function openDashboardWindow () {
+  const callerHandle = (await marionette.send('WebDriver:GetWindowHandle')).value
+  const { handle } = await marionette.send('WebDriver:NewWindow', { type: 'tab' })
+  const inWindow = async action => {
+    await marionette.send('WebDriver:SwitchToWindow', { handle, focus: true })
+    try {
+      return await action()
+    } finally {
+      await marionette.send('WebDriver:SwitchToWindow', { handle: callerHandle, focus: true })
+    }
+  }
+  await inWindow(() => marionette.send('WebDriver:Navigate', { url: `${sessionOrigin}dashboard.html` }))
+  return {
+    run: (fn, args) => inWindow(() => evaluate(fn, args)),
+    close: async () => {
+      await marionette.send('WebDriver:SwitchToWindow', { handle, focus: true })
+      await marionette.send('WebDriver:CloseWindow', {})
+      await marionette.send('WebDriver:SwitchToWindow', { handle: callerHandle, focus: true })
+    },
+  }
+}
+
 async function runFirefoxSmoke (settings) {
   prepareSmokeDist(settings.dist)
   resetProfile()
@@ -289,7 +311,12 @@ async function runFirefoxSmoke (settings) {
   await checkSetAsideExports(evaluate, failures)
   await checkSetAsideOnlyAndFocus(evaluate, failures)
   await checkRevealAndRowExport(evaluate, failures)
-  await checkNetworkStatsNames(evaluate, failures, FIREFOX_NETWORK_SCENARIO)
+  const networkWindow = await openDashboardWindow()
+  try {
+    await checkNetworkStatsNames(networkWindow.run, failures, FIREFOX_NETWORK_SCENARIO, openDashboardWindow)
+  } finally {
+    await networkWindow.close()
+  }
   await checkDefaultReadBack(evaluate, failures)
   await checkTestAgainstListener(evaluate, failures)
   await checkAboutDescription(evaluate, 'firefox', failures)
