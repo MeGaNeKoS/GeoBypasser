@@ -9,11 +9,17 @@ function fieldId (name: string): string {
   return `${name}-${sequence}`
 }
 
+export function faultLineId (fieldElementId: string): string {
+  return `${fieldElementId}-error`
+}
+
 export type FieldOptions = {
   name: string;
   label: string;
+  id?: string;
   help?: string;
   fault?: string;
+  faultPlacement?: 'inline' | 'elsewhere';
   mono?: boolean;
   badge?: HTMLElement;
   focusKey?: string;
@@ -42,8 +48,12 @@ export type SelectFieldOptions = FieldOptions & {
   onChange?: (value: string) => void;
 }
 
+function elementIdFor (options: FieldOptions): string {
+  return options.id ?? fieldId(options.name)
+}
+
 export function textField (options: TextFieldOptions): HTMLDivElement {
-  const id = fieldId(options.name)
+  const id = elementIdFor(options)
   const input = element('input', {
     id,
     name: options.name,
@@ -64,7 +74,7 @@ export function textField (options: TextFieldOptions): HTMLDivElement {
 }
 
 export function selectField (options: SelectFieldOptions): HTMLDivElement {
-  const id = fieldId(options.name)
+  const id = elementIdFor(options)
   const select = element('select', {
     id,
     name: options.name,
@@ -104,7 +114,7 @@ export function faultLine (message: string, id?: string): HTMLParagraphElement {
 }
 
 export function passwordField (options: FieldOptions & { value: string; onChange?: (value: string) => void; onInput?: (value: string) => void }): HTMLDivElement {
-  const id = fieldId(options.name)
+  const id = elementIdFor(options)
   const input = element('input', {
     id,
     name: options.name,
@@ -128,7 +138,7 @@ function togglePasswordVisibility (input: HTMLInputElement, show: HTMLButtonElem
 }
 
 function fieldFrame (id: string, options: FieldOptions, control: Node, input: HTMLElement): HTMLDivElement {
-  const describedBy = [options.help ? `${id}-help` : '', options.fault ? `${id}-error` : ''].filter(Boolean).join(' ')
+  const describedBy = [options.help ? `${id}-help` : '', options.fault ? faultLineId(id) : ''].filter(Boolean).join(' ')
   if (describedBy) input.setAttribute('aria-describedby', describedBy)
   if (options.focusKey) input.dataset.focusKey = options.focusKey
   return element('div', { class: fieldClass(options) },
@@ -138,7 +148,7 @@ function fieldFrame (id: string, options: FieldOptions, control: Node, input: HT
     ),
     control,
     options.help ? element('p', { class: 'help', id: `${id}-help` }, options.help) : null,
-    options.fault ? faultLine(options.fault, `${id}-error`) : null,
+    options.fault && options.faultPlacement !== 'elsewhere' ? faultLine(options.fault, faultLineId(id)) : null,
   )
 }
 

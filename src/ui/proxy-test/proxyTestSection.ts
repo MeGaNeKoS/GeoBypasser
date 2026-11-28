@@ -11,7 +11,7 @@ import { usableProxies } from '@utils/usable'
 import { button, buttonGroup } from '../components/button'
 import { segmented } from '../components/controls'
 import type { SegmentOption } from '../components/controls'
-import { faultLine, passwordField, textField } from '../components/fields'
+import { faultLine, faultLineId, passwordField, textField } from '../components/fields'
 import { proxySelectField } from '../components/proxy-select'
 import { sectionHeading } from '../components/section-heading'
 import { testUrlField } from '../components/test-url-field'
@@ -25,6 +25,7 @@ const CONTAINER_ID = 'testContent'
 const HEADING = 'Test'
 const SAVED_HEADING = 'Saved proxy'
 const CUSTOM_HEADING = 'Custom proxy'
+const PORT_FIELD_ID = 'test-port'
 const NO_SAVED_PROXY = 'No usable proxy to test yet. Add one on Proxies.'
 const IDLE_TEXT = 'No test run yet'
 const BUSY_TEXT = 'Testing…'
@@ -110,8 +111,8 @@ function customProxyCard (testable: boolean): HTMLElement {
         fault: faultOf(faults, 'host'), onInput: host => editCustom({ host }),
       }),
       textField({
-        name: 'testPort', label: 'Port', type: 'number', inputMode: 'numeric', value: customForm.port, mono: true,
-        focusKey: 'test-port', onInput: port => editCustom({ port }),
+        name: 'testPort', id: PORT_FIELD_ID, label: 'Port', type: 'number', inputMode: 'numeric', value: customForm.port, mono: true,
+        fault: faultOf(faults, 'port'), faultPlacement: 'elsewhere', focusKey: 'test-port', onInput: port => editCustom({ port }),
       }),
     ),
     portFault(faults),
@@ -132,7 +133,7 @@ function customProxyCard (testable: boolean): HTMLElement {
 
 function portFault (faults: ProxyFormFault[]): HTMLParagraphElement | null {
   const message = faultOf(faults, 'port')
-  return message === undefined ? null : faultLine(message)
+  return message === undefined ? null : faultLine(message, faultLineId(PORT_FIELD_ID))
 }
 
 function faultOf (faults: ProxyFormFault[], field: ProxyFormField): string | undefined {
