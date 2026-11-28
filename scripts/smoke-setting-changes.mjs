@@ -1,5 +1,5 @@
-import { serveImportFile, STORAGE_WAIT_MS, waitFor } from './smoke-fixture.mjs'
-import { clickSelector, clickSettingChoice, importFromUrl, pressEscapeInSettingChange, readFieldValue, readLocalStorage, readOpenSettingChange } from './smoke-dashboard.mjs'
+import { serveImportFile, STORAGE_WAIT_MS, UI_SETTLE_MS, sleep, waitFor } from './smoke-fixture.mjs'
+import { clickReviewImport, clickSelector, fillAndSaveOpenUrlSheet, isReviewSheetOpen, openImportUrlSheet, readFieldValue, readLocalStorage, readReviewSettingLabels, setReviewSettingChecked } from './smoke-dashboard.mjs'
 
 const CHANGE_CHECK_URL = 'https://settings-check.example/'
 const CHANGE_CHECK_RULE = 'settings check rule'
@@ -11,24 +11,25 @@ const SETTINGS_IMPORT_FILE = {
   rules: [{ active: true, name: CHANGE_CHECK_RULE, match: ['*://settings.example/*'], proxyId: 'proxy-good' }]
 }
 
-function changePromptsFor (before) {
+function settingLabel (title, oldText, newText) {
+  return `${title}: ${oldText}, becomes ${newText}`
+}
+
+function settingDecisionsFor (before) {
   return [
-    { title: 'Default proxy', oldText: 'good', newText: 'creds.lan', choice: 'escape' },
-    { title: 'Connect directly when a proxy fails', oldText: 'Off', newText: 'On', choice: 'apply' },
-    { title: 'Test URL', oldText: before.testProxyUrl, newText: CHANGE_CHECK_URL, choice: 'keep' }
+    { label: settingLabel('Default proxy', 'good', 'creds.lan'), apply: false },
+    { label: settingLabel('Connect directly when a proxy fails', 'Off', 'On'), apply: true },
+    { label: settingLabel('Test URL', before.testProxyUrl, CHANGE_CHECK_URL), apply: false },
   ]
 }
 
-async function answerChangePrompt (run, failures, prompt) {
-  const shown = await waitFor(async () => {
-    const open = await run(readOpenSettingChange)
-    return open?.title === prompt.title ? open : undefined
-  }, STORAGE_WAIT_MS, `the "${prompt.title}" change prompt`)
-  if (shown.oldText !== prompt.oldText || shown.newText !== prompt.newText) {
-    failures.push(`"${prompt.title}" prompt showed "${shown.oldText}" and "${shown.newText}"`)
+async function chooseSettingChanges (run, failures, decisions) {
+  const shown = await run(readReviewSettingLabels)
+  const expected = decisions.map(decision => decision.label)
+  if (JSON.stringify(shown) !== JSON.stringify(expected)) {
+    failures.push(`the Review sheet listed ${JSON.stringify(shown)}, expected ${JSON.stringify(expected)}`)
   }
-  if (prompt.choice === 'escape') await run(pressEscapeInSettingChange)
-  else await run(clickSettingChoice, [prompt.choice])
+  for (const decision of decisions) await run(setReviewSettingChecked, [decision.label, decision.apply])
 }
 
 function expectedSettingsAfterChoices (before) {
@@ -42,14 +43,22 @@ async function readShownTestUrl (run) {
   return shown
 }
 
+async function importSettingsThroughReview (run, failures, settingsUrl, decisions) {
+  await run(openImportUrlSheet)
+  await run(fillAndSaveOpenUrlSheet, [settingsUrl])
+  await waitFor(() => run(isReviewSheetOpen), STORAGE_WAIT_MS, 'the Review sheet for the settings file')
+  await chooseSettingChanges(run, failures, decisions)
+  await run(clickReviewImport)
+}
+
 export async function checkSettingChanges (run, failures) {
   const before = await run(readLocalStorage)
   const current = { ...before, testProxyUrl: await readShownTestUrl(run) }
   const failuresBefore = failures.length
   const settingsFile = await serveImportFile(JSON.stringify(SETTINGS_IMPORT_FILE))
   try {
-    await run(importFromUrl, [settingsFile.url])
-    for (const prompt of changePromptsFor(current)) await answerChangePrompt(run, failures, prompt)
+    await sleep(UI_SETTLE_MS)
+    await importSettingsThroughReview(run, failures, settingsFile.url, settingDecisionsFor(current))
     await waitFor(async () => {
       const stored = await run(readLocalStorage)
       return stored.rules.some(rule => rule?.name === CHANGE_CHECK_RULE)
@@ -64,6 +73,6 @@ export async function checkSettingChanges (run, failures) {
     if (after[key] !== value) failures.push(`storage ${key} is ${JSON.stringify(after[key])} after the settings import, expected ${JSON.stringify(value)}`)
   }
   if (failures.length === failuresBefore) {
-    console.log(`settings import from ${settingsFile.url}: three prompts in order, default proxy kept with Escape, test URL kept by click, fallback applied by click, rule stored`)
+    console.log(`settings import from ${settingsFile.url}: Review lists three setting changes in order, default proxy and test URL unchecked, fallback checked, rule stored`)
   }
 }

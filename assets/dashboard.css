@@ -29,25 +29,6 @@
 section { display: none; }
 section.active { display: block; }
 
-.tree ul {
-  list-style: none;
-  margin-left: 1em;
-  padding-left: 1em;
-  border-left: 1px solid #555;
-}
-
-.tree li {
-  margin: 2px 0;
-}
-
-.tree details > summary {
-  cursor: pointer;
-}
-
-#remoteFileTree {
-  max-height: 60vh;
-  overflow-y: auto;
-}
 input.valid { border-color: #4c4; }
 input.invalid { border-color: #c44; }
 
@@ -74,9 +55,6 @@ input.invalid { border-color: #c44; }
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 150; }
 .modal.hidden { display: none; }
 
-.import-url {
-  margin-top: 8px;
-}
 
 /* remove number input arrows */
 input[type='number']::-webkit-inner-spin-button,

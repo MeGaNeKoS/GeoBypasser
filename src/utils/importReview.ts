@@ -65,6 +65,8 @@ const COUNT_PHRASES: [keyof AddCounts, string, string][] = [
 const NO_DECISIONS: ImportDecisions = { duplicates: {}, settings: [] }
 const NOTHING_NEW_TO_ADD = 'Nothing new to add'
 const TO_ADD_PREFIX = 'To add: '
+const NOTHING_IMPORTED = 'Nothing was imported'
+const IMPORTED_PREFIX = 'Imported '
 const PLANNED_COPY_ID_PREFIX = 'planned-copy-'
 
 export function reviewImport (
@@ -142,10 +144,19 @@ export function applyImportDecisions (
 }
 
 export function describePlanned (counts: AddCounts): string {
-  const parts = COUNT_PHRASES
+  const parts = countPhrases(counts)
+  return parts.length === 0 ? NOTHING_NEW_TO_ADD : `${TO_ADD_PREFIX}${parts.join(', ')}`
+}
+
+export function describeImported (counts: AddCounts): string {
+  const parts = countPhrases(counts)
+  return parts.length === 0 ? NOTHING_IMPORTED : `${IMPORTED_PREFIX}${parts.join(', ')}`
+}
+
+function countPhrases (counts: AddCounts): string[] {
+  return COUNT_PHRASES
     .filter(([key]) => counts[key] > 0)
     .map(([key, singular, plural]) => `${counts[key]} ${counts[key] === 1 ? singular : plural}`)
-  return parts.length === 0 ? NOTHING_NEW_TO_ADD : `${TO_ADD_PREFIX}${parts.join(', ')}`
 }
 
 function plannedCopyId (index: number): string {

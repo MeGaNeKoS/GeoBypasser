@@ -6,7 +6,6 @@ import {
   clickSelector,
   importFile,
   isCheckedSelector,
-  isDuplicateModalOpen,
   isReviewSheetOpen,
   openNewProxySheet,
   readAttributeSelector,
@@ -34,7 +33,6 @@ const TEST_INPUT_ATTRIBUTES = [
   { selector: 'input[name="testPassword"]', attribute: 'autocomplete', expected: 'new-password' },
 ]
 const PROXY_REVIEW_PROMPT = { isOpen: isReviewSheetOpen, answer: [answerReviewWithReplace, []] }
-const CONFIG_DUPLICATE_PROMPT = { isOpen: isDuplicateModalOpen, answer: [clickSelector, ['#duplicateKeepNew']] }
 
 function checkCarriesCredentials (label, text, failures) {
   if (text === null) {
@@ -97,6 +95,12 @@ async function checkImportKeepsStoredCredentials (run, failures, { label, inputI
   }
 }
 
+async function checkConfigImportKeepsStoredCredentials (run, failures) {
+  await run(clickSelector, ['[data-tab="impexp"]'])
+  await sleep(UI_SETTLE_MS)
+  await checkImportKeepsStoredCredentials(run, failures, { label: 'config import', inputId: 'configImportInput', prompt: PROXY_REVIEW_PROMPT })
+}
+
 async function checkInputAttributes (run, failures, attributes) {
   for (const { selector, attribute, expected } of attributes) {
     const actual = await run(readAttributeSelector, [selector, attribute])
@@ -119,7 +123,7 @@ export async function checkCredentialWiring (run, failures) {
   await runStep('proxies export', () => checkProxiesExportCarriesCredentials(run, failures), failures)
   await runStep('config export leave out control', () => checkConfigExportLeaveOutControl(run, failures), failures)
   await runStep('proxy import', () => checkImportKeepsStoredCredentials(run, failures, { label: 'proxy import', inputId: 'proxyImportInput', prompt: PROXY_REVIEW_PROMPT }), failures)
-  await runStep('config import', () => checkImportKeepsStoredCredentials(run, failures, { label: 'config import', inputId: 'importConfig', prompt: CONFIG_DUPLICATE_PROMPT }), failures)
+  await runStep('config import', () => checkConfigImportKeepsStoredCredentials(run, failures), failures)
   await runStep('credential input attributes', () => checkCredentialInputAttributes(run, failures), failures)
   if (failures.length === failuresBefore) {
     console.log('credentials: Export All, Export Selected, and the default config export carry usernames and passwords, the leave out control is off on open and omits them, proxy and config imports keep stored ones, credential inputs are password fields with the legacy autocomplete values')

@@ -14,10 +14,11 @@ import { renderKeepAliveSection } from '../keep-alive/keepAliveSection'
 import { renderAboutSection } from '../about/aboutSection'
 import { renderProxyTestSection } from '../proxy-test/proxyTestSection'
 import { renderNetworkSection } from '../network/networkSection'
+import { renderImportExportSection } from '../import-export/importExportSection'
 import { onProxyControlStateChanged } from '../proxyControlState'
 import { mountControlNotice } from './control-notice'
 import { clearSelections } from '../components/list-section'
-import { ABOUT_SECTION_ID, GENERAL_SECTION_ID, HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, NETWORK_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, TEST_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
+import { ABOUT_SECTION_ID, GENERAL_SECTION_ID, HOME_SECTION_ID, IMPORT_EXPORT_SECTION_ID, KEEP_ALIVE_SECTION_ID, NETWORK_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, TEST_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
 
 type FrameNav = {
   menu: HTMLElement
@@ -101,6 +102,7 @@ async function renderSection (sectionId: string): Promise<void> {
   if (sectionId === GENERAL_SECTION_ID) await renderDefaultsSection()
   if (sectionId === TEST_SECTION_ID) await renderProxyTestSection()
   if (sectionId === NETWORK_SECTION_ID) await renderNetworkSection()
+  if (sectionId === IMPORT_EXPORT_SECTION_ID) renderImportExportSection()
   if (sectionId === ABOUT_SECTION_ID) renderAboutSection()
 }
 

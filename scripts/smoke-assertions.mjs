@@ -1,5 +1,5 @@
 import { canon, CREDENTIAL_PROXY, FIXTURE, serveImportFile, SET_ASIDE_EDIT_INDEXES, SET_ASIDE_PROXY, SET_ASIDE_RULE, sleep, STORAGE_WAIT_MS, UI_SETTLE_MS, URL_IMPORT_FILE, waitFor } from './smoke-fixture.mjs'
-import { clickKeepAliveActiveFor, clickKeepAliveDeleteSelected, clickKeepAliveFocusKey, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, clickSiteRowAction, confirmKeepAliveInlineDelete, confirmRuleInlineDelete, confirmSiteInlineDelete, fillAndSaveOpenKeepAliveSheet, keepAliveSheetFieldsReady, fillAndSaveOpenRuleSheet, fillAndSaveOpenSiteSheet, importFromUrl, isSheetOpen, openNewKeepAliveSheet, openNewRuleSheet, openNewSiteSheet, proxyHostMarkedInvalid, readLocalStorage, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectKeepAliveRowFor, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
+import { clickKeepAliveActiveFor, clickKeepAliveDeleteSelected, clickKeepAliveFocusKey, clickProxyRowAction, clickRuleActiveSwitch, clickRuleRowAction, clickSelector, closeOpenSheet, confirmInlineDelete, clickSiteRowAction, confirmKeepAliveInlineDelete, confirmRuleInlineDelete, confirmSiteInlineDelete, fillAndSaveOpenKeepAliveSheet, keepAliveSheetFieldsReady, fillAndSaveOpenRuleSheet, fillAndSaveOpenSiteSheet, fillAndSaveOpenUrlSheet, clickReviewImport, isReviewSheetOpen, isSheetOpen, openImportUrlSheet, openNewKeepAliveSheet, openNewRuleSheet, openNewSiteSheet, proxyHostMarkedInvalid, readLocalStorage, readReviewSheetText, refuseProxySave, ruleSelectionState, saveOpenProxySheetLabel, selectKeepAliveRowFor, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
 
 const PROXY_LABEL_AFTER_EDIT = 'edited in proxies'
 
@@ -171,18 +171,28 @@ export async function removeSetAsideEntries (run, failures) {
   console.log(`removed rule row ${SET_ASIDE_RULE} and proxy row ${SET_ASIDE_PROXY}; storage holds every other entry unchanged`)
 }
 
-export async function checkUrlImport (run, failures, shownMessages) {
+async function importUrlThroughReview (run, failures, url) {
+  await run(clickSelector, ['[data-tab="impexp"]'])
+  await sleep(UI_SETTLE_MS)
+  await run(openImportUrlSheet)
+  await run(fillAndSaveOpenUrlSheet, [url])
+  await waitFor(() => run(isReviewSheetOpen), STORAGE_WAIT_MS, 'the Review sheet for the URL import')
+  if (!(await run(readReviewSheetText)).includes('url refused rule')) {
+    failures.push('the Review sheet did not name the refused URL import rule')
+  }
+  await run(clickReviewImport)
+  await waitFor(async () => {
+    const stored = await run(readLocalStorage)
+    return stored.rules.some(rule => rule?.name === 'url valid rule')
+  }, STORAGE_WAIT_MS, 'the URL import to reach storage.local')
+}
+
+export async function checkUrlImport (run, failures) {
   const importFile = await serveImportFile(JSON.stringify(URL_IMPORT_FILE))
-  const shownBefore = (await shownMessages()).length
   try {
-    await run(importFromUrl, [importFile.url])
-    await waitFor(async () => {
-      const stored = await run(readLocalStorage)
-      return stored.rules.some(rule => rule?.name === 'url valid rule')
-    }, STORAGE_WAIT_MS, 'the URL import to reach storage.local')
+    await importUrlThroughReview(run, failures, importFile.url)
   } catch (err) {
-    const shown = (await shownMessages()).slice(shownBefore)
-    failures.push(`${err.message}; dialogs shown: ${JSON.stringify(shown)}`)
+    failures.push(err.message)
   } finally {
     await importFile.close()
   }
@@ -192,10 +202,7 @@ export async function checkUrlImport (run, failures, shownMessages) {
   if (canon(imported.rules.slice(0, expected.rules.length)) !== canon(expected.rules)) {
     failures.push('storage rules stored before the URL import changed')
   }
-  if (!(await shownMessages()).slice(shownBefore).some(message => message.includes('url refused rule'))) {
-    failures.push('no message named the refused URL import rule')
-  }
-  console.log(`URL import from ${importFile.url}: valid rule stored, refused rule not stored, message shown`)
+  console.log(`URL import from ${importFile.url}: Review named the refused rule, valid rule stored, refused rule not stored`)
 }
 
 export async function checkRefusedProxySave (run, failures) {

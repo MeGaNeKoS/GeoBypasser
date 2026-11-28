@@ -7,6 +7,7 @@ export const GENERAL_SECTION_ID = 'general'
 export const TEST_SECTION_ID = 'diagnostics'
 export const NETWORK_SECTION_ID = 'network'
 export const ABOUT_SECTION_ID = 'about'
+export const IMPORT_EXPORT_SECTION_ID = 'impexp'
 
 const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> = [
   [HOME_SECTION_ID, 'home'],
@@ -17,7 +18,7 @@ const SECTION_HASHES: ReadonlyArray<readonly [sectionId: string, hash: string]> 
   [GENERAL_SECTION_ID, 'defaults'],
   [TEST_SECTION_ID, 'test'],
   [NETWORK_SECTION_ID, 'network'],
-  ['impexp', 'import-export'],
+  [IMPORT_EXPORT_SECTION_ID, 'import-export'],
   [ABOUT_SECTION_ID, 'about'],
 ]
 

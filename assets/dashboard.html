@@ -61,13 +61,6 @@
       <h2>Import/Export</h2>
       <p class="section-help">Backup or restore configuration and import community rules.</p>
       <button id="openExportConfig">Export Config</button>
-      <input type="file" id="importConfig" style="display:none">
-      <button id="importConfigBtn">Import Config</button>
-      <div class="import-url">
-        <label>URL <input type="url" id="importUrlInput" placeholder="GitHub repo or raw .json"></label>
-        <button id="importUrlBtn">Import URL</button>
-        <button id="openCommunityImport">Community Rules</button>
-      </div>
       <div id="exportConfigModal" class="modal hidden">
         <div class="modal-content">
           <h3>Select Items to Export</h3>
@@ -81,42 +74,10 @@
           <button id="exportConfigCancel">Cancel</button>
         </div>
       </div>
-      <div id="remoteImportModal" class="modal hidden">
-        <div class="modal-content">
-          <h3>Select Community Files</h3>
-          <p class="modal-help">Import rules and proxies directly from GitHub.</p>
-          <div id="remoteFileTree" class="tree"></div>
-          <button id="remoteImportSelectAll">Select All</button>
-          <button id="remoteImportUnselectAll" class="hidden">Unselect All</button>
-          <button id="remoteImportConfirm">Import</button>
-          <button id="remoteImportCancel">Cancel</button>
-        </div>
-      </div>
     </section>
     <section id="about" class="tab">
       <div id="aboutContent"></div>
     </section>
-  </div>
-
-  <div id="duplicateModal" class="modal hidden">
-    <div class="modal-content">
-      <p class="modal-help">Choose how to handle duplicates when importing.</p>
-      <p id="duplicateMessage"></p>
-      <button id="duplicateKeepOld">Keep Existing</button>
-      <button id="duplicateKeepNew">Use New</button>
-      <button id="duplicateKeepBoth">Keep Both</button>
-    </div>
-  </div>
-
-  <div id="settingChangeModal" class="modal hidden">
-    <div class="modal-content">
-      <h3 id="settingChangeTitle"></h3>
-      <p class="modal-help">This import would change the setting. Keep the current value or apply the imported one.</p>
-      <p>Current: <strong id="settingChangeOld"></strong></p>
-      <p>Imported: <strong id="settingChangeNew"></strong></p>
-      <button id="settingChangeKeep">Keep</button>
-      <button id="settingChangeApply">Apply</button>
-    </div>
   </div>
 
   <script src="dashboard.js"></script>

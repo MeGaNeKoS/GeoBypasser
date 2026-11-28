@@ -40,10 +40,6 @@ export function checkEveryConfigExportItem () {
   for (const box of document.querySelectorAll('#exportConfigItems input[type="checkbox"]')) box.checked = true
 }
 
-export function isDuplicateModalOpen () {
-  return !document.getElementById('duplicateModal').classList.contains('hidden')
-}
-
 export function importFile (inputId, text) {
   const input = document.getElementById(inputId)
   const transfer = new DataTransfer()
@@ -52,29 +48,29 @@ export function importFile (inputId, text) {
   input.dispatchEvent(new Event('change'))
 }
 
-export function readOpenSettingChange () {
-  if (document.getElementById('settingChangeModal').classList.contains('hidden')) return null
-  return {
-    title: document.getElementById('settingChangeTitle').textContent,
-    oldText: document.getElementById('settingChangeOld').textContent,
-    newText: document.getElementById('settingChangeNew').textContent
-  }
-}
-
 export function readFieldValue (fieldName) {
   return document.querySelector(`[name="${fieldName}"]`)?.value
 }
 
-export function clickSettingChoice (choice) {
-  document.getElementById(choice === 'apply' ? 'settingChangeApply' : 'settingChangeKeep').click()
+export function readReviewSheetText () {
+  return document.querySelector('dialog.sheet')?.textContent ?? ''
 }
 
-export function pressEscapeInSettingChange () {
-  const focused = document.activeElement
-  if (!document.getElementById('settingChangeModal').contains(focused)) {
-    throw new Error('the setting change dialog does not hold focus')
-  }
-  focused.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+export function readReviewSettingLabels () {
+  return Array.from(document.querySelectorAll('dialog.sheet input[type="checkbox"]'))
+    .map(box => box.closest('label').textContent.trim())
+}
+
+export function setReviewSettingChecked (label, checked) {
+  const box = Array.from(document.querySelectorAll('dialog.sheet label'))
+    .find(item => item.textContent.trim() === label)
+    ?.querySelector('input[type="checkbox"]')
+  if (!box) throw new Error(`the Review sheet has no setting labelled ${label}`)
+  if (box.checked !== checked) box.click()
+}
+
+export function clickReviewImport () {
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Import').click()
 }
 
 export function selectProxyRowByHost (host) {
@@ -88,9 +84,13 @@ export function readLocalStorage () {
   return (globalThis.browser ?? globalThis.chrome).storage.local.get(null)
 }
 
-export function importFromUrl (url) {
-  document.getElementById('importUrlInput').value = url
-  document.getElementById('importUrlBtn').click()
+export function openImportUrlSheet () {
+  document.querySelector('[data-focus-key="import-url"]').click()
+}
+
+export function fillAndSaveOpenUrlSheet (url) {
+  document.querySelector('dialog.sheet input[name="url"]').value = url
+  Array.from(document.querySelectorAll('dialog.sheet button')).find(button => button.textContent.trim() === 'Import').click()
 }
 
 export function refuseProxySave () {

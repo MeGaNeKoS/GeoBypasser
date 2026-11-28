@@ -263,7 +263,7 @@ async function runSmoke (options) {
   await removeSetAsideEntries(runOnDashboard, failures)
   await editSetAsideEntries(runOnDashboard)
 
-  await checkUrlImport(runOnDashboard, failures, async () => dialogs)
+  await checkUrlImport(runOnDashboard, failures)
   await checkSettingChanges(runOnDashboard, failures)
 
   await checkRefusedProxySave(runOnDashboard, failures)

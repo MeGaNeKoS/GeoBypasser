@@ -42,8 +42,8 @@ export function quickActions (sitesShown: boolean): HTMLElement {
     actionButton('Add rule', 'rules', null, { variant: 'primary' }, 'quick-add-rule'),
     actionButton('Add proxy', 'proxies', null, {}, 'quick-add-proxy'),
     ...(sitesShown ? [addSiteButton('Add site', {}, 'quick-add-site')] : []),
-    actionButton('Import', 'import-export', 'importConfigBtn', {}, 'quick-import'),
-    actionButton('Browse community rules', 'import-export', 'openCommunityImport', {}, 'quick-community'),
+    actionButton('Import', 'import-export', null, {}, 'quick-import'),
+    actionButton('Browse community rules', 'import-export', null, {}, 'quick-community'),
   )
 }
 
@@ -55,7 +55,7 @@ export function getStartedCard (view: HomeView): HTMLElement {
       setupStep(1, 'Add a proxy', 'A server your traffic can go through.', proxyAdded, [
         actionButton('Add proxy', 'proxies', null, { variant: 'primary' }, 'step-1-add-proxy'),
         actionButton('Import a file', 'proxies', null, {}, 'step-1-import'),
-        actionButton('Browse community rules', 'import-export', 'openCommunityImport', {}, 'step-1-community'),
+        actionButton('Browse community rules', 'import-export', null, {}, 'step-1-community'),
       ]),
       setupStep(2, 'Choose what uses it', 'A rule for matching requests, one site, or everything by default.', choiceMade, [
         actionButton('Add a rule', 'rules', null, { disabled: !proxyAdded }, 'step-2-add-rule'),

@@ -130,11 +130,6 @@ async function takeDialogs () {
   if (recording) dialogs.push(...await evaluate(drainDialogs))
 }
 
-async function shownDialogs () {
-  await takeDialogs()
-  return dialogs
-}
-
 async function navigate (url) {
   await takeDialogs()
   await marionette.send('Marionette:SetContext', { value: 'content' })
@@ -279,7 +274,7 @@ async function runFirefoxSmoke (settings) {
   await visitDashboardTabs()
   await removeSetAsideEntries(evaluate, failures)
   await editSetAsideEntries(evaluate)
-  await checkUrlImport(evaluate, failures, shownDialogs)
+  await checkUrlImport(evaluate, failures)
   await checkSettingChanges(evaluate, failures)
   await checkRefusedProxySave(evaluate, failures)
   await checkCredentialWiring(evaluate, failures)
