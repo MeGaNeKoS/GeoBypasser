@@ -63,7 +63,7 @@ describe('network usage for a page', () => {
   it('tallies each route with the number of requests that took it', () => {
     const host = usageAfter(observation(), observation())[PAGE][REQUEST_HOST]
 
-    expect(Object.values(host.routes)).toEqual([{ route: RULE_ROUTE, count: 2 }])
+    expect(Object.values(host.routes)).toEqual([expect.objectContaining({ route: RULE_ROUTE, count: 2 })])
   })
 
   it('keeps a route for each distinct rule that routed a host', () => {

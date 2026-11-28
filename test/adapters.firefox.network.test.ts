@@ -90,7 +90,7 @@ describe('Firefox network adapter', () => {
 
     fire(browser.webRequest.onCompleted, completedDetails('req-4', { proxyInfo: { type: 'http', host: '127.0.0.1', port: 18081 } }))
 
-    expect(routesOf(monitor)).toEqual([{ route: RULE_PROXY_ROUTE, count: 1 }])
+    expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: RULE_PROXY_ROUTE, count: 1 })])
   })
 
   it('marks the noted route inferred when the completed request carries no proxy info for it', () => {
@@ -98,7 +98,7 @@ describe('Firefox network adapter', () => {
 
     fire(browser.webRequest.onCompleted, completedDetails('req-5'))
 
-    expect(routesOf(monitor)).toEqual([{ route: { ...RULE_PROXY_ROUTE, inferred: true }, count: 1 }])
+    expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: { ...RULE_PROXY_ROUTE, inferred: true }, count: 1 })])
   })
 
   it('records a direct completed request as the noted direct route', () => {
@@ -106,7 +106,7 @@ describe('Firefox network adapter', () => {
 
     fire(browser.webRequest.onCompleted, completedDetails('req-6', { proxyInfo: { type: 'direct' } }))
 
-    expect(routesOf(monitor)).toEqual([{ route: DIRECT_DEFAULT_ROUTE, count: 1 }])
+    expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: DIRECT_DEFAULT_ROUTE, count: 1 })])
   })
 
   it('marks the noted route inferred when the proxy info does not parse', () => {
@@ -114,7 +114,7 @@ describe('Firefox network adapter', () => {
 
     fire(browser.webRequest.onCompleted, completedDetails('req-7', { proxyInfo: { type: 42 } }))
 
-    expect(routesOf(monitor)).toEqual([{ route: { ...RULE_PROXY_ROUTE, inferred: true }, count: 1 }])
+    expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: { ...RULE_PROXY_ROUTE, inferred: true }, count: 1 })])
   })
 
   it('records a failed request on the direct route its proxy info reports', () => {
@@ -131,7 +131,7 @@ describe('Firefox network adapter', () => {
       proxyInfo: { type: 'direct' },
     })
 
-    expect(routesOf(monitor)).toEqual([{ route: DIRECT_DEFAULT_ROUTE, count: 1 }])
+    expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: DIRECT_DEFAULT_ROUTE, count: 1 })])
   })
 })
 

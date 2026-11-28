@@ -130,7 +130,7 @@ describe('Chrome network adapter', () => {
     await flushPromises()
 
     expect(routes).toEqual([URL])
-    expect(Object.values(hostUsage(monitor).routes)).toEqual([{ route: EXPECTED_RULE_ROUTE, count: 1 }])
+    expect(Object.values(hostUsage(monitor).routes)).toEqual([{ route: EXPECTED_RULE_ROUTE, count: 1, bytes: 0 }])
   })
 
   it('does not ask for the route of a request on an unmonitored tab', async () => {

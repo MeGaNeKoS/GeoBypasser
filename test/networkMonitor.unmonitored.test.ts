@@ -40,7 +40,7 @@ describe('network monitor without a monitored tab', () => {
     monitor.recordRequest(TAB_ID, REQUEST_ID, { ...outcome(), observedRoute: ROUTE.route })
 
     const host = usageOf(monitor)[TAB_ID]['page.example']['media.example.com']
-    expect(Object.values(host.routes)).toEqual([{ route: { reason: 'unknown', route: ROUTE.route, expected: false }, count: 1 }])
+    expect(Object.values(host.routes)).toEqual([expect.objectContaining({ route: { reason: 'unknown', route: ROUTE.route, expected: false }, count: 1 })])
   })
 
   it('stops recording once the tab is unmonitored', () => {

@@ -32,6 +32,7 @@ export type PathNode = {
 export type RouteTally = {
   route: RecordedRoute;
   count: number;
+  bytes: number;
 };
 
 export type HostUsage = {
@@ -107,7 +108,7 @@ function hostUsageFor (page: PageUsage, requestHost: string): HostUsage {
   return page[requestHost];
 }
 
-function emptyHostUsage (): HostUsage {
+export function emptyHostUsage (): HostUsage {
   return {
     count: 0,
     types: Object.create(null),
@@ -131,7 +132,7 @@ function recordHostRequest (host: HostUsage, pathname: string, observation: Requ
   host.sent += observation.sentBytes;
   host.received += observation.receivedBytes;
   if (!observation.receivedSizeKnown) host.unsizedCount += 1;
-  tallyRoute(host, observation.route);
+  tallyRoute(host, observation.route, observation.sentBytes + observation.receivedBytes);
   addPath(host.paths, pathname, observation.sentBytes, observation.receivedBytes);
 }
 
@@ -147,10 +148,11 @@ function recordResult (host: HostUsage, observation: RequestObservation): void {
   increment(host.statuses, String(observation.statusCode));
 }
 
-function tallyRoute (host: HostUsage, route: RecordedRoute): void {
+function tallyRoute (host: HostUsage, route: RecordedRoute, bytes: number): void {
   const key = routeKey(route);
-  if (!host.routes[key]) host.routes[key] = { route, count: 0 };
+  if (!host.routes[key]) host.routes[key] = { route, count: 0, bytes: 0 };
   host.routes[key].count += 1;
+  host.routes[key].bytes += bytes;
 }
 
 function routeKey (route: RecordedRoute): string {

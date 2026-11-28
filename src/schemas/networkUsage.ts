@@ -18,6 +18,7 @@ const RecordedRouteSchema: z.ZodType<RecordedRoute> = z.object({
 const RouteTallySchema: z.ZodType<RouteTally> = z.object({
   route: RecordedRouteSchema,
   count: tally,
+  bytes: byteCount,
 })
 
 const PathNodeSchema: z.ZodType<PathNode> = z.lazy(() => z.object({
