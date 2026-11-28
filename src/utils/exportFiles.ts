@@ -53,6 +53,26 @@ export function buildConfigExport (
   return exported
 }
 
+export interface ConfigExportChoices {
+  proxies: string[];
+  rules: string[];
+  overrides: string[];
+  keepAlive: string[];
+}
+
+export function buildConfigExportFromChoices (
+  source: ConfigExportSource,
+  choices: ConfigExportChoices,
+  credentials: CredentialsOption,
+): ExportedConfig {
+  return buildConfigExport(source, {
+    proxyIndexes: choices.proxies.map(Number),
+    ruleIndexes: choices.rules.map(Number),
+    overrideDomains: choices.overrides,
+    keepAliveIds: choices.keepAlive,
+  }, credentials)
+}
+
 function pickKeys<T> (record: Record<string, T> | undefined, keys: string[]): Record<string, T> {
   return Object.fromEntries(keys.flatMap(key => record?.[key] === undefined ? [] : [[key, record[key]] as const]))
 }

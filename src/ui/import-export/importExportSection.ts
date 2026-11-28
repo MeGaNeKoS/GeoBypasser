@@ -8,10 +8,11 @@ import { element, replaceContent, requireElement } from '../dom'
 import { IMPORT_EXPORT_SECTION_ID } from '../shell/routes'
 import { importConfigFromUrl, importConfigText } from './configImport'
 import type { ImportReport } from './configImport'
+import { openExportSheet } from './exportSheet'
 import { COMMUNITY_RULES, openRepositoryRules, parseGitHubRepositoryUrl } from './repositoryImport'
 import type { GitHubRepository } from './repositoryImport'
 
-const CARD_ID = 'importCard'
+const CARDS_ID = 'importExportCards'
 const CONFIG_INPUT_ID = 'configImportInput'
 const URL_FIELD = 'url'
 const JSON_ADDRESS_PATTERN = /\.json$/
@@ -26,15 +27,22 @@ export function renderImportExportSection (): void {
 }
 
 function renderCard (): void {
-  replaceContent(importCardHost(), [importCard()])
+  replaceContent(cardsHost(), [importCard(), exportCard()])
 }
 
-function importCardHost (): HTMLElement {
-  const existing = document.getElementById(CARD_ID)
+function cardsHost (): HTMLElement {
+  const existing = document.getElementById(CARDS_ID)
   if (existing) return existing
-  const host = element('div', { id: CARD_ID })
+  const host = element('div', { id: CARDS_ID })
   requireElement(IMPORT_EXPORT_SECTION_ID).prepend(host)
   return host
+}
+
+function exportCard (): HTMLElement {
+  return element('div', { class: 'card export-card' },
+    element('h3', {}, 'Export'),
+    row('Configuration file', 'Choose what goes into the file. Leave out usernames and passwords when you will share it.', button('Export config', { onClick: () => void openExportSheet(), focusKey: 'export-config' })),
+  )
 }
 
 function importCard (): HTMLElement {

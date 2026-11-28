@@ -5,7 +5,6 @@ import {
   captureDownload,
   clickSelector,
   importFile,
-  isCheckedSelector,
   isReviewSheetOpen,
   openNewProxySheet,
   readAttributeSelector,
@@ -33,6 +32,10 @@ const TEST_INPUT_ATTRIBUTES = [
   { selector: 'input[name="testPassword"]', attribute: 'autocomplete', expected: 'new-password' },
 ]
 const PROXY_REVIEW_PROMPT = { isOpen: isReviewSheetOpen, answer: [answerReviewWithReplace, []] }
+const EXPORT_BUTTON_SELECTOR = '[data-focus-key="export-config"]'
+const EXPORT_SHEET_SELECTOR = 'dialog.sheet'
+const EXPORT_SHEET_SAVE_LABEL = 'Export'
+const LEAVE_OUT_SWITCH_SELECTOR = '[role="switch"][data-field="leaveOutCredentials"]'
 
 function checkCarriesCredentials (label, text, failures) {
   if (text === null) {
@@ -65,19 +68,31 @@ async function checkProxiesExportCarriesCredentials (run, failures) {
   if (selected !== null && !selected.includes(CREDENTIAL_PROXY.host)) failures.push('Export Selected did not write the selected proxy')
 }
 
+async function openConfigExportSheet (run) {
+  await run(clickSelector, ['[data-tab="impexp"]'])
+  await sleep(UI_SETTLE_MS)
+  await run(clickSelector, [EXPORT_BUTTON_SELECTOR])
+  await sleep(UI_SETTLE_MS)
+}
+
+async function checkLeaveOutStateIsOff (run, failures, when) {
+  if (await run(readAttributeSelector, [LEAVE_OUT_SWITCH_SELECTOR, 'aria-checked']) !== 'false') failures.push(`the leave out control is on ${when}`)
+}
+
 async function checkConfigExportLeaveOutControl (run, failures) {
-  await run(clickSelector, ['#openExportConfig'])
-  if (await run(isCheckedSelector, ['#exportConfigLeaveOutCredentials'])) failures.push('the leave out control is on when the dialog opens')
-  const withCredentials = await run(captureDownload, ['#exportConfigConfirm'])
+  await openConfigExportSheet(run)
+  await checkLeaveOutStateIsOff(run, failures, 'when the sheet opens')
+  const withCredentials = await run(captureDownload, [EXPORT_SHEET_SELECTOR, EXPORT_SHEET_SAVE_LABEL])
   checkCarriesCredentials('config export with the control off', withCredentials, failures)
 
-  await run(clickSelector, ['#openExportConfig'])
-  await run(clickSelector, ['#exportConfigLeaveOutCredentials'])
-  const withoutCredentials = await run(captureDownload, ['#exportConfigConfirm'])
+  await openConfigExportSheet(run)
+  await run(clickSelector, [LEAVE_OUT_SWITCH_SELECTOR])
+  const withoutCredentials = await run(captureDownload, [EXPORT_SHEET_SELECTOR, EXPORT_SHEET_SAVE_LABEL])
   checkOmitsCredentials('config export with the control on', withoutCredentials, failures)
 
-  await run(clickSelector, ['#openExportConfig'])
-  if (await run(isCheckedSelector, ['#exportConfigLeaveOutCredentials'])) failures.push('the leave out control stayed on after the dialog reopened')
+  await openConfigExportSheet(run)
+  await checkLeaveOutStateIsOff(run, failures, 'after the sheet reopened')
+  await run(closeOpenSheet)
 }
 
 async function checkImportKeepsStoredCredentials (run, failures, { label, inputId, prompt }) {

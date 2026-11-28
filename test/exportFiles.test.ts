@@ -1,5 +1,5 @@
 import type { ProxyListItem } from '@customTypes/proxy'
-import { buildConfigExport, buildProxiesExport, type ConfigExportSelection, type ConfigExportSource } from '@utils/exportFiles'
+import { buildConfigExport, buildConfigExportFromChoices, buildProxiesExport, type ConfigExportSelection, type ConfigExportSource } from '@utils/exportFiles'
 
 const withCredentials: ProxyListItem = {
   id: 'p1',
@@ -48,6 +48,22 @@ describe('buildConfigExport with credentials left out', () => {
     expect(exported.proxyList).toEqual([labWithoutCredentials, plain])
     expect(exported.proxyList?.[0]).not.toHaveProperty('username')
     expect(exported.proxyList?.[0]).not.toHaveProperty('password')
+  })
+})
+
+describe('buildConfigExportFromChoices', () => {
+  it('writes the proxies, overrides and keep-alive rules named by the choices', () => {
+    const exported = buildConfigExportFromChoices(source, {
+      proxies: ['1'],
+      rules: [],
+      overrides: ['a.example'],
+      keepAlive: ['p1'],
+    }, 'include')
+
+    expect(exported.proxyList).toEqual([plain])
+    expect(exported.perWebsiteOverride).toEqual({ 'a.example': 'p1' })
+    expect(exported.keepAliveRules).toEqual({ p1: { active: true, tabUrls: ['https://a.example/'] } })
+    expect(exported).not.toHaveProperty('rules')
   })
 })
 

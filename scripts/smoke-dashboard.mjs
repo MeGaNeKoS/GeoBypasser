@@ -36,10 +36,6 @@ export function showTestSection () {
   location.hash = '#test'
 }
 
-export function checkEveryConfigExportItem () {
-  for (const box of document.querySelectorAll('#exportConfigItems input[type="checkbox"]')) box.checked = true
-}
-
 export function importFile (inputId, text) {
   const input = document.getElementById(inputId)
   const transfer = new DataTransfer()

@@ -1,5 +1,5 @@
 import { canon, runStep, sleep, STORAGE_WAIT_MS, UI_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
-import { captureDownload, checkEveryConfigExportItem, clickProxyRowAction, clickSelector, countProxyRows, readLocalStorage, saveOpenProxySheetAddress, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
+import { captureDownload, clickProxyRowAction, clickSelector, countProxyRows, readLocalStorage, saveOpenProxySheetAddress, selectOnlyRuleRowAt, writeLocalStorage } from './smoke-dashboard.mjs'
 
 const NULL_ENTRY_SAVE = { host: 'null-entry.lan', port: 8081 }
 const TEXT_ENTRY_SAVE = { host: 'text-entry.lan', port: 8082 }
@@ -81,9 +81,11 @@ async function checkRowExportsSetAside (run, failures) {
 }
 
 async function checkConfigExportEveryRow (run, failures) {
-  await run(clickSelector, ['#openExportConfig'])
-  await run(checkEveryConfigExportItem)
-  const text = await run(captureDownload, ['#exportConfigConfirm'])
+  await run(clickSelector, ['[data-tab="impexp"]'])
+  await sleep(UI_SETTLE_MS)
+  await run(clickSelector, ['[data-focus-key="export-config"]'])
+  await sleep(UI_SETTLE_MS)
+  const text = await run(captureDownload, ['dialog.sheet', 'Export'])
   const parsed = parseExport('config export with every row selected', text, failures)
   if (!parsed) return
   if (!Array.isArray(parsed.rules) || !Array.isArray(parsed.proxyList)) {
