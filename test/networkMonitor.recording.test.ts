@@ -1,6 +1,6 @@
 import { createNetworkMonitor, type RequestOutcome } from '@core/networkMonitor'
 import { parseNetworkUsageReply } from '@schemas/networkUsage'
-import type { NetworkUsage, RecordedRoute } from '@utils/networkUsage'
+import { FAILED_BEFORE_ROUTE, type NetworkUsage, type RecordedRoute } from '@utils/networkUsage'
 
 const TAB_ID = 7
 const REQUEST_ID = 'request-1'
@@ -144,6 +144,14 @@ describe('network monitor recording', () => {
 
     const routes = Object.values(usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com'].routes)
     expect(routes.map(tally => [tally.route.reason, tally.count])).toEqual([['rule', 1], ['unknown', 1]])
+  })
+
+  it('records a failed request that no route reached as failed before routing', () => {
+    const monitor = monitorTab()
+    monitor.recordRequest(TAB_ID, REQUEST_ID, outcome({ statusCode: undefined, error: 'NS_ERROR_UNKNOWN_HOST' }))
+
+    const host = usageOf(monitor)[TAB_ID][PAGE_HOST]['media.example.com']
+    expect(Object.values(host.routes)).toEqual([expect.objectContaining({ route: FAILED_BEFORE_ROUTE, count: 1 })])
   })
 
   it('records a failed request under its error', () => {

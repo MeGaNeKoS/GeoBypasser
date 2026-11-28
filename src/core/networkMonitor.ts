@@ -1,9 +1,9 @@
 import type { NetworkMessage } from '@customTypes/messages'
-import { addRequestToTab, emptyTabUsage, UNKNOWN_ROUTE, type NetworkUsage, type RecordedRoute, type RequestObservation, type TabUsage } from '@utils/networkUsage'
+import { addRequestToTab, emptyTabUsage, FAILED_BEFORE_ROUTE, UNKNOWN_ROUTE, type NetworkUsage, type RecordedRoute, type RequestObservation, type TabUsage } from '@utils/networkUsage'
 import { DIRECT_ROUTE } from '@utils/pacRoute'
 import { networkUsageToWire } from '@schemas/networkUsage'
 
-export type RequestOutcome = Omit<RequestObservation, 'route'> & { observedRoute?: string; expectedRoute?: RecordedRoute };
+export type RequestOutcome = Omit<RequestObservation, 'route'> & { observedRoute?: string; expectedRoute?: RecordedRoute; failedBeforeRoute?: boolean };
 
 const NO_LISTENER_ROUTE: RecordedRoute = { reason: 'default', route: DIRECT_ROUTE, expected: false };
 
@@ -46,12 +46,13 @@ export function createNetworkMonitor (broadcastMonitoring: (tabId: number, monit
   }
 
   function recordRequest (tabId: number, requestId: string, outcome: RequestOutcome) {
-    const { observedRoute, expectedRoute, ...observation } = outcome
+    const { observedRoute, expectedRoute, failedBeforeRoute, ...observation } = outcome
     const requests = candidatesByTab.get(tabId)
     const candidates = requests?.get(requestId) ?? []
     requests?.delete(requestId)
     if (!monitoredTabs.has(tabId)) return
-    addRequestToTab(tabUsageFor(tabId), { ...observation, route: expectedRoute ?? settleRoute(candidates, observedRoute) })
+    const route = failedBeforeRoute ? FAILED_BEFORE_ROUTE : expectedRoute ?? routeOfRequest(observation.error, settleRoute(candidates, observedRoute))
+    addRequestToTab(tabUsageFor(tabId), { ...observation, route })
   }
 
   function tabUsageFor (tabId: number): TabUsage {
@@ -97,6 +98,10 @@ function settleRoute (candidates: RouteCandidate[], observedRoute: string | unde
   if (matching) return matching.route
   if (observedRoute === DIRECT_ROUTE && candidates.length === 0) return NO_LISTENER_ROUTE
   return { reason: 'unknown', route: observedRoute, expected: false }
+}
+
+function routeOfRequest (error: string | undefined, settled: RecordedRoute): RecordedRoute {
+  return error !== undefined && settled === UNKNOWN_ROUTE ? FAILED_BEFORE_ROUTE : settled;
 }
 
 function inferredRoute (route: RecordedRoute): RecordedRoute {

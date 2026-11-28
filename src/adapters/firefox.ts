@@ -34,11 +34,20 @@ export function onFirefoxStorageChanged (listener: StorageChangedListener) {
   browser.storage.onChanged.addListener(listener)
 }
 
+const UNASSIGNED_PROXY_PORT = -1
+
 function observedRouteOf (details: unknown): string | undefined {
   const parsed = WebRequestProxySchema.safeParse(details)
   if (!parsed.success) return undefined
   const { proxyInfo } = parsed.data
-  return proxyInfo ? routeOfProxyInfo(proxyInfo) : DIRECT_ROUTE
+  if (!proxyInfo) return DIRECT_ROUTE
+  if (proxyInfo.port === UNASSIGNED_PROXY_PORT) return undefined
+  return routeOfProxyInfo(proxyInfo)
+}
+
+function isUnassignedProxy (details: unknown): boolean {
+  const parsed = WebRequestProxySchema.safeParse(details)
+  return parsed.success && parsed.data.proxyInfo?.port === UNASSIGNED_PROXY_PORT
 }
 
 export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
@@ -73,6 +82,7 @@ export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
         receivedBytes: 0,
         receivedSizeKnown: true,
         observedRoute: observedRouteOf(details),
+        failedBeforeRoute: isUnassignedProxy(details),
       })
     },
     { urls: ['<all_urls>'] },

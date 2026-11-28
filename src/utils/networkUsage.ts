@@ -1,6 +1,6 @@
 import type { ExpectedRoute, RouteReason, RuleRef } from './expectedRoute'
 
-export type RecordedRouteReason = RouteReason | 'tab' | 'unknown'
+export type RecordedRouteReason = RouteReason | 'tab' | 'unknown' | 'failed'
 
 export type RecordedRoute = {
   reason: RecordedRouteReason;
@@ -55,6 +55,8 @@ export type TabUsage = Record<string, PageUsage>;
 export type NetworkUsage = Record<string, TabUsage>;
 
 export const UNKNOWN_ROUTE: RecordedRoute = { reason: 'unknown', route: '', expected: false };
+
+export const FAILED_BEFORE_ROUTE: RecordedRoute = { reason: 'failed', route: '', expected: false };
 
 export const MAIN_FRAME_RESOURCE_TYPE = 'main_frame';
 

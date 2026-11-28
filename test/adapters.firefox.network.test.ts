@@ -2,7 +2,7 @@ import { browser } from './setup'
 import { registerFirefoxNetworkMonitor } from '@adapters/firefox'
 import { createNetworkMonitor, type NetworkMonitor } from '@core/networkMonitor'
 import { parseNetworkUsageReply } from '@schemas/networkUsage'
-import type { NetworkUsage, PathNode, RecordedRoute, RouteTally } from '@utils/networkUsage'
+import { FAILED_BEFORE_ROUTE, type NetworkUsage, type PathNode, type RecordedRoute, type RouteTally } from '@utils/networkUsage'
 
 const TAB_ID = 3
 const URL = 'https://cdn.example.com/a/file.bin'
@@ -184,6 +184,23 @@ describe('Firefox network adapter', () => {
     })
 
     expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: DIRECT_DEFAULT_ROUTE, count: 1 })])
+  })
+
+  it('records a failed request whose proxy port is unassigned as failed before routing, even with a noted route', () => {
+    const monitor = monitorWithNotedRoute('req-9', RULE_PROXY_ROUTE)
+
+    fire(browser.webRequest.onErrorOccurred, {
+      tabId: TAB_ID,
+      requestId: 'req-9',
+      url: URL,
+      documentUrl: DOCUMENT_URL,
+      type: 'image',
+      error: 'NS_ERROR_UNKNOWN_HOST',
+      fromCache: false,
+      proxyInfo: { type: 'http', host: '', port: -1 },
+    })
+
+    expect(routesOf(monitor)).toEqual([expect.objectContaining({ route: FAILED_BEFORE_ROUTE, count: 1 })])
   })
 })
 
