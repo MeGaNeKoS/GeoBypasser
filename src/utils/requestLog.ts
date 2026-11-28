@@ -82,8 +82,13 @@ export function resultLines (usage: HostUsage): ResultLine[] {
 export function routeLabel (route: RecordedRoute, proxies: ProxyListItem[]): string {
   if (route.reason === 'failed') return FAILED_BEFORE_ROUTE_TEXT;
   if (route.route === '') return UNKNOWN_ROUTE_TEXT;
-  const text = route.route === DIRECT_ROUTE ? DIRECT_TEXT : proxiedLabel(route, proxies);
+  const text = route.route === DIRECT_ROUTE ? directLabel(route) : proxiedLabel(route, proxies);
   return route.inferred ? `${text} (inferred)` : text;
+}
+
+function directLabel (route: RecordedRoute): string {
+  if (route.reason !== 'bypass') return DIRECT_TEXT;
+  return `${DIRECT_TEXT}, skipped by rule '${route.rule?.name ?? ''}'`;
 }
 
 function proxiedLabel (route: RecordedRoute, proxies: ProxyListItem[]): string {
@@ -127,7 +132,7 @@ function requestLogRow (page: string, host: string, hostUsage: HostUsage, proxie
     requests: hostUsage.count,
     types: typeCountsOf(hostUsage.types),
     results: resultLines(hostUsage),
-    routes: Object.values(hostUsage.routes).map(tally => routeLine(tally, proxies)),
+    routes: mergeRouteLines(Object.values(hostUsage.routes).map(tally => routeLine(tally, proxies))),
     sentBytes: hostUsage.sent,
     receivedBytes: hostUsage.received,
     unsizedCount: hostUsage.unsizedCount,
@@ -147,6 +152,16 @@ function routeLine (tally: RouteTally, proxies: ProxyListItem[]): RouteLine {
     ruleId: route.rule?.index,
     ruleName: route.rule?.name,
   };
+}
+
+function mergeRouteLines (lines: RouteLine[]): RouteLine[] {
+  const linesByWording = new Map<string, RouteLine>();
+  for (const line of lines) {
+    const key = JSON.stringify([line.label, line.reason, line.expected]);
+    const existing = linesByWording.get(key);
+    linesByWording.set(key, existing ? { ...existing, count: existing.count + line.count, bytes: existing.bytes + line.bytes } : line);
+  }
+  return [...linesByWording.values()];
 }
 
 function reasonPhrase (route: RecordedRoute): string | undefined {

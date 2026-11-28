@@ -135,6 +135,25 @@ describe('request log', () => {
     expect(routeLabel(DIRECT_DEFAULT, PROXIES)).toBe('Direct')
   })
 
+  it('words a direct route a rule skipped as skipped by that rule', () => {
+    const skipped: RecordedRoute = { reason: 'bypass', route: 'DIRECT', expected: true, rule: { index: 4, name: 'cdn' } }
+
+    expect(routeLabel(skipped, PROXIES)).toBe("Direct, skipped by rule 'cdn'")
+  })
+
+  it('merges route lines with the same label and reason into one line with the summed count', () => {
+    const usage = usageOf(
+      observation({ route: { reason: 'site', route: 'PROXY good.lan:8080', expected: false, proxyId: 'good' } }),
+      observation({ route: { reason: 'site', route: 'PROXY good.lan:8080', expected: false, proxyId: 'good' } }),
+      observation({ route: { reason: 'site', route: 'PROXY good.lan:8080', expected: false, proxyId: 'good', rule: { index: 9, name: 'other' } } }),
+    )
+
+    const [line] = requestLogPages(usage, PROXIES)[0].rows[0].routes
+
+    expect(requestLogPages(usage, PROXIES)[0].rows[0].routes).toHaveLength(1)
+    expect(line).toMatchObject({ label: 'good, by site proxy', count: 3 })
+  })
+
   it('marks an inferred route as inferred', () => {
     expect(routeLabel({ ...RULE_ROUTE, proxyId: 'good', inferred: true }, PROXIES)).toBe("good, by rule 'cdn' (inferred)")
   })
