@@ -11,6 +11,7 @@ import { checkPacRoute } from './smoke-chrome-route.mjs'
 import { COMPONENT_TEST_PAGE, chromeKeyEvents, runComponentTestPage } from './smoke-component-test.mjs'
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
 import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
+import { checkRuleFlipFromPopup } from './smoke-popup-rules.mjs'
 import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { checkSectionImportsThroughReview } from './smoke-review-imports.mjs'
 import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkKeepAliveAddEditDelete, checkRuleRowsAfterReread, checkSiteAddEditDelete, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
@@ -305,6 +306,7 @@ async function runSmoke (options) {
   const popup = await openTab('popup.html')
   await sleep(POPUP_SETTLE_MS)
   console.log(`popup page loaded (${await evalIn(popup, 'location.pathname')})`)
+  await checkRuleFlipFromPopup((fn, args = []) => evalIn(popup, `(${fn.toString()})(...${JSON.stringify(args)})`), failures)
 }
 
 async function main () {

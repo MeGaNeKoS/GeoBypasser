@@ -10,6 +10,7 @@ import { checkRevealAndRowExport, checkSetAsideEditSave, checkSetAsideExports, c
 import { checkMixedOverrideInDashboard, addProxyAsDefault, clickSiteClearInPopup, MIXED_HOST, MIXED_KEY, MIXED_URL, mixedRouteProxy, openPopupBesideTab, readPopupDomain, storedKeysForHost, tabLoadStatus, writeMixedOverride } from './smoke-override-spelling.mjs'
 import { checkNetworkStatsNames, FIREFOX_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
 import { startRecordingListener } from './smoke-chrome-route.mjs'
+import { checkRuleFlipFromPopup } from './smoke-popup-rules.mjs'
 import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
 import { COMPONENT_TEST_PAGE, firefoxKeyActions, runComponentTestPage } from './smoke-component-test.mjs'
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
@@ -258,35 +259,6 @@ async function setTabProxyFromPopup (session) {
   console.log(`popup set tab ${tabId} to proxy-good; tabProxyMap holds it`)
 }
 
-async function flipRuleFromPopup () {
-  await evaluate(clickFirstPopupRuleSwitch)
-  await waitFor(async () => (await evaluate(readGoodRuleActive)) === false, STORAGE_WAIT_MS, 'the popup rule switch to turn "good rule" off in storage')
-  await evaluate(clickPopupRuleFilter, ['inactive'])
-  await waitFor(async () => (await evaluate(popupRuleSwitchCount)) > 0, STEP_TIMEOUT_MS, 'the inactive rule list in the popup')
-  await evaluate(clickFirstPopupRuleSwitch)
-  await waitFor(async () => (await evaluate(readGoodRuleActive)) === true, STORAGE_WAIT_MS, 'the popup rule switch to turn "good rule" back on in storage')
-  console.log('popup turned "good rule" off and back on; storage holds it active again')
-}
-
-function clickFirstPopupRuleSwitch () {
-  document.querySelector('.popup-rules [role="switch"]').click()
-  return true
-}
-
-function clickPopupRuleFilter (value) {
-  document.querySelector(`input[name="ruleFilter"][value="${value}"]`).click()
-  return true
-}
-
-function popupRuleSwitchCount () {
-  return document.querySelectorAll('.popup-rules [role="switch"]').length
-}
-
-async function readGoodRuleActive () {
-  const { rules = [] } = await browser.storage.local.get('rules')
-  return rules.find(rule => rule?.name === 'good rule')?.active
-}
-
 async function runFirefoxSmoke (settings) {
   prepareSmokeDist(settings.dist)
   resetProfile()
@@ -324,7 +296,7 @@ async function runFirefoxSmoke (settings) {
   await checkMixedOverrideInDashboard({ run: evaluate, reopenDashboard: () => navigate(`${second.origin}dashboard.html`) }, failures)
   await runStep('popup clears a mixed case override for the tab it is opened beside', () => checkPopupClearOnMixedTab(second), failures)
   await setTabProxyFromPopup(second)
-  await runStep('popup flips a rule off and back on, and storage follows', () => flipRuleFromPopup(), failures)
+  await checkRuleFlipFromPopup(evaluate, failures)
   await checkComponentTestPage(second)
   await checkPrototypePages()
 }
