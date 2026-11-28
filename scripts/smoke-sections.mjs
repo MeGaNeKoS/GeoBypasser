@@ -25,6 +25,7 @@ export function clickFallbackSwitch () {
 export function fillTestField (name, value) {
   const input = document.querySelector(`#testContent [name="${name}"]`)
   input.value = value
+  input.dispatchEvent(new Event('input', { bubbles: true }))
   input.dispatchEvent(new Event('change'))
 }
 

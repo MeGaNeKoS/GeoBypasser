@@ -5,11 +5,25 @@ export type ProxyTestOutcome =
   | { state: 'busy' }
   | { state: 'finished'; result: ProxyTestResult }
 
-const IDLE_TEXT = 'No test run yet'
-const BUSY_TEXT = 'Testing…'
+export type ProxyTestPanel =
+  | { kind: 'idle' }
+  | { kind: 'busy' }
+  | { kind: 'connected'; proxy: string }
+  | { kind: 'failed'; reason: string }
 
-export function proxyTestOutcomeText (outcome: ProxyTestOutcome): string {
-  if (outcome.state === 'idle') return IDLE_TEXT
-  if (outcome.state === 'busy') return BUSY_TEXT
-  return outcome.result.success ? `Connected through ${outcome.result.proxy}` : `Failed: ${outcome.result.error}`
+const NO_RESPONSE_REASON = 'no response through this proxy.'
+const TIMEOUT_ERROR_NAME = 'AbortError'
+
+export function proxyTestPanelOf (outcome: ProxyTestOutcome): ProxyTestPanel {
+  if (outcome.state === 'idle') return { kind: 'idle' }
+  if (outcome.state === 'busy') return { kind: 'busy' }
+  const { result } = outcome
+  return result.success
+    ? { kind: 'connected', proxy: result.proxy }
+    : { kind: 'failed', reason: result.error }
+}
+
+export function testFailureReason (thrown: unknown): string {
+  if (thrown instanceof Error && thrown.name === TIMEOUT_ERROR_NAME) return thrown.message
+  return NO_RESPONSE_REASON
 }

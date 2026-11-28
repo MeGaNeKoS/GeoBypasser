@@ -52,6 +52,6 @@ function emptyOptionFor (choices: ProxyChoices, proxyId: string): { value: strin
   return proxyId === '' ? [{ value: '', label: CHOOSE_PROXY_LABEL }] : []
 }
 
-function unavailableLabel (storedLabel: string | undefined, proxyId: string): string {
-  return storedLabel === undefined ? proxyId : `${UNAVAILABLE_PREFIX}${storedLabel}`
+export function unavailableLabel (storedLabel: string | undefined, proxyId: string): string {
+  return `${UNAVAILABLE_PREFIX}${storedLabel ?? proxyId}`
 }

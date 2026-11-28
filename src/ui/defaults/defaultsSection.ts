@@ -8,6 +8,7 @@ import { switchField } from '../components/fields'
 import { inlineConfirm } from '../components/inline-confirm'
 import { otherExtensionsNote } from '../components/other-extensions-note'
 import { proxySelectField } from '../components/proxy-select'
+import { sectionHeading } from '../components/section-heading'
 import { testUrlField } from '../components/test-url-field'
 import { element, replaceContent, requireElement } from '../dom'
 
@@ -33,9 +34,11 @@ export async function renderDefaultsSection (focusKey?: string): Promise<void> {
 
 function defaultsContent (config: StoredConfig): Node[] {
   return [
-    element('h2', { class: 'page-title', tabindex: '-1' }, HEADING),
-    element('div', { class: 'settings-card' }, ...cardFields(config)),
-    ...(supportsProxyOnRequest ? [otherExtensionsNote()] : []),
+    element('div', { class: 'stack' },
+      sectionHeading(HEADING),
+      element('div', { class: 'settings-card' }, ...cardFields(config)),
+      ...(supportsProxyOnRequest ? [otherExtensionsNote()] : []),
+    ),
   ]
 }
 

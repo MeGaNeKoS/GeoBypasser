@@ -123,8 +123,12 @@ body {
   #content {
     flex: 1 1 auto;
     min-width: 0;
-    max-width: var(--content-max);
     padding: var(--space-6);
+  }
+
+  #content > section,
+  #controlBanner {
+    max-width: var(--content-max);
   }
 }
 

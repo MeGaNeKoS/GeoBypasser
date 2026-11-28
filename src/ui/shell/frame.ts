@@ -14,6 +14,7 @@ import { renderKeepAliveSection } from '../keep-alive/keepAliveSection'
 import { renderAboutSection } from '../about/aboutSection'
 import { renderProxyTestSection } from '../proxy-test/proxyTestSection'
 import { onProxyControlStateChanged } from '../proxyControlState'
+import { mountControlNotice } from './control-notice'
 import { clearSelections } from '../components/list-section'
 import { ABOUT_SECTION_ID, GENERAL_SECTION_ID, HOME_SECTION_ID, KEEP_ALIVE_SECTION_ID, PROXY_SECTION_ID, RULES_SECTION_ID, SITE_SECTION_ID, TEST_SECTION_ID, hashForSection, isSetAsideOnlyHash, sectionIdForHash } from './routes'
 
@@ -52,7 +53,8 @@ export function mountDashboardFrame (options: FrameOptions = {}): void {
   document.addEventListener('keydown', event => closeMenuOnEscape(event, nav))
   window.addEventListener('hashchange', showCurrentHash)
   browser.storage.onChanged.addListener(() => onStorageChanged(nav))
-  onProxyControlStateChanged(() => void renderSection(sectionIdForHash(location.hash)))
+  onProxyControlStateChanged(() => renderShownSection())
+  void mountControlNotice()
   showCurrentHash()
   void refreshNavCounts(nav)
 }
@@ -107,8 +109,13 @@ async function renderSection (sectionId: string): Promise<void> {
 
 function onStorageChanged (nav: FrameNav): void {
   void refreshNavCounts(nav)
+  if (sectionIdForHash(location.hash) === RULES_SECTION_ID) clearSelections()
+  renderShownSection()
+}
+
+function renderShownSection (): void {
   const shownId = sectionIdForHash(location.hash)
-  if (shownId === RULES_SECTION_ID) clearSelections()
+  if (shownId === ABOUT_SECTION_ID) return
   void renderSection(shownId)
 }
 

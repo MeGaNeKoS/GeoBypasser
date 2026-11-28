@@ -27,6 +27,7 @@ export type TextFieldOptions = FieldOptions & {
   suffix?: string;
   autocomplete?: string;
   onChange?: (value: string) => void;
+  onInput?: (value: string) => void;
 }
 
 export type SelectOption = {
@@ -55,6 +56,7 @@ export function textField (options: TextFieldOptions): HTMLDivElement {
     spellcheck: 'false',
   })
   input.addEventListener('change', () => options.onChange?.(input.value))
+  input.addEventListener('input', () => options.onInput?.(input.value))
   const control = options.suffix
     ? element('div', { class: 'field__suffix' }, input, element('span', {}, options.suffix))
     : input
@@ -101,7 +103,7 @@ export function faultLine (message: string, id?: string): HTMLParagraphElement {
   return element('p', { class: 'field__error', id }, icon('alert'), message)
 }
 
-export function passwordField (options: FieldOptions & { value: string; onChange?: (value: string) => void }): HTMLDivElement {
+export function passwordField (options: FieldOptions & { value: string; onChange?: (value: string) => void; onInput?: (value: string) => void }): HTMLDivElement {
   const id = fieldId(options.name)
   const input = element('input', {
     id,
@@ -112,6 +114,7 @@ export function passwordField (options: FieldOptions & { value: string; onChange
     spellcheck: 'false',
   })
   input.addEventListener('change', () => options.onChange?.(input.value))
+  input.addEventListener('input', () => options.onInput?.(input.value))
   const show = element('button', { type: 'button', class: 'button', 'aria-pressed': 'false' }, 'Show')
   show.addEventListener('click', () => togglePasswordVisibility(input, show))
   return fieldFrame(id, options, element('div', { class: 'field__suffix' }, input, show), input)

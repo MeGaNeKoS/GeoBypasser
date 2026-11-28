@@ -97,6 +97,37 @@
   min-width: 0;
 }
 
+.field > .button {
+  justify-self: start;
+}
+
+.control-banner {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.control-banner:not(:empty) {
+  margin-bottom: var(--space-4);
+}
+
+.about-priority,
+.about-list {
+  padding-left: var(--space-5);
+}
+
+.about-priority {
+  list-style: decimal;
+}
+
+.about-list {
+  list-style: disc;
+}
+
+.result-label--danger {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .field[hidden] {
   display: none;
 }

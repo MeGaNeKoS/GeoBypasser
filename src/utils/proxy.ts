@@ -11,6 +11,7 @@ import { addTestURLToPac } from '@utils/pac'
 import { pacRouteFor } from '@utils/pacRoute'
 import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableProxies, usableRules } from '@utils/usable'
 import { isValidFailoverTimeout } from '@utils/validity'
+import { testFailureReason } from '@utils/proxyTestOutcome'
 import OnAuthRequiredDetailsTypeChallengerType = WebRequest.OnAuthRequiredDetailsTypeChallengerType
 import OnAuthRequiredDetailsType = WebRequest.OnAuthRequiredDetailsType
 
@@ -278,11 +279,7 @@ async function testProxyConfig (
     sendResult({ ...result, proxy: `${proxy.host}:${proxy.port}` } as ProxyTestResult)
   } catch (err) {
     console.log(err)
-    // check if the error is an AbortError
-    if (err instanceof Error) {
-      const userError = err.message
-      sendResult({ success: false, error: userError, proxy: `${proxy.host}:${proxy.port}` })
-    }
+    sendResult({ success: false, error: testFailureReason(err), proxy: `${proxy.host}:${proxy.port}` })
   } finally {
     if (restore) await restore()
   }

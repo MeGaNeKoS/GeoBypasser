@@ -4,27 +4,34 @@ import { testProxyConfigQueued } from '@utils/proxy'
 import { canRunProxyTests } from '@utils/proxyControl'
 import { proxyFormFaults, proxyFormOf, proxyFromForm } from '@utils/proxyDraft'
 import type { ProxyForm, ProxyFormField, ProxyFormFault } from '@utils/proxyDraft'
-import { proxyTestOutcomeText } from '@utils/proxyTestOutcome'
+import { proxyTestPanelOf } from '@utils/proxyTestOutcome'
 import type { ProxyTestOutcome } from '@utils/proxyTestOutcome'
 import { getConfig } from '@utils/storage'
 import { usableProxies } from '@utils/usable'
 import { button, buttonGroup } from '../components/button'
 import { segmented } from '../components/controls'
 import type { SegmentOption } from '../components/controls'
-import { passwordField, textField } from '../components/fields'
+import { faultLine, passwordField, textField } from '../components/fields'
 import { proxySelectField } from '../components/proxy-select'
+import { sectionHeading } from '../components/section-heading'
 import { testUrlField } from '../components/test-url-field'
-import { element, replaceContent, requireElement } from '../dom'
+import { element, focusedKey, replaceContent, requireElement } from '../dom'
+import { icon } from '../icons'
 import { openProxyEditor } from '../proxies/proxySheet'
 import { readProxyControlState } from '../proxyControlState'
+import { BLOCKED_REASON_FOCUS_KEY, testRenderFocus } from './testRenderFocus'
 
 const CONTAINER_ID = 'testContent'
 const HEADING = 'Test'
 const SAVED_HEADING = 'Saved proxy'
 const CUSTOM_HEADING = 'Custom proxy'
 const NO_SAVED_PROXY = 'No usable proxy to test yet. Add one on Proxies.'
+const IDLE_TEXT = 'No test run yet'
+const BUSY_TEXT = 'Testing…'
+const CONNECTED_PREFIX = 'Connected through '
+const FAILED_LABEL = 'Failed:'
 const BLOCKED_REASON = 'Tests cannot run while GeoBypass does not control proxy settings.'
-const TIMEOUTS_NOTE = 'Normal proxies time out after 5 seconds. HTTP proxies with a username time out after 30 seconds.'
+const TIMEOUTS_NOTE = 'Tests time out after 5 seconds, or 30 for an HTTP proxy with a username.'
 const TYPE_OPTIONS: SegmentOption<ProxyType>[] = [
   { value: 'http', label: 'HTTP' },
   { value: 'socks', label: 'SOCKS5' },
@@ -34,19 +41,25 @@ let savedProxyId: string | undefined
 let customForm: ProxyForm = proxyFormOf()
 let customFaultsShown = false
 let outcome: ProxyTestOutcome = { state: 'idle' }
+let blockedReturnKey: string | undefined
 
 export async function renderProxyTestSection (focusKey?: string): Promise<void> {
   const [config, controlState] = await Promise.all([getConfig(), readProxyControlState()])
-  replaceContent(requireElement(CONTAINER_ID), proxyTestContent(config.proxyList, config.testProxyUrl, canRunProxyTests(controlState)), focusKey)
+  const testable = canRunProxyTests(controlState)
+  const focus = testRenderFocus({ focusedKey: focusKey ?? focusedKey(), testable, returnKey: blockedReturnKey })
+  blockedReturnKey = focus.returnKey
+  replaceContent(requireElement(CONTAINER_ID), proxyTestContent(config.proxyList, config.testProxyUrl, testable), focus.focusKey)
 }
 
 function proxyTestContent (proxyList: ProxyListItem[], testUrl: string, testable: boolean): Node[] {
   return [
-    element('h2', { class: 'page-title', tabindex: '-1' }, HEADING),
-    element('div', { class: 'settings-card' }, testUrlField(testUrl, renderProxyTestSection)),
-    savedProxyCard(proxyList, testable),
-    customProxyCard(testable),
-    resultPanel(testable),
+    element('div', { class: 'stack' },
+      sectionHeading(HEADING),
+      element('div', { class: 'settings-card' }, testUrlField(testUrl, renderProxyTestSection)),
+      savedProxyCard(proxyList, testable),
+      customProxyCard(testable),
+      resultPanel(testable),
+    ),
   ]
 }
 
@@ -93,24 +106,33 @@ function customProxyCard (testable: boolean): HTMLElement {
     segmented('Type', 'testType', TYPE_OPTIONS, customForm.type as ProxyType, type => editCustom({ type })),
     element('div', { class: 'field-pair' },
       textField({
-        name: 'testHost', label: 'Host', value: customForm.host, mono: true,
-        fault: faultOf(faults, 'host'), onChange: host => editCustom({ host }),
+        name: 'testHost', label: 'Host', value: customForm.host, mono: true, focusKey: 'test-host',
+        fault: faultOf(faults, 'host'), onInput: host => editCustom({ host }),
       }),
       textField({
         name: 'testPort', label: 'Port', type: 'number', inputMode: 'numeric', value: customForm.port, mono: true,
-        fault: faultOf(faults, 'port'), onChange: port => editCustom({ port }),
+        focusKey: 'test-port', onInput: port => editCustom({ port }),
       }),
     ),
+    portFault(faults),
     textField({
-      name: 'testUsername', label: 'Username', value: customForm.username, autocomplete: 'off',
-      onChange: username => editCustom({ username }),
+      name: 'testUsername', label: 'Username', value: customForm.username, autocomplete: 'off', focusKey: 'test-username',
+      onInput: username => editCustom({ username }),
     }),
-    passwordField({ name: 'testPassword', label: 'Password', value: customForm.password, onChange: password => editCustom({ password }) }),
+    passwordField({
+      name: 'testPassword', label: 'Password', value: customForm.password, focusKey: 'test-password',
+      onInput: password => editCustom({ password }),
+    }),
     buttonGroup(
       button('Test', { focusKey: 'test-custom', disabled: !testable, onClick: testCustomProxy }),
       button('Add to list', { focusKey: 'add-custom', onClick: addCustomToList }),
     ),
   )
+}
+
+function portFault (faults: ProxyFormFault[]): HTMLParagraphElement | null {
+  const message = faultOf(faults, 'port')
+  return message === undefined ? null : faultLine(message)
 }
 
 function faultOf (faults: ProxyFormFault[], field: ProxyFormField): string | undefined {
@@ -132,6 +154,7 @@ function showCustomFaults (focusKey: string): void {
 
 function testCustomProxy (): void {
   if (!customFormIsValid()) {
+    outcome = { state: 'idle' }
     showCustomFaults('test-custom')
     return
   }
@@ -160,7 +183,22 @@ async function runTest (proxy: ProxyListItem, focusKey: string): Promise<void> {
 
 function resultPanel (testable: boolean): HTMLElement {
   return element('div', { class: 'settings-card' },
-    element('p', { role: 'status' }, testable ? proxyTestOutcomeText(outcome) : BLOCKED_REASON),
+    testable ? outcomeLine(outcome) : blockedLine(),
     element('p', { class: 'help' }, TIMEOUTS_NOTE),
   )
+}
+
+function outcomeLine (current: ProxyTestOutcome): HTMLParagraphElement {
+  const panel = proxyTestPanelOf(current)
+  if (panel.kind === 'connected') {
+    return element('p', { role: 'status' }, icon('check'), CONNECTED_PREFIX, element('span', { class: 'mono' }, panel.proxy))
+  }
+  if (panel.kind === 'failed') {
+    return element('p', { role: 'status' }, icon('alert'), element('span', { class: 'result-label--danger' }, FAILED_LABEL), ` ${panel.reason}`)
+  }
+  return element('p', { role: 'status' }, panel.kind === 'busy' ? BUSY_TEXT : IDLE_TEXT)
+}
+
+function blockedLine (): HTMLParagraphElement {
+  return element('p', { role: 'status', tabindex: '-1', 'data-focus-key': BLOCKED_REASON_FOCUS_KEY }, icon('alert'), BLOCKED_REASON)
 }
