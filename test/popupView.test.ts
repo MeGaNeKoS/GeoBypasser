@@ -2,7 +2,9 @@ import {
   canTestFromPopup,
   defaultPopupScope,
   emptyRuleListText,
+  hostForTabUrl,
   needsFixingLine,
+  popupRuleRows,
   popupRuleSummary,
   popupScopeOptions,
   popupUsingLine,
@@ -82,10 +84,34 @@ describe('the popup rule summary', () => {
   })
 })
 
+describe('the popup rule list rows', () => {
+  it('lists each usable rule in the filter with its position in the stored list', () => {
+    const rules = compileRules([rule('a'), rule('b', { active: false }), rule('c')])
+    expect(popupRuleRows(rules, 'active')).toEqual([
+      { position: 0, name: 'a', active: true },
+      { position: 2, name: 'c', active: true },
+    ])
+    expect(popupRuleRows(rules, 'inactive')).toEqual([{ position: 1, name: 'b', active: false }])
+  })
+})
+
+describe('the popup host', () => {
+  it('reads the hostname of the tab URL', () => {
+    expect(hostForTabUrl('https://video.example.com/watch?v=1')).toBe('video.example.com')
+  })
+})
+
 describe('the popup rule list text', () => {
+  const populated = { total: 3, needsFixing: 0, active: 0, inactive: 3 }
+
   it('names the empty active and inactive lists', () => {
-    expect(emptyRuleListText('active')).toBe('No active rules')
-    expect(emptyRuleListText('inactive')).toBe('No inactive rules')
+    expect(emptyRuleListText(populated, 'active')).toBe('No active rules')
+    expect(emptyRuleListText(populated, 'inactive')).toBe('No inactive rules')
+  })
+
+  it('invites the user to the dashboard when there are no rules at all', () => {
+    const none = { total: 0, needsFixing: 0, active: 0, inactive: 0 }
+    expect(emptyRuleListText(none, 'active')).toBe('No rules yet. Open dashboard')
   })
 
   it('says how many rules need fixing, in the singular and the plural', () => {

@@ -1,6 +1,7 @@
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import { DIRECT_LABEL, navCounts, popupRules } from '@utils/pageView'
-import { usableProxies } from '@utils/usable'
+import { isRuleActive, usableProxies } from '@utils/usable'
+import { isValidRule } from '@utils/validity'
 
 export type PopupScope = 'tab' | 'site'
 
@@ -69,8 +70,29 @@ export function popupRuleSummary (rules: unknown): PopupRuleSummary {
   }
 }
 
-export function emptyRuleListText (filter: RuleFilter): string {
+export type PopupRuleRow = { position: number; name: string; active: boolean }
+
+export function popupRuleRows (list: unknown, filter: RuleFilter): PopupRuleRow[] {
+  if (!Array.isArray(list)) return []
+  const wantActive = filter === 'active'
+  return list.flatMap((rule: unknown, position) => {
+    if (!isValidRule(rule) || isRuleActive(rule) !== wantActive) return []
+    return [{ position, name: rule.name, active: wantActive }]
+  })
+}
+
+export function emptyRuleListText (summary: PopupRuleSummary, filter: RuleFilter): string {
+  if (summary.total === 0) return 'No rules yet. Open dashboard'
   return filter === 'active' ? 'No active rules' : 'No inactive rules'
+}
+
+export function hostForTabUrl (url: string | undefined): string | undefined {
+  if (url === undefined) return undefined
+  try {
+    return new URL(url).hostname
+  } catch {
+    return undefined
+  }
 }
 
 export function needsFixingLine (needsFixing: number): string | null {

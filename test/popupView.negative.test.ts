@@ -1,4 +1,4 @@
-import { needsFixingLine, popupRuleSummary, popupUsingLine } from '@utils/popupView'
+import { hostForTabUrl, needsFixingLine, popupRuleRows, popupRuleSummary, popupUsingLine } from '@utils/popupView'
 import type { ProxyListItem } from '@customTypes/proxy'
 
 const setAside: ProxyListItem = { id: 'broken', label: 'Broken' } as any
@@ -40,5 +40,25 @@ describe('the popup rule summary with no rules', () => {
 describe('the popup rule list text without faults', () => {
   it('shows no fault line when no rule needs fixing', () => {
     expect(needsFixingLine(0)).toBeNull()
+  })
+})
+
+describe('the popup rule rows without usable rules', () => {
+  it('lists nothing when the rules are missing or not a list', () => {
+    expect(popupRuleRows(undefined, 'active')).toEqual([])
+    expect(popupRuleRows('rules', 'inactive')).toEqual([])
+  })
+
+  it('leaves out rules set aside for fixing', () => {
+    const rules = [{ name: 'broken', match: 'not a list', proxyId: 'tokyo' }]
+    expect(popupRuleRows(rules, 'active')).toEqual([])
+    expect(popupRuleRows(rules, 'inactive')).toEqual([])
+  })
+})
+
+describe('the popup host without a usable URL', () => {
+  it('has no host when the tab has no URL or it does not parse', () => {
+    expect(hostForTabUrl(undefined)).toBeUndefined()
+    expect(hostForTabUrl('not a url')).toBeUndefined()
   })
 })
