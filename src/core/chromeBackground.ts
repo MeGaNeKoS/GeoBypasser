@@ -51,8 +51,9 @@ export function startChromeBackground (ports: ChromeBackgroundPorts) {
 
   const networkMonitor = createNetworkMonitor()
   ports.registerNetworkMonitor(networkMonitor)
-  ports.onRuntimeMessage(async message => {
-    if (isNetworkMessage(message)) return networkMonitor.answerNetworkMessage(message)
+  ports.onRuntimeMessage(message => {
+    if (isNetworkMessage(message)) return Promise.resolve(networkMonitor.answerNetworkMessage(message))
+    return undefined
   })
   ports.onTabRemoved(tabId => networkMonitor.forgetTab(tabId))
 
