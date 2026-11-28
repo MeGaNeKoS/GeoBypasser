@@ -46,6 +46,7 @@ export type RequestLogPage = {
   rows: RequestLogRow[];
   proxiedBytes: number;
   totalBytes: number;
+  unsizedCount: number;
 };
 
 const BLOCKED_STATUSES = [403, 451];
@@ -97,7 +98,12 @@ function proxyNameFor (route: RecordedRoute, proxies: ProxyListItem[]): string {
 }
 
 export function formatProxiedShare (page: RequestLogPage): string {
-  return `${formatBytes(page.proxiedBytes)} of ${formatBytes(page.totalBytes)}`;
+  const share = `${formatBytes(page.proxiedBytes)} of ${formatBytes(page.totalBytes)}`;
+  return page.unsizedCount === 0 ? share : `${share} (${formatCount(page.unsizedCount, 'request')} without a size)`;
+}
+
+export function formatCount (count: number, noun: string): string {
+  return `${count} ${count === 1 ? noun : `${noun}s`}`;
 }
 
 function requestLogPage (page: string, hosts: Map<string, HostUsage>, proxies: ProxyListItem[]): RequestLogPage {
@@ -108,6 +114,7 @@ function requestLogPage (page: string, hosts: Map<string, HostUsage>, proxies: P
     rows,
     proxiedBytes: sumOf(lines.filter(line => line.proxied).map(line => line.bytes)),
     totalBytes: sumOf(lines.map(line => line.bytes)),
+    unsizedCount: sumOf(rows.map(row => row.unsizedCount)),
   };
 }
 

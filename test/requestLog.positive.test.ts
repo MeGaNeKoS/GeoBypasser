@@ -1,6 +1,6 @@
 import type { ProxyListItem } from '@customTypes/proxy'
 import { addRequestToTab, emptyTabUsage, type NetworkUsage, type RecordedRoute, type RequestObservation } from '@utils/networkUsage'
-import { formatProxiedShare, requestLogPages, resultLines, routeLabel } from '@utils/requestLog'
+import { formatCount, formatProxiedShare, requestLogPages, resultLines, routeLabel } from '@utils/requestLog'
 
 const PAGE = 'page.example'
 const CDN = 'cdn.example.com'
@@ -127,5 +127,17 @@ describe('request log', () => {
 
   it('marks an inferred route as inferred', () => {
     expect(routeLabel({ ...RULE_ROUTE, proxyId: 'good', inferred: true }, PROXIES)).toBe("good, by rule 'cdn' (inferred)")
+  })
+
+  it('adds the unsized request count to the proxied share', () => {
+    const [page] = requestLogPages(usageOf(observation({ route: RULE_ROUTE, receivedSizeKnown: false })), PROXIES)
+
+    expect(formatProxiedShare(page)).toBe('0 B of 0 B (1 request without a size)')
+  })
+
+  it('pluralizes a count by its number', () => {
+    expect(formatCount(1, 'tab')).toBe('1 tab')
+    expect(formatCount(2, 'tab')).toBe('2 tabs')
+    expect(formatCount(0, 'request')).toBe('0 requests')
   })
 })
