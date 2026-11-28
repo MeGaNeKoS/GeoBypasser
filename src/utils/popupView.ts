@@ -84,7 +84,7 @@ export function popupRuleRows (list: unknown, filter: RuleFilter): PopupRuleRow[
 }
 
 export function emptyRuleListText (summary: PopupRuleSummary, filter: RuleFilter): string {
-  if (summary.total === 0) return 'No rules yet. Open dashboard'
+  if (summary.total === 0) return 'No rules yet.'
   return filter === 'active' ? 'No active rules' : 'No inactive rules'
 }
 
@@ -122,8 +122,10 @@ export function popupTestResultLine (result: ProxyTestResult): string {
 }
 
 export function chromeSiteNote (domain: string): string {
-  return `A site proxy covers requests to ${domain} and its subdomains, not other hosts the page loads from. Per tab proxies and Test proxy here are Firefox only.`
+  return `A site proxy covers requests to ${domain} and its subdomains, not other hosts the page loads from.`
 }
+
+export const FIREFOX_ONLY_NOTE = 'Per tab proxies and Test proxy here are Firefox only.'
 
 export function monitorHintFor (supportsPerTabProxy: boolean): string | undefined {
   return supportsPerTabProxy ? undefined : 'Keep DevTools open while monitoring.'

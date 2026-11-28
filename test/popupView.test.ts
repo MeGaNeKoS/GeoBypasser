@@ -115,7 +115,7 @@ describe('the popup rule list text', () => {
 
   it('invites the user to the dashboard when there are no rules at all', () => {
     const none = { total: 0, needsFixing: 0, active: 0, inactive: 0 }
-    expect(emptyRuleListText(none, 'active')).toBe('No rules yet. Open dashboard')
+    expect(emptyRuleListText(none, 'active')).toBe('No rules yet.')
   })
 
   it('says how many rules need fixing, in the singular and the plural', () => {

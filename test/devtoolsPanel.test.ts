@@ -16,7 +16,7 @@ describe('the devtools panel copy', () => {
   })
 
   it('names the popup Monitor control for the inactive state', () => {
-    expect(devtoolsPanelCopy('inactive')).toBe('Network monitoring is off for this tab. Turn it on with Monitor in the popup.')
+    expect(devtoolsPanelCopy('inactive')).toBe('Network monitoring is off for this tab. Turn on Monitor this tab in the popup.')
   })
 
   it('asks the reader to reopen DevTools for the error state', () => {

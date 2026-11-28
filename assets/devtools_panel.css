@@ -14,3 +14,8 @@
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+
+.devtools-panel-status .icon {
+  vertical-align: -0.125em;
+  margin-inline-end: var(--space-1);
+}

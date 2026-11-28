@@ -3,11 +3,11 @@ import { proxyOptions } from '@utils/pageView'
 import { requestProxyTest } from '@utils/proxyTestRequest'
 import { canTestProxyId, planClearProxy, planSetProxy } from '@utils/popupPlan'
 import type { PopupTarget, ProxyChange } from '@utils/popupPlan'
-import { canTestFromPopup, chromeSiteNote, defaultPopupScope, popupScopeOptions, popupTestResultLine, popupUsingLine } from '@utils/popupView'
+import { canTestFromPopup, chromeSiteNote, defaultPopupScope, FIREFOX_ONLY_NOTE, popupScopeOptions, popupTestResultLine, popupUsingLine } from '@utils/popupView'
 import type { PopupScope } from '@utils/popupView'
 import { getConfig, getTabProxyMap } from '@utils/storage'
 import { overrideForHost } from '@utils/usable'
-import { button } from '../components/button'
+import { button, linkButton } from '../components/button'
 import { segmented } from '../components/controls'
 import type { SegmentOption } from '../components/controls'
 import { statusLine } from '../components/feedback'
@@ -127,7 +127,11 @@ function proxyChoices (proxyList: unknown): SelectOption[] {
 function chromeNote (host: string | undefined): HTMLElement {
   return noteBlock('On Chrome',
     element('p', { class: 'note-block__body' }, chromeSiteNote(host ?? 'this site')),
-    button('Test in dashboard', { variant: 'quiet', onClick: () => void openDashboardAt(`#${hashForSection(TEST_SECTION_ID)}`) }),
+    element('p', { class: 'note-block__body' },
+      FIREFOX_ONLY_NOTE,
+      ' ',
+      linkButton('Test in dashboard', () => void openDashboardAt(`#${hashForSection(TEST_SECTION_ID)}`)),
+    ),
   )
 }
 

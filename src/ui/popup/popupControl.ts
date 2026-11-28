@@ -20,6 +20,6 @@ export function renderControlWarning (slot: HTMLElement, state: ProxyControlStat
   replaceContent(slot, [banner({
     tone: 'danger',
     text: element('p', {}, warning.message),
-    action: warning.actionLabel === undefined ? undefined : button(warning.actionLabel, { onClick: () => void openExtensionsPage() }),
+    action: warning.actionLabel === undefined ? undefined : button(warning.actionLabel, { variant: 'quiet', onClick: () => void openExtensionsPage() }),
   })])
 }

@@ -1,10 +1,13 @@
 import browser from 'webextension-polyfill'
 import { devtoolsPanelCopy, devtoolsPanelStateFor, type DevtoolsPanelState } from '@utils/devtoolsPanel'
+import { replaceContent } from '../dom'
+import { icon, installSprite } from '../icons'
 import { readTabNetworkMonitored } from '../networkMonitorState'
 
 const PANEL_REFRESH_MS = 2000
 
 export async function mountDevtoolsPanel (status: HTMLElement): Promise<void> {
+  installSprite()
   showPanelState(status, 'loading')
   const tabId = inspectedTabId()
   if (tabId === undefined) {
@@ -17,8 +20,13 @@ export async function mountDevtoolsPanel (status: HTMLElement): Promise<void> {
 }
 
 function showPanelState (status: HTMLElement, state: DevtoolsPanelState): void {
-  status.textContent = devtoolsPanelCopy(state)
+  replaceContent(status, panelStateNodes(state))
   status.dataset.state = state
+}
+
+function panelStateNodes (state: DevtoolsPanelState): Node[] {
+  const copy = document.createTextNode(devtoolsPanelCopy(state))
+  return state === 'error' ? [icon('alert'), copy] : [copy]
 }
 
 function inspectedTabId (): number | undefined {

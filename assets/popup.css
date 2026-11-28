@@ -30,6 +30,18 @@ body.popup {
   border-block-end: 1px solid var(--border);
 }
 
+.popup-section:last-child {
+  border-block-end: 0;
+}
+
+.popup-body > #controlBanner:not(:empty) {
+  padding-block-start: var(--space-3);
+}
+
+.popup-body .banner__text {
+  flex: 0 1 auto;
+}
+
 .note-block > .button {
   justify-self: start;
 }
@@ -43,6 +55,7 @@ body.popup {
 .popup-host {
   margin: 0;
   font-family: var(--font-mono);
+  font-size: var(--text-lg);
   overflow-wrap: anywhere;
 }
 
@@ -66,6 +79,23 @@ body.popup {
 
 .monitor-row__label {
   font-weight: 600;
+}
+
+.popup-rules-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.popup-rules-head legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .popup-rules {
