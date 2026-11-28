@@ -105,7 +105,6 @@ export function overrideRows (map: unknown, proxyList: unknown) {
       domain,
       invalid,
       faults: invalid ? overrideReasons(domain, proxyId) : [],
-      rawEntry: rawEntryText(proxyId),
       direct,
       proxyLabel: direct ? DIRECT_LABEL : storedLabel ?? asText(proxyId),
       proxyLabelIsId: !direct && storedLabel === undefined,

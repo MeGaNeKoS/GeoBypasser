@@ -112,7 +112,6 @@ function rowFor (map: SiteMap, row: SiteRow): ListRow {
         proxyMention(row),
       ),
       ...(row.invalid ? [setAsideReason(row.faults)] : []),
-      ...(row.rawEntry === undefined ? [] : [element('code', { class: 'mono' }, row.rawEntry)]),
     ],
     actions: [
       button(row.invalid ? 'Fix' : 'Edit', {
