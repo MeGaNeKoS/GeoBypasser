@@ -9,14 +9,14 @@ import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableRules 
 import browser from 'webextension-polyfill'
 
 const PAC_HEADER = 'function FindProxyForURL(url, host) {'
-const DIRECT_ROUTE = 'DIRECT'
+export const DIRECT_ROUTE = 'DIRECT'
 const PAC_PATH_EXPRESSION = 'url.replace(/^[a-z]+:\\/\\/[^\\/]*/i, "").replace(/[?#].*$/, "")'
 // Chrome gives the PAC script only scheme://host:port/ for https addresses, so a path check can only see http.
 const PAC_HTTP_PREFIX = 'http://'
 const LINE_SEPARATOR = String.fromCharCode(0x2028)
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029)
 
-function proxyToPac (proxy: ProxyListItem, fallbackDirect: boolean): string {
+export function proxyToPac (proxy: ProxyListItem, fallbackDirect: boolean): string {
   const route = pacRouteFor(proxy)
   return fallbackDirect ? `${route}; DIRECT` : route
 }
