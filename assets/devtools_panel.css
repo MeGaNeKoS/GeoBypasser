@@ -1,0 +1,16 @@
+.devtools-panel-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.devtools-panel-status {
+  margin: 0;
+  max-width: 60ch;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}

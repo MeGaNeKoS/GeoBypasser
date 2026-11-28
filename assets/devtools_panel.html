@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoBypass DevTools Panel</title>
+  <link rel="stylesheet" href="ui/styles/tokens.css">
+  <link rel="stylesheet" href="ui/styles/base.css">
+  <link rel="stylesheet" href="devtools_panel.css">
 </head>
-<body>
-  <p style="padding:4px;font-size:0.9em;">Network monitoring active while DevTools is open.</p>
+<body class="devtools-panel">
+  <main class="devtools-panel-body">
+    <p id="panelStatus" class="devtools-panel-status" role="status" data-state="loading">Connecting to the extension…</p>
+  </main>
+  <script src="devtoolsPanel.js"></script>
 </body>
 </html>
