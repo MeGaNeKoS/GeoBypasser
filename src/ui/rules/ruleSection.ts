@@ -28,16 +28,24 @@ const EMPTY_TEXT = 'Add a rule, or import a file of rules.'
 const EXPORT_FILENAME = 'rules.json'
 const NO_NAME_LABEL = '(no name)'
 const CHANGED_ELSEWHERE_MESSAGE = 'This rule changed while you were editing, so your changes were not saved.'
-const KEY_PREFIX = 'position-'
-
 type RuleRow = ReturnType<typeof ruleRows>[number]
 
+type FocusHandoff = { position: number; control: 'switch' | 'edit' }
+
 let notices: string[] = []
+let focusHandoff: FocusHandoff | null = null
 
 export async function renderRuleSection (setAsideOnly = false): Promise<void> {
   const container = requireElement(RULES_CONTAINER_ID)
   const config = await getConfig()
-  replaceContent(container, [element('div', { class: 'stack' }, noticeBanner(), ruleSection(config.rules, config.proxyList, setAsideOnly))])
+  const focusKey = takeFocusKey(config.rules)
+  replaceContent(container, [element('div', { class: 'stack' }, noticeBanner(), ruleSection(config.rules, config.proxyList, setAsideOnly))], focusKey)
+}
+
+function takeFocusKey (list: ProxyRule[]): string | undefined {
+  const handoff = focusHandoff
+  focusHandoff = null
+  return handoff ? `${handoff.control}-${ruleKeyAt(list, handoff.position)}` : undefined
 }
 
 function rerender (): void {
@@ -89,7 +97,7 @@ function ruleSection (list: ProxyRule[], proxyList: unknown, setAsideOnly: boole
 }
 
 function rowFor (list: ProxyRule[], row: RuleRow, proxyList: unknown): ListRow {
-  const key = keyOf(row.index)
+  const key = ruleKeyAt(list, row.index)
   const stored = storedRuleOf(list[row.index])
   const name = row.name || NO_NAME_LABEL
   return {
@@ -141,29 +149,33 @@ function matchNodesOf (patterns: unknown, stored: ProxyRule | undefined): Child[
 }
 
 function openEditor (entry: RuleEntry | undefined, proxyList: unknown): void {
-  openRuleEditor({ entry, proxyList, onSaved: onEditorSaved })
+  openRuleEditor({ entry, proxyList, onSaved: saved => onEditorSaved(saved, entry) })
 }
 
-function onEditorSaved (saved: boolean): void {
+function onEditorSaved (saved: boolean, entry: RuleEntry | undefined): void {
   if (!saved) notices = [...notices, CHANGED_ELSEWHERE_MESSAGE]
+  if (saved && entry) focusHandoff = { position: entry.position, control: 'edit' }
   rerender()
 }
 
-function keyOf (index: number): string {
-  return `${KEY_PREFIX}${index}`
+function ruleKeyAt (list: ProxyRule[], index: number): string {
+  const content = JSON.stringify(list[index])
+  const occurrence = list.slice(0, index).filter(rule => JSON.stringify(rule) === content).length
+  return `${content}#${occurrence}`
 }
 
 async function setActive (index: number, active: boolean): Promise<void> {
+  focusHandoff = { position: index, control: 'switch' }
   await changeRuleList(list => list.map((rule, position) =>
     position === index ? { ...storedRuleOf(rule), active } as ProxyRule : rule))
 }
 
 async function removeRules (keys: string[]): Promise<void> {
-  await changeRuleList(list => list.filter((_rule, index) => !keys.includes(keyOf(index))))
+  await changeRuleList(list => list.filter((_rule, index) => !keys.includes(ruleKeyAt(list, index))))
 }
 
 function exportRules (list: ProxyRule[], keys: string[]): string {
-  const chosen = list.filter((_rule, index) => keys.includes(keyOf(index)))
+  const chosen = list.filter((_rule, index) => keys.includes(ruleKeyAt(list, index)))
   downloadJsonFile(EXPORT_FILENAME, JSON.stringify({ rules: exportedRules(chosen, () => false) }, null, 2))
   return `Exported ${chosen.length} ${chosen.length === 1 ? 'rule' : 'rules'}.`
 }

@@ -53,6 +53,7 @@ export function draftFlag (draft: Draft, field: string): boolean {
 
 export function openSheet (spec: SheetSpec): HTMLDialogElement {
   const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const openerScope = opener?.closest('[id]') ?? null
   const body = element('div', { class: 'sheet__body', tabindex: '-1' })
   const footer = element('footer', { class: 'sheet__footer' })
   const form = element('form', { novalidate: true, class: 'sheet__form' }, body, footer)
@@ -60,6 +61,11 @@ export function openSheet (spec: SheetSpec): HTMLDialogElement {
   let current = spec.draft
   let pristine = ''
   let discardPending = false
+  let lastEditedField: HTMLElement | null = null
+
+  body.addEventListener('focusin', event => {
+    if (event.target instanceof HTMLElement) lastEditedField = event.target
+  })
 
   function showBody (faults: Fault[]): void {
     const nodes = spec.render(current, faults, requestClose)
@@ -77,7 +83,7 @@ export function openSheet (spec: SheetSpec): HTMLDialogElement {
 
   function escapeSheet (): void {
     if (discardPending) {
-      showFooter()
+      showFooter(lastEditedField)
       return
     }
     requestClose()
@@ -98,10 +104,11 @@ export function openSheet (spec: SheetSpec): HTMLDialogElement {
     )], 'keep-editing')
   }
 
-  function showFooter (): void {
+  function showFooter (returnTo?: HTMLElement | null): void {
     discardPending = false
     replaceContent(footer, spec.footer ? spec.footer(requestClose) : defaultFooter())
-    footer.querySelector<HTMLElement>('button[type="button"]')?.focus()
+    const target = returnTo?.isConnected ? returnTo : footer.querySelector<HTMLElement>('button[type="button"]')
+    target?.focus()
   }
 
   function defaultFooter (): Node[] {
@@ -126,8 +133,16 @@ export function openSheet (spec: SheetSpec): HTMLDialogElement {
   function closeSheet (): void {
     dialog.close()
     dialog.remove()
-    opener?.focus()
+    openerReplacement()?.focus()
     spec.closed?.()
+  }
+
+  function openerReplacement (): HTMLElement | null {
+    if (opener?.isConnected) return opener
+    const key = opener?.dataset.focusKey
+    if (!key || !openerScope?.isConnected) return null
+    return Array.from(openerScope.querySelectorAll<HTMLElement>('[data-focus-key]'))
+      .find(node => node.dataset.focusKey === key) ?? null
   }
 
   dialog.append(

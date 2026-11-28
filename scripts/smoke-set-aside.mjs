@@ -90,7 +90,7 @@ async function checkConfigExportEveryRow (run, failures) {
 
 const HOME_SET_ASIDE_LINK = 'a[href="#proxies?set-aside"]'
 const SET_ASIDE_ONLY_BANNER_TEXT = 'Only the proxies that are not used are shown.'
-const SHOW_ALL_ACTION = '[data-focus-key="show-all"]'
+const SHOW_ALL_ACTION = '[data-focus-key="set-aside-toggle"]'
 
 function readSetAsideOnlyView (bannerText) {
   return { hash: location.hash, onlyShown: document.body.textContent.includes(bannerText) }

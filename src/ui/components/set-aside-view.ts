@@ -12,25 +12,31 @@ export type SetAsideViewOptions = {
   onlyShown: boolean;
 }
 
+const TOGGLE_FOCUS_KEY = 'set-aside-toggle'
+
 export function setAsideBanners (options: SetAsideViewOptions): Node[] {
   if (options.onlyShown) {
     return [banner({
       tone: 'warn',
       text: `Only the ${options.nounPlural} that are not used are shown.`,
-      action: button(`Show all ${options.nounPlural}`, { variant: 'quiet', focusKey: 'show-all', onClick: () => showAll(options) }),
+      action: showAllButton(options, 'quiet'),
     })]
   }
   if (options.count === 0) return []
   return [setAsideBanner(options.count, options.noun, options.nounPlural,
-    button('Show only these', { variant: 'quiet', focusKey: 'show-only', onClick: () => showOnly(options) }))]
+    button('Show only these', { variant: 'quiet', focusKey: TOGGLE_FOCUS_KEY, onClick: () => showOnly(options) }))]
 }
 
 export function nothingLeftToFix (options: SetAsideViewOptions): EmptyState {
   return {
     title: 'Nothing left to fix.',
     text: '',
-    actions: [button(`Show all ${options.nounPlural}`, { focusKey: 'show-all', onClick: () => showAll(options) })],
+    actions: [showAllButton(options)],
   }
+}
+
+function showAllButton (options: SetAsideViewOptions, variant?: 'quiet'): HTMLButtonElement {
+  return button(`Show all ${options.nounPlural}`, { variant, focusKey: TOGGLE_FOCUS_KEY, onClick: () => showAll(options) })
 }
 
 function showOnly (options: SetAsideViewOptions): void {

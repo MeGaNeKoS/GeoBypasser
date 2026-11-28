@@ -64,7 +64,7 @@ export function listSection (options: ListSectionOptions): HTMLElement {
     element('header', { class: 'list-section__header' },
       element('div', { class: 'list-section__header-text' },
         element('div', { class: 'list-section__title' },
-          element('h2', { class: 'page-title' }, options.title),
+          element('h2', { class: 'page-title', tabindex: '-1', 'data-focus-key': LIST_HEADING_FOCUS_KEY }, options.title),
           options.titleBadge ?? null,
         ),
         element('p', { class: 'help' }, options.help),
@@ -75,10 +75,30 @@ export function listSection (options: ListSectionOptions): HTMLElement {
   )
 }
 
+const LIST_HEADING_FOCUS_KEY = 'list-heading'
 const selectionByList = new Map<string, Set<string>>()
+const pendingRemovalByList = new Map<string, string>()
 
 export function clearSelections (): void {
   selectionByList.clear()
+  pendingRemovalByList.clear()
+}
+
+function deleteFocusKey (id: string): string {
+  return `delete-${id}`
+}
+
+function successorFocusKey (rows: ListRow[], removedIds: string[]): string {
+  const removed = new Set(removedIds)
+  const firstRemoved = rows.findIndex(row => removed.has(row.id))
+  const survivor = rows.slice(firstRemoved).find(row => !removed.has(row.id))
+    ?? rows.slice(0, firstRemoved).reverse().find(row => !removed.has(row.id))
+  return survivor ? deleteFocusKey(survivor.id) : LIST_HEADING_FOCUS_KEY
+}
+
+function focusByKey (root: Element, key: string): void {
+  Array.from(root.querySelectorAll<HTMLElement>('[data-focus-key]'))
+    .find(node => node.dataset.focusKey === key)?.focus()
 }
 
 function selectionFor (title: string): Set<string> {
@@ -93,14 +113,29 @@ class ListRegion {
   readonly node: HTMLDivElement
   private readonly options: ListSectionOptions
   private readonly selected: Set<string>
-  private pendingRemoval: string | 'selection' | null = null
   private exportNotice = ''
 
   constructor (options: ListSectionOptions) {
     this.options = options
     this.selected = selectionFor(options.title)
     this.node = element('div', { class: 'stack' })
+    this.dropPendingRemovalOfMissingRow()
     this.render()
+  }
+
+  private get pendingRemoval (): string | null {
+    return pendingRemovalByList.get(this.options.title) ?? null
+  }
+
+  private set pendingRemoval (target: string | null) {
+    if (target === null) pendingRemovalByList.delete(this.options.title)
+    else pendingRemovalByList.set(this.options.title, target)
+  }
+
+  private dropPendingRemovalOfMissingRow (): void {
+    const target = this.pendingRemoval
+    if (target === null || target === 'selection') return
+    if (!this.options.rows.some(row => row.id === target)) this.pendingRemoval = null
   }
 
   private selectedIds (): string[] {
@@ -200,14 +235,14 @@ class ListRegion {
     if (this.pendingRemoval === row.id) {
       return [this.confirm(`Delete this ${this.options.noun}?`, [row.id], row.id)]
     }
-    return [...row.actions, button('Delete', { variant: 'quiet', focusKey: `delete-${row.id}`, onClick: () => this.askRemoval(row.id) })]
+    return [...row.actions, button('Delete', { variant: 'quiet', focusKey: deleteFocusKey(row.id), onClick: () => this.askRemoval(row.id) })]
   }
 
   private confirm (question: string, ids: string[], pendingKey: string): HTMLElement {
     const cancelKey = `cancel-${pendingKey}`
     return element('div', { class: 'inline-confirm', role: 'group', 'aria-label': 'Confirm delete' },
       element('span', { class: 'inline-confirm__question' }, question),
-      button('Delete', { variant: 'danger', onClick: () => this.remove(ids) }),
+      button('Delete', { variant: 'danger', focusKey: `confirm-${pendingKey}`, onClick: () => this.remove(ids) }),
       button('Cancel', { focusKey: cancelKey, onClick: () => this.cancelRemoval(pendingKey) }),
     )
   }
@@ -219,10 +254,12 @@ class ListRegion {
 
   private cancelRemoval (pendingKey: string): void {
     this.pendingRemoval = null
-    this.render(pendingKey === 'selection' ? 'delete-selected' : `delete-${pendingKey}`)
+    this.render(pendingKey === 'selection' ? 'delete-selected' : deleteFocusKey(pendingKey))
   }
 
   private remove (ids: string[]): void {
+    const section = this.node.closest('section')
+    if (section) focusByKey(section, successorFocusKey(this.options.rows, ids))
     this.pendingRemoval = null
     this.selected.clear()
     this.options.onRemove(ids)
