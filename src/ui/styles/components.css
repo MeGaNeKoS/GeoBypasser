@@ -932,6 +932,7 @@
 
 .tree__numbers {
   text-align: left;
+  padding-inline-start: calc(var(--icon-size) + var(--space-2));
 }
 
 @media (min-width: 720px) {
@@ -942,6 +943,7 @@
 
   .tree__numbers {
     text-align: right;
+    padding-inline-start: 0;
   }
 }
 

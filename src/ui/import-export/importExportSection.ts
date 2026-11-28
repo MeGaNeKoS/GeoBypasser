@@ -3,7 +3,7 @@ import { textField } from '../components/fields'
 import { statusLine } from '../components/feedback'
 import { importNotesBanner } from '../components/import-notes'
 import { sectionHeading } from '../components/section-heading'
-import { element, focusableWithKey, replaceContent, requireElement } from '../dom'
+import { element, focusableWithKey, focusedKey, replaceContent, requireElement } from '../dom'
 import { showImportFailure } from '../review/reviewSheet'
 import { hashForSection, IMPORT_EXPORT_SECTION_ID } from '../shell/routes'
 import { importConfigFromUrl, importConfigText } from './configImport'
@@ -21,6 +21,7 @@ const URL_ACTION_KEY = 'import-url'
 const COMMUNITY_KEY = 'import-community'
 const JSON_ADDRESS_PATTERN = /\.json$/
 const URL_HELP = 'A direct link to a .json file, or a GitHub repository or folder.'
+const URL_FAULT = 'Enter an http or https address.'
 const IMPORT_FAILED_MESSAGE = 'Could not import the configuration.'
 const LIST_FAILED_MESSAGE = 'Could not load the list of rules from GitHub.'
 
@@ -29,6 +30,7 @@ let addressDraft = ''
 let addressFault: string | null = null
 
 export function renderImportExportSection (): void {
+  const focusKey = focusedKey()
   replaceContent(requireElement(IMPORT_EXPORT_SECTION_ID), [
     element('div', { class: 'stack' },
       sectionHeading(HEADING),
@@ -36,7 +38,7 @@ export function renderImportExportSection (): void {
       element('div', { id: CARDS_ID, class: 'stack' }),
     ),
   ])
-  renderCard()
+  renderCard(focusKey)
 }
 
 export function startCommunityRules (): void {
@@ -87,7 +89,7 @@ function fileRow (): HTMLElement {
 function urlRow (): HTMLElement {
   return element('div', { class: 'import-url' },
     element('strong', {}, 'From a URL'),
-    element('form', { class: 'import-url__entry', onsubmit: submitAddress },
+    element('form', { class: 'import-url__entry', novalidate: true, onsubmit: submitAddress },
       textField({
         name: URL_FIELD,
         label: 'Address',
@@ -110,7 +112,7 @@ function urlRow (): HTMLElement {
 function submitAddress (event: Event): void {
   event.preventDefault()
   const address = addressDraft.trim()
-  addressFault = isImportableAddress(address) ? null : URL_HELP
+  addressFault = isImportableAddress(address) ? null : URL_FAULT
   renderCard(URL_FIELD)
   if (addressFault === null) importFromAddress(address)
 }

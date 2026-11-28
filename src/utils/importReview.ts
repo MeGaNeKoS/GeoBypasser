@@ -151,6 +151,10 @@ export function plannedGroupShown (review: ImportReview): boolean {
   return totalOf(review.adds) > 0 || review.duplicates.length + review.settingChanges.length === 0
 }
 
+export function reviewStillHolds (shown: ImportReview, current: ImportReview): boolean {
+  return JSON.stringify([shown.duplicates, shown.settingChanges]) === JSON.stringify([current.duplicates, current.settingChanges])
+}
+
 export function describeImported (counts: AddCounts): string {
   const parts = countPhrases(counts)
   return parts.length === 0 ? NOTHING_IMPORTED : `${IMPORTED_PREFIX}${parts.join(', ')}`

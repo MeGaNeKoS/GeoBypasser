@@ -1,7 +1,7 @@
 import { parseImportJson, refuseConfigFile } from '@utils/importFiles'
 import { describeImported } from '@utils/importReview'
 import { keepStoredCredentials } from '@utils/proxyCredentials'
-import { getConfig, saveConfig } from '@utils/storage'
+import { updateConfig } from '@utils/storage'
 import { reviewSectionImport } from '../review/sectionImport'
 
 const NOT_JSON_MESSAGE = 'Configuration was not imported: the file is not valid JSON.'
@@ -21,13 +21,11 @@ export async function importConfigText (text: string): Promise<ImportReport> {
   const parsed = parseImportJson(text)
   if (parsed === undefined) throw new Error(NOT_JSON_MESSAGE)
   const verdict = refuseConfigFile(parsed)
-  const stored = await getConfig()
-  const incoming = {
+  const outcome = await reviewSectionImport(stored => ({
     ...verdict.accepted,
     proxyList: keepStoredCredentials(verdict.accepted.proxyList ?? [], stored.proxyList),
-  }
-  const outcome = await reviewSectionImport(incoming, verdict.notes)
-  if (outcome.targets) await saveConfig({ ...stored, ...outcome.targets })
+  }), verdict.notes)
+  if (outcome.targets) await updateConfig(outcome.targets)
   return {
     messages: outcome.messages,
     summary: outcome.added ? describeImported(outcome.added) : null,
