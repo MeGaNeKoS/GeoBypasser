@@ -35,6 +35,8 @@ const RESULT_ICONS: Record<ResultKind, IconName> = {
   cache: 'info',
 }
 const EXPECTED_PREFIX = 'Expected: '
+const FAILURE_TEXT = /^(\d+ failed:) (.+)$/
+const CODE_BREAK_AFTER = /(?<=_|::)/
 
 export function requestLogTable (rows: RequestLogRow[], actions: LogRowActions): HTMLTableElement {
   const context: TableContext = { actions, showActions: rows.some(row => actions.skipRuleFor(row) !== undefined) }
@@ -80,7 +82,7 @@ function logRow (row: RequestLogRow, context: TableContext, key: string): HTMLTa
         onClick: () => actions.onToggleExpanded(key),
       }),
     ),
-    element('td', { 'data-label': 'Types' }, typesText(row)),
+    element('td', { 'data-label': 'Types' }, typeList(row)),
     element('td', { 'data-label': 'Results' }, resultList(row.results)),
     element('td', { 'data-label': 'Route' }, routeList(row.routes)),
     element('td', { class: 'num', 'data-label': 'Bytes' }, bytesCell(row, actions.chrome)),
@@ -133,14 +135,31 @@ function unsizedNote (row: RequestLogRow, chrome: boolean): HTMLElement | null {
 
 function resultList (results: ResultLine[]): HTMLElement {
   return element('ul', { class: 'result-list' },
-    ...results.map(line => element('li', { class: `result result--${line.kind}` }, icon(RESULT_ICONS[line.kind]), line.text)),
+    ...results.map(line => element('li', { class: `result result--${line.kind}` }, icon(RESULT_ICONS[line.kind]), element('span', { class: 'result-text' }, ...resultTextNodes(line.text)))),
   )
+}
+
+function resultTextNodes (text: string): Child[] {
+  const parts = FAILURE_TEXT.exec(text)
+  if (parts === null) return [text]
+  const [, head, code] = parts
+  return [element('span', { class: 'result-head' }, head), ' ', ...codeNodes(code)]
+}
+
+function codeNodes (code: string): Child[] {
+  return code.split(CODE_BREAK_AFTER).flatMap((piece, index) => (index === 0 ? [piece] : [element('wbr', {}), piece]))
 }
 
 function routeList (routes: RouteLine[]): HTMLElement {
   const showCounts = routes.length > 1
   return element('ul', { class: 'route-list' },
     ...routes.map(line => element('li', {}, routeText(line), showCounts ? ` · ${formatCount(line.count, 'request')}` : null)),
+  )
+}
+
+function typeList (row: RequestLogRow): HTMLElement {
+  return element('ul', { class: 'type-list' },
+    ...row.types.map(type => element('li', {}, `${type.name} ${type.count}`)),
   )
 }
 
