@@ -13,6 +13,7 @@ import { startRecordingListener } from './smoke-chrome-route.mjs'
 import { checkHomeCase, FIRST_TIME_CASE, readHomeState, SET_UP_CASE } from './smoke-home.mjs'
 import { COMPONENT_TEST_PAGE, firefoxKeyActions, runComponentTestPage } from './smoke-component-test.mjs'
 import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, readPrototypeState } from './smoke-prototype.mjs'
+import { checkSectionImportsThroughReview } from './smoke-review-imports.mjs'
 import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkKeepAliveAddEditDelete, checkRuleRowsAfterReread, checkSiteAddEditDelete, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
 import { checkAboutDescription, checkDefaultReadBack, checkTestAgainstListener } from './smoke-sections.mjs'
@@ -287,6 +288,7 @@ async function runFirefoxSmoke (settings) {
   await checkRuleAddEditDelete(evaluate, failures)
   await checkSiteAddEditDelete(evaluate, failures)
   await checkKeepAliveAddEditDelete(evaluate, failures)
+  await checkSectionImportsThroughReview(evaluate, failures)
   await checkSetAsideEditSave(evaluate, failures, () => navigate(`${sessionOrigin}dashboard.html#proxies`))
   await checkSetAsideExports(evaluate, failures)
   await checkSetAsideOnlyAndFocus(evaluate, failures)
