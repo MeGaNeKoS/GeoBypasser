@@ -42,12 +42,13 @@ export function startFirefoxBackground (ports: FirefoxBackgroundPorts) {
   ports.registerProxyAuth(details => answerProxyAuthWhenReady(details, proxyListReady))
   ports.registerNetworkMonitor(networkMonitor)
 
-  ports.onRuntimeMessage(async message => {
+  ports.onRuntimeMessage(message => {
     if (isTabProxyMessage(message)) return gate.whenReady(() => routing.answerTabProxyMessage(message))
-    if (isNetworkMessage(message)) return networkMonitor.answerNetworkMessage(message)
+    if (isNetworkMessage(message)) return Promise.resolve(networkMonitor.answerNetworkMessage(message))
     if (isTestProxyMessage(message)) {
       return configGate.whenReady(config => answerTestProxyMessage(message, config.settings, runProxyTest))
     }
+    return undefined
   })
 
   ports.onTabRemoved(tabId => gate.whenReady(() => {
