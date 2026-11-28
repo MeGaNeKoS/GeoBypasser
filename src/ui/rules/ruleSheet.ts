@@ -18,6 +18,7 @@ export type RuleEntry = { raw: unknown; position: number; invalid: boolean };
 export type RuleEditorOptions = {
   entry?: RuleEntry;
   proxyList: unknown;
+  prefill?: (form: RuleForm) => RuleForm;
   onSaved: (saved: boolean) => void;
 }
 
@@ -25,7 +26,8 @@ const MATCH_PLACEHOLDER = '*://*.example.com/*'
 const MATCH_HELP = 'Matched by scheme and host, such as *://*.example.com/*. A path in the pattern is ignored.'
 
 export function openRuleEditor (options: RuleEditorOptions): void {
-  const form = ruleFormOf(storedRuleOf(options.entry?.raw))
+  const stored = ruleFormOf(storedRuleOf(options.entry?.raw))
+  const form = options.prefill ? options.prefill(stored) : stored
   openSheet({
     title: options.entry ? 'Edit rule' : 'Add rule',
     saveLabel: 'Save',
