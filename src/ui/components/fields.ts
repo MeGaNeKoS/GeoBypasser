@@ -14,6 +14,7 @@ export type FieldOptions = {
   help?: string;
   fault?: string;
   mono?: boolean;
+  badge?: HTMLElement;
 }
 
 export type TextFieldOptions = FieldOptions & {
@@ -96,7 +97,10 @@ function fieldFrame (id: string, options: FieldOptions, control: Node, input: HT
   const describedBy = [options.help ? `${id}-help` : '', options.fault ? `${id}-error` : ''].filter(Boolean).join(' ')
   if (describedBy) input.setAttribute('aria-describedby', describedBy)
   return element('div', { class: fieldClass(options) },
-    element('label', { class: 'field__label', for: id }, options.label),
+    element('div', { class: 'field__label-row' },
+      element('label', { class: 'field__label', for: id }, options.label),
+      options.badge ?? null,
+    ),
     control,
     options.help ? element('p', { class: 'help', id: `${id}-help` }, options.help) : null,
     options.fault ? element('p', { class: 'field__error', id: `${id}-error` }, icon('alert'), options.fault) : null,

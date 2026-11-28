@@ -82,9 +82,9 @@ function hostGroup (form: RuleForm, faults: Fault[]): HTMLElement {
 
 function resourceTypeGroup (form: RuleForm, faults: Fault[], chrome: boolean): HTMLElement {
   const modeFault = faults.find(fault => fault.field === 'resourceTypeMode')?.message
-  return group('By kind of request', chrome ? badge('firefox') : null,
+  return group('By kind of request', null,
     element('div', { class: modeFault ? 'field field--invalid' : 'field' },
-      segmented('Resource types', 'resourceTypeMode', MODE_OPTIONS, form.resourceTypeMode),
+      segmented(resourceTypesLegend(chrome), 'resourceTypeMode', MODE_OPTIONS, form.resourceTypeMode),
       element('p', { class: 'help' }, resourceTypeHelpOf(form)),
       chrome ? element('p', { class: 'help' }, RESOURCE_TYPES_CHROME_NOTE) : null,
       modeFault ? element('p', { class: 'field__error' }, modeFault) : null,
@@ -96,9 +96,14 @@ function resourceTypeGroup (form: RuleForm, faults: Fault[], chrome: boolean): H
     textField({
       name: 'staticExtensions', label: 'Never proxy files matching', value: form.staticExtensions, mono: true,
       help: FILES_HELP, fault: faults.find(fault => fault.field === 'staticExtensions')?.message,
+      badge: chrome ? badge('limited') : undefined,
     }),
-    chrome ? element('div', {}, badge('limited'), element('p', { class: 'help' }, FILES_CHROME_NOTE)) : null,
+    chrome ? element('p', { class: 'help' }, FILES_CHROME_NOTE) : null,
   )
+}
+
+function resourceTypesLegend (chrome: boolean): Child {
+  return chrome ? element('span', {}, 'Resource types', ' ', badge('firefox')) : 'Resource types'
 }
 
 function pageGroup (form: RuleForm, faults: Fault[], chrome: boolean): HTMLElement {

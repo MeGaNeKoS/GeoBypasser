@@ -3,7 +3,8 @@ import { button } from '@ui/components/button'
 import { disclosure } from '@ui/components/disclosure'
 import { segmented, switchControl } from '@ui/components/controls'
 import { textField } from '@ui/components/fields'
-import { RESOURCE_TYPES, typeGrid } from '@ui/components/type-grid'
+import { WEB_REQUEST_RESOURCE_TYPES } from '@constant/requestTypes'
+import { typeGrid } from '@ui/components/type-grid'
 import { stateBody, type ListState } from '@ui/components/state-body'
 import { expect } from './check-log'
 import { awaitKey } from './key-steps'
@@ -88,10 +89,11 @@ export function checkFieldError (): void {
 }
 
 export async function checkTypeGridToggle (): Promise<void> {
-  const grid = mount(typeGrid('types', 'Resource types', ['document']))
+  const grid = mount(typeGrid('types', 'Resource types', ['image']))
   const boxes = [...grid.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
-  expect(boxes.length === RESOURCE_TYPES.length, 'type grid did not render every resource type')
-  expect(boxes.find(box => box.value === 'document')?.checked === true, 'type grid did not check the selected type')
+  const shownTypes = boxes.map(box => box.value)
+  expect(shownTypes.length === WEB_REQUEST_RESOURCE_TYPES.length && WEB_REQUEST_RESOURCE_TYPES.every(type => shownTypes.includes(type)), 'type grid did not show exactly the validator resource types')
+  expect(boxes.find(box => box.value === 'image')?.checked === true, 'type grid did not check the selected type')
   const script = boxes.find(box => box.value === 'script')
   script?.focus()
   await awaitKey('type-space', 'space')

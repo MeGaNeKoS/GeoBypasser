@@ -1,4 +1,5 @@
 import { element } from '../dom'
+import type { Child } from '../dom'
 
 export type SwitchOptions = {
   field?: string;
@@ -39,7 +40,7 @@ export type SegmentOption<T extends string> = {
 }
 
 export function segmented<T extends string> (
-  legend: string,
+  legend: Child,
   name: string,
   options: SegmentOption<T>[],
   selected: T,
