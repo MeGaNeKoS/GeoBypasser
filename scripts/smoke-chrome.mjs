@@ -13,6 +13,7 @@ import { PROTOTYPE_PAGES, missingStylesheets, prototypeProblems, prototypeUrl, r
 import { checkMixedOverrideInPac } from './smoke-override-spelling.mjs'
 import { checkRuleFlipFromPopup } from './smoke-popup-rules.mjs'
 import { checkNetworkStatsNames, CHROME_NETWORK_SCENARIO } from './smoke-network-stats.mjs'
+import { openPopupBesideTab } from './smoke-override-spelling.mjs'
 import { checkSectionImportsThroughReview } from './smoke-review-imports.mjs'
 import { checkProxyEditSurvivesRuleSave, checkRefusedProxySave, checkRuleAddEditDelete, checkKeepAliveAddEditDelete, checkRuleRowsAfterReread, checkSiteAddEditDelete, checkUrlImport, editSetAsideEntries, removeSetAsideEntries } from './smoke-assertions.mjs'
 import { checkSettingChanges } from './smoke-setting-changes.mjs'
@@ -171,6 +172,23 @@ function closeTab (sessionId) {
   return cdp.send('Page.close', {}, sessionId)
 }
 
+async function openPopupBesideFixture (runOnDashboard, fixtureUrl) {
+  const popupUrl = `chrome-extension://${extId}/popup.html`
+  const pagesBefore = new Set((await cdp.send('Target.getTargets')).targetInfos.map(target => target.targetId))
+  await runOnDashboard(openPopupBesideTab, [fixtureUrl, popupUrl])
+  const popupTarget = await waitFor(
+    async () => (await cdp.send('Target.getTargets')).targetInfos.find(target => target.type === 'page' && target.url === popupUrl && !pagesBefore.has(target.targetId)),
+    STEP_TIMEOUT_MS,
+    'the popup tab beside the fixture',
+  )
+  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId: popupTarget.targetId, flatten: true })
+  await attach(sessionId, 'page')
+  return {
+    run: (fn, args = []) => evalIn(sessionId, `(${fn.toString()})(...${JSON.stringify(args)})`),
+    close: () => closeTab(sessionId),
+  }
+}
+
 function componentDriver (sessionId) {
   return {
     read: readFn => evalIn(sessionId, `(${readFn})()`),
@@ -283,13 +301,7 @@ async function runSmoke (options) {
   await checkSetAsideExports(runOnDashboard, failures)
   await checkSetAsideOnlyAndFocus(runOnDashboard, failures)
   await checkRevealAndRowExport(runOnDashboard, failures)
-  await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO, async () => {
-    const target = await openTab('dashboard.html')
-    return {
-      run: (fn, args = []) => evalIn(target, `(${fn.toString()})(...${JSON.stringify(args)})`),
-      close: () => closeTab(target),
-    }
-  })
+  await checkNetworkStatsNames(runOnDashboard, failures, CHROME_NETWORK_SCENARIO, pageUrl => openPopupBesideFixture(runOnDashboard, pageUrl))
   await checkMixedOverrideInPac({ evalIn, worker: findWorker() }, failures)
   await checkPacRoute({ evalIn, worker: findWorker(), dashboard }, failures)
   await checkDefaultReadBack(runOnDashboard, failures)

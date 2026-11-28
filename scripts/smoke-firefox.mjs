@@ -210,19 +210,41 @@ async function openMixedTabInOwnWindow (listenerPort) {
   await navigate(MIXED_URL)
 }
 
-async function openPopupBesideMixedTab (session, dashboardHandle) {
+async function openPopupBesideTabAt (origin, dashboardHandle, tabUrl) {
   await takeDialogs()
   recording = false
   await marionette.send('WebDriver:SwitchToWindow', { handle: dashboardHandle, focus: true })
   const before = await marionette.send('WebDriver:GetWindowHandles')
-  const popupTabId = await evaluate(openPopupBesideTab, [MIXED_URL, `${session.origin}popup.html`])
-  await waitFor(() => evaluate(tabLoadStatus, [popupTabId]).then(status => status === 'complete'), STEP_TIMEOUT_MS, 'the popup tab to load beside the mixed tab')
+  const popupTabId = await evaluate(openPopupBesideTab, [tabUrl, `${origin}popup.html`])
+  await waitFor(() => evaluate(tabLoadStatus, [popupTabId]).then(status => status === 'complete'), STEP_TIMEOUT_MS, `the popup tab to load beside ${tabUrl}`)
   await sleep(POPUP_SETTLE_MS)
   const after = await marionette.send('WebDriver:GetWindowHandles')
   const popupHandle = after.find(handle => !before.includes(handle))
-  if (!popupHandle) throw new Error('no new window handle after opening the popup beside the mixed tab')
+  if (!popupHandle) throw new Error(`no new window handle after opening the popup beside ${tabUrl}`)
+  return popupHandle
+}
+
+async function openPopupBesideMixedTab (session, dashboardHandle) {
+  const popupHandle = await openPopupBesideTabAt(session.origin, dashboardHandle, MIXED_URL)
   await marionette.send('WebDriver:SwitchToWindow', { handle: popupHandle, focus: true })
   await waitFor(() => evaluate(popupProxyListReady), STEP_TIMEOUT_MS, 'the popup opened beside the mixed tab')
+}
+
+async function openPopupBesideFixture (fixtureUrl) {
+  const callerHandle = (await marionette.send('WebDriver:GetWindowHandle')).value
+  const popupHandle = await openPopupBesideTabAt(sessionOrigin, callerHandle, fixtureUrl)
+  const inPopup = async action => {
+    await marionette.send('WebDriver:SwitchToWindow', { handle: popupHandle, focus: true })
+    try {
+      return await action()
+    } finally {
+      await marionette.send('WebDriver:SwitchToWindow', { handle: callerHandle, focus: true })
+    }
+  }
+  return {
+    run: (fn, args) => inPopup(() => evaluate(fn, args)),
+    close: () => inPopup(() => marionette.send('WebDriver:CloseWindow', {})),
+  }
 }
 
 async function clearMixedOverrideFromPopup () {
@@ -313,7 +335,7 @@ async function runFirefoxSmoke (settings) {
   await checkRevealAndRowExport(evaluate, failures)
   const networkWindow = await openDashboardWindow()
   try {
-    await checkNetworkStatsNames(networkWindow.run, failures, FIREFOX_NETWORK_SCENARIO, openDashboardWindow)
+    await checkNetworkStatsNames(networkWindow.run, failures, FIREFOX_NETWORK_SCENARIO, openPopupBesideFixture)
   } finally {
     await networkWindow.close()
   }

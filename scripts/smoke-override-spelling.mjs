@@ -28,9 +28,10 @@ export async function addProxyAsDefault (proxy) {
 
 export async function openPopupBesideTab (tabUrl, popupUrl) {
   const api = globalThis.browser ?? globalThis.chrome
-  const [tab] = await api.tabs.query({ url: `${tabUrl}*` })
+  const tab = (await api.tabs.query({})).find(candidate => candidate.url.startsWith(tabUrl))
   if (!tab) throw new Error(`no open tab for ${tabUrl}`)
   const popup = await api.tabs.create({ url: popupUrl, windowId: tab.windowId, active: false })
+  await api.tabs.update(tab.id, { active: true })
   return popup.id
 }
 

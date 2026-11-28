@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { runStep, sleep, STORAGE_WAIT_MS, TAB_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
+import { POPUP_SETTLE_MS, runStep, sleep, STEP_TIMEOUT_MS, STORAGE_WAIT_MS, TAB_SETTLE_MS, waitFor } from './smoke-fixture.mjs'
 import { clickSelector } from './smoke-dashboard.mjs'
 
 const FIXTURE_HOST = '127.0.0.1'
@@ -39,18 +39,45 @@ async function serveNetworkFixture (paths) {
   }
 }
 
-export function openMonitoredFixtureTab (pageUrl) {
+export async function openFixtureTab (pageUrl) {
   const api = globalThis.browser ?? globalThis.chrome
-  return api.tabs.create({ url: pageUrl }).then(async tab => {
-    await api.runtime.sendMessage({ type: 'monitorTabNetwork', tabId: tab.id })
-    await api.tabs.reload(tab.id)
-    return tab.id
-  })
+  const window = await api.windows.getCurrent()
+  const tab = await api.tabs.create({ url: pageUrl, windowId: window.id, active: true })
+  return tab.id
+}
+
+export async function fixtureTabLoadedAt (tabId, pageUrl) {
+  const api = globalThis.browser ?? globalThis.chrome
+  const tab = await api.tabs.get(tabId)
+  return tab.url === pageUrl && tab.status === 'complete'
+}
+
+export async function readFixtureMonitoring (tabId) {
+  const api = globalThis.browser ?? globalThis.chrome
+  const monitored = await api.runtime.sendMessage({ type: 'isTabNetworkMonitored', tabId })
+  const tab = await api.tabs.get(tabId)
+  return { monitored, active: tab.active }
+}
+
+export function reloadFixtureTab (tabId) {
+  const api = globalThis.browser ?? globalThis.chrome
+  return api.tabs.reload(tabId).then(() => true)
 }
 
 export function closeFixtureTab (tabId) {
   const api = globalThis.browser ?? globalThis.chrome
   return api.tabs.remove(tabId)
+}
+
+export function readMonitorState () {
+  const monitor = document.querySelector('[role="switch"][aria-label="Monitor this tab"]')
+  return monitor ? monitor.getAttribute('aria-checked') === 'true' : null
+}
+
+export function turnMonitorOn () {
+  const monitor = document.querySelector('[role="switch"][aria-label="Monitor this tab"]')
+  if (monitor.getAttribute('aria-checked') !== 'true') monitor.click()
+  return true
 }
 
 export function refreshNetworkSection () {
@@ -61,12 +88,9 @@ export function refreshNetworkSection () {
 
 export function readNetworkSnapshot (host) {
   const row = document.querySelector(`tr[data-host="${host}"]`)
-  const monitor = document.querySelector(`[role="switch"][aria-label="Monitor: ${host}"]`)
   return {
     text: document.getElementById('networkContent').textContent,
     row: row ? { page: row.dataset.page, types: row.dataset.types, route: row.dataset.route, result: row.dataset.result } : null,
-    monitored: monitor ? monitor.getAttribute('aria-checked') === 'true' : null,
-    monitorSwitches: document.querySelectorAll('[role="switch"][aria-label^="Monitor: "]').length,
   }
 }
 
@@ -76,22 +100,6 @@ export function expandRowDetails (host) {
   const details = [...row.querySelectorAll('button')].find(button => button.textContent === 'Details')
   if (!details) throw new Error(`no Details button for ${host}`)
   details.click()
-}
-
-export function setTabMonitoringFromPage (tabId, monitored) {
-  const api = globalThis.browser ?? globalThis.chrome
-  return api.runtime.sendMessage({ type: monitored ? 'monitorTabNetwork' : 'unmonitorTabNetwork', tabId })
-}
-
-export async function openTabFromPage (url) {
-  const api = globalThis.browser ?? globalThis.chrome
-  const tab = await api.tabs.create({ url })
-  return tab.id
-}
-
-export function closeTabFromPage (tabId) {
-  const api = globalThis.browser ?? globalThis.chrome
-  return api.tabs.remove(tabId)
 }
 
 async function waitForSnapshot (run, condition, what) {
@@ -104,10 +112,6 @@ async function waitForSnapshot (run, condition, what) {
   return snapshot
 }
 
-async function waitForLiveSnapshot (run, condition, what) {
-  await waitFor(async () => condition(await run(readNetworkSnapshot, [FIXTURE_HOST])), STORAGE_WAIT_MS, what)
-}
-
 function assertSnapshot (condition, message) {
   if (!condition) throw new Error(message)
 }
@@ -116,40 +120,30 @@ function treeSegments (paths) {
   return paths.flatMap(path => path.split('/').filter(Boolean))
 }
 
-async function checkLiveMonitoringFromAnotherPage (run, tabId, openAnotherPage) {
-  const otherPage = await openAnotherPage()
+async function turnMonitorOnFromPopup (openPopupBeside, pageUrl) {
+  const popup = await openPopupBeside(pageUrl)
   try {
-    await otherPage.run(setTabMonitoringFromPage, [tabId, false])
-    await waitForLiveSnapshot(run, state => state.monitored === false, 'the Tabs switch to read off without Refresh')
-    await otherPage.run(setTabMonitoringFromPage, [tabId, true])
-    await waitForLiveSnapshot(run, state => state.monitored === true, 'the Tabs switch to read on without Refresh')
+    await waitFor(() => popup.run(readMonitorState).then(state => state !== null), STEP_TIMEOUT_MS, 'the popup Monitor this tab switch')
+    await sleep(POPUP_SETTLE_MS)
+    await popup.run(turnMonitorOn)
+    await waitFor(() => popup.run(readMonitorState).then(state => state === true), STORAGE_WAIT_MS, 'the popup Monitor this tab switch to read on')
   } finally {
-    await otherPage.close()
+    await popup.close()
   }
 }
 
-async function checkNewTabAppearsLive (run, pageUrl, openAnotherPage) {
-  const otherPage = await openAnotherPage()
-  try {
-    await waitForLiveSnapshot(run, state => state.monitorSwitches > 0, 'the Tabs card to list the fixture tab')
-    const before = (await run(readNetworkSnapshot, [FIXTURE_HOST])).monitorSwitches
-    const newTabId = await otherPage.run(openTabFromPage, [pageUrl])
-    await waitForLiveSnapshot(run, state => state.monitorSwitches === before + 1, 'a newly opened tab to appear in the Tabs card without Refresh')
-    await otherPage.run(closeTabFromPage, [newTabId])
-    await waitForLiveSnapshot(run, state => state.monitorSwitches === before, 'the closed tab to leave the Tabs card without Refresh')
-  } finally {
-    await otherPage.close()
-  }
-}
-
-async function checkRecordedRequests (run, pageUrl, scenario, openAnotherPage, serverHits) {
-  const tabId = await run(openMonitoredFixtureTab, [pageUrl])
+async function checkRecordedRequests (run, pageUrl, scenario, openPopupBeside, serverHits) {
+  const tabId = await run(openFixtureTab, [pageUrl])
   let failure = null
   try {
+    await waitFor(() => run(fixtureTabLoadedAt, [tabId, pageUrl]), STEP_TIMEOUT_MS, 'the fixture tab to load')
+    await turnMonitorOnFromPopup(openPopupBeside, pageUrl)
+    const monitoring = await run(readFixtureMonitoring, [tabId])
+    assertSnapshot(monitoring.monitored === true, `after the popup switch read on, the fixture tab ${tabId} reads ${JSON.stringify(monitoring)}`)
+    await run(reloadFixtureTab, [tabId])
     await run(clickSelector, ['[data-tab="network"]'])
     await sleep(TAB_SETTLE_MS)
-    const snapshot = await waitForSnapshot(run, state => state.row !== null && state.monitored === true, `a row for ${FIXTURE_HOST} with its tab switch on`)
-    assertSnapshot(snapshot.monitored === true, `the fixture tab switch reads ${snapshot.monitored} instead of true`)
+    const snapshot = await waitForSnapshot(run, state => state.row !== null, `a row for ${FIXTURE_HOST} from the monitored tab`)
     assertSnapshot(snapshot.row.result.includes('OK'), `row results were "${snapshot.row.result}"`)
     assertSnapshot(snapshot.row.route !== '', 'row has no route')
     assertSnapshot(snapshot.row.page !== '', 'row has no page')
@@ -167,8 +161,6 @@ async function checkRecordedRequests (run, pageUrl, scenario, openAnotherPage, s
       throw new Error(`${err.message}; missing ${missing.join(', ')}; server hits ${JSON.stringify(serverHits())}; the Network content read was: ${seen.text}`)
     })
     assertSnapshot(expanded.text.includes('__proto__'), 'the path tree lost __proto__')
-    await checkLiveMonitoringFromAnotherPage(run, tabId, openAnotherPage)
-    await checkNewTabAppearsLive(run, pageUrl, openAnotherPage)
   } catch (err) {
     failure = err
     throw err
@@ -179,10 +171,10 @@ async function checkRecordedRequests (run, pageUrl, scenario, openAnotherPage, s
   }
 }
 
-export async function checkNetworkStatsNames (run, failures, scenario, openAnotherPage) {
+export async function checkNetworkStatsNames (run, failures, scenario, openPopupBeside) {
   const fixture = await serveNetworkFixture(scenario.paths)
   try {
-    await runStep('network stats show recorded requests from a monitored tab', () => checkRecordedRequests(run, `${fixture.origin}${FIXTURE_PAGE_PATH}`, scenario, openAnotherPage, fixture.serverHits), failures)
+    await runStep('network stats show recorded requests from a monitored tab', () => checkRecordedRequests(run, `${fixture.origin}${FIXTURE_PAGE_PATH}`, scenario, openPopupBeside, fixture.serverHits), failures)
   } finally {
     await fixture.close()
   }
