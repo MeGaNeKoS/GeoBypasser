@@ -1,4 +1,4 @@
-import { isNetworkMessage, isProxyControlMessage, isTabProxyMessage } from '@utils/messages'
+import { isNetworkMessage, isProxyControlMessage, isTabProxyMessage, isTestProxyMessage } from '@utils/messages'
 
 describe('isTabProxyMessage rejects messages of the wrong shape', () => {
   it.each([
@@ -35,5 +35,16 @@ describe('isProxyControlMessage rejects messages of the wrong shape', () => {
     ['a null message', null],
   ])('rejects %s', (_name, msg) => {
     expect(isProxyControlMessage(msg)).toBe(false)
+  })
+})
+
+describe('isTestProxyMessage rejects messages of the wrong shape', () => {
+  it.each([
+    ['testProxy with neither a proxy id nor a proxy', { type: 'testProxy' }],
+    ['testProxy with a numeric proxy id', { type: 'testProxy', proxyId: 7 }],
+    ['testProxy with a proxy that has no host', { type: 'testProxy', proxy: { id: 'x', type: 'http', port: 8080, proxyDNS: false } }],
+    ['a message with no type', { proxyId: 'p1' }],
+  ])('rejects %s', (_name, msg) => {
+    expect(isTestProxyMessage(msg)).toBe(false)
   })
 })

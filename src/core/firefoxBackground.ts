@@ -4,7 +4,9 @@ import { answerProxyAuthWhenReady, type AuthChallenge, type ProxyAuthResponse, t
 import { APP_NAME } from '@constant/defaults'
 import { applyStorageChanges, createConfigState, type ConfigChangePorts, type ConfigState, type StorageChanges } from '@core/config'
 import { createKeepAlive, type KeepAlivePorts, type KeepAliveTabListeners } from '@core/keepAlive'
-import { isNetworkMessage, isTabProxyMessage } from '@utils/messages'
+import { isNetworkMessage, isTabProxyMessage, isTestProxyMessage } from '@utils/messages'
+import { answerTestProxyMessage } from '@core/proxyTest'
+import { runProxyTest } from '@utils/proxy'
 import { createNetworkMonitor, type NetworkMonitor } from '@core/networkMonitor'
 import { createRouting, type RoutingPorts } from '@core/routing'
 import { createReadinessGate, type ReadinessGate } from '@core/readinessGate'
@@ -43,6 +45,9 @@ export function startFirefoxBackground (ports: FirefoxBackgroundPorts) {
   ports.onRuntimeMessage(async message => {
     if (isTabProxyMessage(message)) return gate.whenReady(() => routing.answerTabProxyMessage(message))
     if (isNetworkMessage(message)) return networkMonitor.answerNetworkMessage(message)
+    if (isTestProxyMessage(message)) {
+      return configGate.whenReady(config => answerTestProxyMessage(message, config.settings, runProxyTest))
+    }
   })
 
   ports.onTabRemoved(tabId => gate.whenReady(() => {

@@ -1,4 +1,11 @@
-import { isTabProxyMessage, isNetworkMessage } from '@utils/messages'
+import { isTabProxyMessage, isNetworkMessage, isTestProxyMessage } from '@utils/messages'
+
+describe('isTestProxyMessage', () => {
+  it('accepts a saved proxy by id and a custom proxy in full', () => {
+    expect(isTestProxyMessage({ type: 'testProxy', proxyId: 'p1' })).toBe(true)
+    expect(isTestProxyMessage({ type: 'testProxy', proxy: { id: 'c1', type: 'http', host: 'a.lan', port: 8080, proxyDNS: false } })).toBe(true)
+  })
+})
 
 describe('isTabProxyMessage', () => {
   it('validates messages correctly', () => {

@@ -1,6 +1,6 @@
 import type { ProxyType } from '@customTypes/generic'
-import type { ProxyListItem } from '@customTypes/proxy'
-import { testProxyConfigQueued } from '@utils/proxy'
+import type { ProxyListItem, ProxyTestResult } from '@customTypes/proxy'
+import { requestProxyTest, type ProxyTestTarget } from '@utils/proxyTestRequest'
 import { canRunProxyTests } from '@utils/proxyControl'
 import { proxyFormFaults, proxyFormOf, proxyFromForm } from '@utils/proxyDraft'
 import type { ProxyForm, ProxyFormField, ProxyFormFault } from '@utils/proxyDraft'
@@ -35,6 +35,7 @@ const BLOCKED_REASON = 'Tests cannot run while GeoBypass does not control proxy 
 const RESULT_LINE_CLASS = 'result-line'
 const RESULT_LINE_DANGER_CLASS = 'result-line--danger'
 const TIMEOUTS_NOTE ='Tests time out after 5 seconds, or 30 for an HTTP proxy with a username.'
+const UNREACHABLE_RESULT: ProxyTestResult = { success: false, error: 'The extension did not answer.', proxy: '' }
 const TYPE_OPTIONS: SegmentOption<ProxyType>[] = [
   { value: 'http', label: 'HTTP' },
   { value: 'socks', label: 'SOCKS5' },
@@ -88,7 +89,7 @@ function savedProxyCard (proxyList: ProxyListItem[], testable: boolean): HTMLEle
       onChange: chooseSavedProxy,
     }),
     buttonGroup(
-      button('Test', { focusKey: 'test-saved', disabled: !testable, onClick: () => void runTest(chosen, 'test-saved') }),
+      button('Test', { focusKey: 'test-saved', disabled: !testable, onClick: () => void runTest({ proxyId: chosen.id }, 'test-saved') }),
       button('Edit', {
         focusKey: 'edit-saved',
         onClick: () => openProxyEditor({ entry: { proxy: chosen, position: proxyList.findIndex(proxy => proxy.id === chosen.id) } }),
@@ -162,7 +163,7 @@ function testCustomProxy (): void {
     return
   }
   customFaultsShown = false
-  void runTest(proxyFromForm(customForm, crypto.randomUUID()), 'test-custom')
+  void runTest({ proxy: proxyFromForm(customForm, crypto.randomUUID()) }, 'test-custom')
 }
 
 function addCustomToList (): void {
@@ -174,14 +175,12 @@ function addCustomToList (): void {
   openProxyEditor({ prefill: proxyFromForm(customForm, crypto.randomUUID()) })
 }
 
-async function runTest (proxy: ProxyListItem, focusKey: string): Promise<void> {
-  const config = await getConfig()
+async function runTest (target: ProxyTestTarget, focusKey: string): Promise<void> {
   outcome = { state: 'busy' }
   void renderProxyTestSection(focusKey)
-  await testProxyConfigQueued(proxy, config.testProxyUrl, result => {
-    outcome = { state: 'finished', result }
-    void renderProxyTestSection(focusKey)
-  })
+  const result = await requestProxyTest(target).catch(() => UNREACHABLE_RESULT)
+  outcome = { state: 'finished', result }
+  void renderProxyTestSection(focusKey)
 }
 
 function resultPanel (testable: boolean): HTMLElement {

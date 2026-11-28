@@ -6,7 +6,9 @@ import { applySectionChanges, createConfigState, type ConfigState, type StorageC
 import { createNetworkMonitor, type NetworkMonitor } from '@core/networkMonitor'
 import { createReadinessGate, type ReadinessGate } from '@core/readinessGate'
 import type { StoredSections } from '@utils/storage'
-import { isNetworkMessage } from '@utils/messages'
+import { isNetworkMessage, isTestProxyMessage } from '@utils/messages'
+import { answerTestProxyMessage } from '@core/proxyTest'
+import { runProxyTest } from '@utils/proxy'
 
 export type ChromeBackgroundPorts = {
   readStoredSections: () => Promise<StoredSections>;
@@ -53,6 +55,11 @@ export function startChromeBackground (ports: ChromeBackgroundPorts) {
     if (isNetworkMessage(message)) return networkMonitor.answerNetworkMessage(message)
   })
   ports.onTabRemoved(tabId => networkMonitor.forgetTab(tabId))
+
+  ports.onRuntimeMessage(message => {
+    if (!isTestProxyMessage(message)) return undefined
+    return configGate.whenReady(config => answerTestProxyMessage(message, config.settings, runProxyTest))
+  })
 }
 
 async function loadChromeContext (

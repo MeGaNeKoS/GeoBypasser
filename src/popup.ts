@@ -6,7 +6,7 @@ import { canSaveOverride, canToggleRule } from '@utils/saveDecisions'
 import { resolveProxy } from '@utils/proxy'
 import { DIRECT_PROXY_ID } from '@constant/proxy'
 import type { SetTabProxyMessage, ClearTabProxyMessage } from '@customTypes/messages'
-import { testProxyConfigQueued } from '@utils/proxy'
+import { requestProxyTest } from '@utils/proxyTestRequest'
 import { supportsProxyOnRequest } from '@utils/env'
 import { alertUnsavedChanges } from '@utils/saveFailure'
 
@@ -109,14 +109,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
 
   document.getElementById('testProxy')?.addEventListener('click', async () => {
-    const proxyId = select.value
-    const proxy = resolveProxy(config, proxyId)
     const status = document.getElementById('status')!
-    if (!proxy) { status.textContent = 'Proxy not found'; return }
     status.textContent = 'Testing...'
-    await testProxyConfigQueued(proxy, config.testProxyUrl, r => {
-      status.textContent = r.success ? `Success connect through ${r.proxy}` : `Failed: ${r.error}`
-    })
+    const result = await requestProxyTest({ proxyId: select.value })
+    status.textContent = result.success ? `Success connect through ${result.proxy}` : `Failed: ${result.error}`
   })
 
 }

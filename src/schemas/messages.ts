@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { ProxyIdSchema } from '@schemas/generic'
 import { ProxyControlStateSchema } from '@schemas/proxyControl'
+import { ProxyListItemSchema } from '@schemas/proxy'
 
 export const SetTabProxyMessageSchema = z.object({
   type: z.literal('setTabProxy'),
@@ -62,4 +63,19 @@ export const ProxyControlChangedMessageSchema = z.object({
 export const ProxyControlMessageSchema = z.union([
   GetProxyControlMessageSchema,
   ProxyControlChangedMessageSchema,
+])
+
+export const TestSavedProxyMessageSchema = z.object({
+  type: z.literal('testProxy'),
+  proxyId: ProxyIdSchema,
+})
+
+export const TestCustomProxyMessageSchema = z.object({
+  type: z.literal('testProxy'),
+  proxy: ProxyListItemSchema,
+})
+
+export const TestProxyMessageSchema = z.union([
+  TestSavedProxyMessageSchema,
+  TestCustomProxyMessageSchema,
 ])

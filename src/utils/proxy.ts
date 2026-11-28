@@ -317,3 +317,9 @@ export async function testProxyConfigQueued (
   // Done: clear running marker
   proxyTestRunning.delete(testUrl)
 }
+
+export function runProxyTest (proxy: ProxyListItem, testUrl: string): Promise<ProxyTestResult> {
+  return new Promise(resolve => {
+    void testProxyConfigQueued(proxy, testUrl, resolve)
+  })
+}
