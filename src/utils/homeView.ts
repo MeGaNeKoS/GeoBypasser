@@ -1,6 +1,7 @@
 import type { ProxyListItem } from '@customTypes/proxy'
 import type { ProxyControlState } from '@customTypes/proxyControl'
 import { setAsideCounts } from '@utils/pageView'
+import { isProxyNotInEffect } from '@utils/proxyControl'
 import type { SetAsideCounts, SetAsideSource } from '@utils/pageView'
 import { isRuleActive, usableKeepAliveRules, usableOverrides, usableProxies, usableRules } from '@utils/usable'
 
@@ -85,7 +86,6 @@ type HomeFacts = {
   notInEffect: boolean
 }
 
-const NOT_IN_EFFECT_STATES: readonly ProxyControlState[] = ['overridden', 'unavailable']
 const NOT_IN_EFFECT_SENTENCE = 'Your settings are saved but not in effect.'
 const NOTHING_ROUTED_SENTENCE = 'Nothing is routed yet. Add a proxy for your rules to use.'
 const SITES_SECTION = 'sites'
@@ -142,7 +142,7 @@ function homeFacts (input: HomeInput): HomeFacts {
     defaultProxy,
     defaultProxyStored: Boolean(settings.defaultProxy),
     setAside: setAsideCounts(settings),
-    notInEffect: input.browser === 'chrome' && input.control !== undefined && NOT_IN_EFFECT_STATES.includes(input.control),
+    notInEffect: input.browser === 'chrome' && isProxyNotInEffect(input.control),
   }
 }
 
