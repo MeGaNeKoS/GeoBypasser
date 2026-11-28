@@ -9,10 +9,15 @@ import { isRuleActive, overridesMostSpecificFirst, usableOverrides, usableRules 
 
 export type RouteReason = 'site' | 'rule' | 'bypass' | 'staticExtension' | 'default'
 
+export type RuleRef = {
+  index: number;
+  name: string;
+};
+
 export type ExpectedRoute = {
   route: string;
   reason: RouteReason;
-  ruleName?: string;
+  rule?: RuleRef;
 };
 
 const HTTPS_SCHEME = 'https:'
@@ -54,12 +59,12 @@ function ruleRoute (config: GeoBypassRuntimeSettings, seenUrl: string): Expected
 }
 
 function ruleOutcome (config: GeoBypassRuntimeSettings, rule: ProxyRule, seenUrl: string): ExpectedRoute {
-  const ruleName = rule.name
+  const ref = { index: config.rules.indexOf(rule), name: rule.name }
   const proxyRoute = rulePacRoute(config, rule)
-  if (matchesAny(rule.forceProxyUrlPatterns ?? [], seenUrl)) return { route: proxyRoute, reason: 'rule', ruleName }
-  if (matchesAny(rule.bypassUrlPatterns ?? [], seenUrl)) return { route: DIRECT_ROUTE, reason: 'bypass', ruleName }
-  if (isStaticExtension(rule.staticExtensions, seenUrl)) return { route: DIRECT_ROUTE, reason: 'staticExtension', ruleName }
-  return { route: proxyRoute, reason: 'rule', ruleName }
+  if (matchesAny(rule.forceProxyUrlPatterns ?? [], seenUrl)) return { route: proxyRoute, reason: 'rule', rule: ref }
+  if (matchesAny(rule.bypassUrlPatterns ?? [], seenUrl)) return { route: DIRECT_ROUTE, reason: 'bypass', rule: ref }
+  if (isStaticExtension(rule.staticExtensions, seenUrl)) return { route: DIRECT_ROUTE, reason: 'staticExtension', rule: ref }
+  return { route: proxyRoute, reason: 'rule', rule: ref }
 }
 
 function rulePacRoute (config: GeoBypassRuntimeSettings, rule: ProxyRule): string {

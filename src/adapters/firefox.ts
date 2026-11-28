@@ -2,6 +2,7 @@ import browser, { Proxy } from 'webextension-polyfill'
 import type { NetworkMonitor } from '@core/networkMonitor'
 import type { KeepAlivePorts, KeepAliveTabListeners } from '@core/keepAlive'
 import type { RoutingPorts } from '@core/routing'
+import { pageHostFor } from '@utils/networkUsage'
 import { testProxyConfigQueued } from '@utils/proxy'
 import { saveTabProxyMap } from '@utils/storage'
 
@@ -33,13 +34,35 @@ export function onFirefoxStorageChanged (listener: StorageChangedListener) {
 export function registerFirefoxNetworkMonitor (monitor: NetworkMonitor) {
   browser.webRequest.onCompleted.addListener(
     details => {
-      monitor.recordTransfer(details.tabId, details.url, {
+      monitor.recordRequest(details.tabId, details.requestId, {
+        pageHost: pageHostFor(details.url, details.documentUrl),
+        requestUrl: details.url,
+        resourceType: details.type,
+        statusCode: details.statusCode,
+        fromCache: details.fromCache,
         sentBytes: details.requestSize,
         receivedBytes: details.responseSize,
+        receivedSizeKnown: true,
       })
     },
     { urls: ['<all_urls>'] },
     ['responseHeaders'],
+  )
+
+  browser.webRequest.onErrorOccurred.addListener(
+    details => {
+      monitor.recordRequest(details.tabId, details.requestId, {
+        pageHost: pageHostFor(details.url, details.documentUrl),
+        requestUrl: details.url,
+        resourceType: details.type,
+        error: details.error,
+        fromCache: details.fromCache,
+        sentBytes: 0,
+        receivedBytes: 0,
+        receivedSizeKnown: true,
+      })
+    },
+    { urls: ['<all_urls>'] },
   )
 }
 

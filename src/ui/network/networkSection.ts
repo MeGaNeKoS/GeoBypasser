@@ -1,16 +1,16 @@
 import { supportsProxyOnRequest } from '@utils/env'
-import { usageRows } from '@utils/networkUsage'
-import type { UsageRow } from '@utils/networkUsage'
+import { formatBytes } from '@utils/networkUsage'
+import type { NetworkUsage } from '@utils/networkUsage'
 import { button, buttonGroup } from '../components/button'
 import { switchControl } from '../components/controls'
 import { switchField } from '../components/fields'
 import { inlineConfirm } from '../components/inline-confirm'
 import { sectionHeading } from '../components/section-heading'
 import { banner, skeletonRows, stateBlock } from '../components/feedback'
-import { usageTree } from '../components/tree'
+import { usageTree, type TreeNode } from '../components/tree'
 import { element, replaceContent, requireElement } from '../dom'
 import { NETWORK_SECTION_ID } from '../shell/routes'
-import { clearNetworkStats, readNetworkStats } from './networkStore'
+import { clearNetworkUsage, readNetworkUsage } from './networkStore'
 
 const CONTAINER_ID = 'networkContent'
 const HEADING = 'Network'
@@ -32,7 +32,7 @@ const AUTO_REFRESH_KEY = 'auto-refresh-network'
 type NetworkView =
   | { kind: 'loading' }
   | { kind: 'error' }
-  | { kind: 'ready', rows: UsageRow[] }
+  | { kind: 'ready', rows: TreeNode[] }
 
 let view: NetworkView = { kind: 'loading' }
 let clearPending = false
@@ -48,11 +48,31 @@ export async function renderNetworkSection (focusKey?: string): Promise<void> {
 
 async function readView (): Promise<NetworkView> {
   try {
-    const stats = await readNetworkStats()
-    return { kind: 'ready', rows: usageRows(stats.domains) }
+    const usage = await readNetworkUsage()
+    return { kind: 'ready', rows: hostRows(usage) }
   } catch {
     return { kind: 'error' }
   }
+}
+
+function hostRows (usage: NetworkUsage): TreeNode[] {
+  const totals = new Map<string, { sent: number; received: number }>()
+  for (const tab of Object.values(usage)) {
+    for (const page of Object.values(tab)) {
+      for (const [requestHost, host] of Object.entries(page)) {
+        const current = totals.get(requestHost) ?? { sent: 0, received: 0 }
+        totals.set(requestHost, { sent: current.sent + host.sent, received: current.received + host.received })
+      }
+    }
+  }
+  return [...totals.entries()]
+    .filter(([, total]) => total.sent !== 0 || total.received !== 0)
+    .map(([name, total]) => ({
+      name,
+      sent: formatBytes(total.sent),
+      received: formatBytes(total.received),
+      children: [],
+    }))
 }
 
 function paint (focusKey: string | undefined): void {
@@ -138,7 +158,7 @@ function cancelClear (): void {
 async function confirmClear (): Promise<void> {
   clearPending = false
   try {
-    await clearNetworkStats()
+    await clearNetworkUsage()
     clearFailed = false
   } catch {
     clearFailed = true

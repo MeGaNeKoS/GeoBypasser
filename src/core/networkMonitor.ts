@@ -1,10 +1,16 @@
 import type { NetworkMessage } from '@customTypes/messages'
-import { addNetworkData, networkStats, resetNetworkStats } from '@utils/network'
+import { addRequestToTab, emptyTabUsage, UNKNOWN_ROUTE, type NetworkUsage, type RecordedRoute, type RequestObservation, type TabUsage } from '@utils/networkUsage'
 
-type TransferSizes = { sentBytes: number; receivedBytes: number }
+export type RequestOutcome = Omit<RequestObservation, 'route'>;
+
+type RoutedRequest = { tabId: number; route: RecordedRoute };
+
+export type RouteForRequest = (requestUrl: string) => Promise<RecordedRoute>;
 
 export function createNetworkMonitor () {
   const monitoredTabs = new Set<number>()
+  const usageByTab = new Map<number, TabUsage>()
+  const routeByRequest = new Map<string, RoutedRequest>()
 
   function isTabMonitored (tabId: number) {
     return monitoredTabs.has(tabId)
@@ -12,19 +18,42 @@ export function createNetworkMonitor () {
 
   function forgetTab (tabId: number) {
     monitoredTabs.delete(tabId)
+    usageByTab.delete(tabId)
+    for (const [requestId, routed] of routeByRequest) {
+      if (routed.tabId === tabId) routeByRequest.delete(requestId)
+    }
   }
 
-  function recordTransfer (tabId: number, url: string, sizes: TransferSizes) {
+  function noteRoute (requestId: string, tabId: number, route: RecordedRoute) {
     if (!monitoredTabs.has(tabId)) return
-    addNetworkData(url, sizes.sentBytes, sizes.receivedBytes)
+    routeByRequest.set(requestId, { tabId, route })
+  }
+
+  function recordRequest (tabId: number, requestId: string, outcome: RequestOutcome) {
+    const route = routeByRequest.get(requestId)?.route ?? UNKNOWN_ROUTE
+    routeByRequest.delete(requestId)
+    if (!monitoredTabs.has(tabId)) return
+    addRequestToTab(tabUsageFor(tabId), { ...outcome, route })
+  }
+
+  function tabUsageFor (tabId: number): TabUsage {
+    const existing = usageByTab.get(tabId)
+    if (existing) return existing
+    const created = emptyTabUsage()
+    usageByTab.set(tabId, created)
+    return created
+  }
+
+  function usageSnapshot (): NetworkUsage {
+    return Object.fromEntries(usageByTab.entries()) as NetworkUsage
   }
 
   function answerNetworkMessage (message: NetworkMessage): unknown {
     switch (message.type) {
       case 'getNetworkStats':
-        return networkStats
+        return usageSnapshot()
       case 'clearNetworkStats':
-        resetNetworkStats()
+        usageByTab.clear()
         return undefined
       case 'monitorTabNetwork':
         monitoredTabs.add(message.tabId)
@@ -37,7 +66,7 @@ export function createNetworkMonitor () {
     }
   }
 
-  return { isTabMonitored, forgetTab, recordTransfer, answerNetworkMessage }
+  return { isTabMonitored, forgetTab, noteRoute, recordRequest, answerNetworkMessage }
 }
 
 export type NetworkMonitor = ReturnType<typeof createNetworkMonitor>

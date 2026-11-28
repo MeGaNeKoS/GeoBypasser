@@ -1,54 +1,64 @@
-import { NetworkStatsSchema } from '../src/schemas/networkStats'
-import { usageRows } from '../src/utils/networkUsage'
+import { assertNetworkUsage } from '@schemas/networkUsage'
+import { addRequestToTab, emptyTabUsage, pageHostFor, type RecordedRoute, type RequestObservation } from '@utils/networkUsage'
 
-describe('network usage rows without traffic', () => {
-  it('drops a domain with no traffic together with its children', () => {
-    const rows = usageRows({
-      'quiet.test': { sent: 0, received: 0, children: { '/x': { sent: 5, received: 5 } } },
-    })
+const UNROUTED: RecordedRoute = { reason: 'unknown', route: '', expected: false }
 
-    expect(rows).toEqual([])
+function observation (overrides: Partial<RequestObservation> = {}): RequestObservation {
+  return {
+    pageHost: 'page.example',
+    requestUrl: 'https://cdn.example.com/a/file.bin',
+    resourceType: 'image',
+    statusCode: 200,
+    fromCache: false,
+    sentBytes: 0,
+    receivedBytes: 0,
+    receivedSizeKnown: true,
+    route: UNROUTED,
+    ...overrides,
+  }
+}
+
+describe('network usage that is not recorded', () => {
+  it('ignores a request whose url does not parse', () => {
+    const tab = emptyTabUsage()
+
+    addRequestToTab(tab, observation({ requestUrl: 'not a url' }))
+
+    expect(Object.keys(tab)).toEqual([])
   })
 
-  it('drops a path with no traffic and keeps its busy sibling', () => {
-    const rows = usageRows({
-      'example.com': {
-        sent: 5,
-        received: 0,
-        children: {
-          '/quiet': { sent: 0, received: 0 },
-          '/busy': { sent: 5, received: 0 },
-        },
-      },
-    })
-
-    expect(rows[0].children.map(child => child.name)).toEqual(['/busy'])
+  it('falls back to the request host when the document url does not parse', () => {
+    expect(pageHostFor('https://cdn.example.com/x', 'not a url')).toBe('cdn.example.com')
   })
 })
 
 describe('network usage payload rejection', () => {
-  it('rejects a payload without a total', () => {
-    expect(() => NetworkStatsSchema.parse({ domains: {} })).toThrow()
+  const validHost = {
+    count: 1,
+    types: {},
+    ok: 1,
+    statuses: {},
+    failures: {},
+    fromCache: 0,
+    sent: 0,
+    received: 0,
+    unsizedCount: 0,
+    routes: {},
+    paths: {},
+  }
+
+  it('rejects a payload that is not keyed by tab, page and host', () => {
+    expect(() => assertNetworkUsage({ '7': { 'page.example': validHost } })).toThrow()
   })
 
-  it('rejects a negative byte count', () => {
-    expect(() => NetworkStatsSchema.parse({
-      total: { sent: 0, received: 0 },
-      domains: { 'example.com': { sent: -1, received: 0 } },
-    })).toThrow()
+  it('rejects a host with a negative byte count', () => {
+    expect(() => assertNetworkUsage({ '7': { 'page.example': { 'cdn.example.com': { ...validHost, sent: -1 } } } })).toThrow()
   })
 
-  it('rejects byte counts sent as text', () => {
-    expect(() => NetworkStatsSchema.parse({
-      total: { sent: 0, received: 0 },
-      domains: { 'example.com': { sent: '12', received: 0 } },
-    })).toThrow()
-  })
+  it('rejects a route with a reason the recorder does not write', () => {
+    const route = { reason: 'bogus', route: 'DIRECT', expected: true }
+    const host = { ...validHost, routes: { k: { route, count: 1 } } }
 
-  it('rejects a nested node missing its received count', () => {
-    expect(() => NetworkStatsSchema.parse({
-      total: { sent: 0, received: 0 },
-      domains: { 'example.com': { sent: 1, received: 1, children: { '/a': { sent: 1 } } } },
-    })).toThrow()
+    expect(() => assertNetworkUsage({ '7': { 'page.example': { 'cdn.example.com': host } } })).toThrow()
   })
 })

@@ -1,11 +1,10 @@
 import browser, { Types, WebRequest } from 'webextension-polyfill'
-import type { NetworkMonitor } from '@core/networkMonitor'
+import type { NetworkMonitor, RouteForRequest } from '@core/networkMonitor'
 import type { ProxyControlState } from '@customTypes/proxyControl'
+import { pageHostFor } from '@utils/networkUsage'
 import { APP_NAME } from '@constant/defaults'
 
 export { readStoredSections } from '@utils/storage'
-
-type CompletedDetails = WebRequest.OnCompletedDetailsType & { encodedDataLength?: number }
 
 type ProxyAuthListener = (
   details: chrome.webRequest.OnAuthRequiredDetails,
@@ -58,41 +57,62 @@ export function onChromeTabRemoved (listener: (tabId: number) => void) {
   browser.tabs.onRemoved.addListener(listener)
 }
 
-function contentLengthBytes (requestHeaders: WebRequest.HttpHeaders | undefined): number | undefined {
-  const header = requestHeaders?.find(h => h.name.toLowerCase() === 'content-length')
+function contentLengthBytes (headers: WebRequest.HttpHeaders | undefined): number | undefined {
+  const header = headers?.find(h => h.name.toLowerCase() === 'content-length')
   if (!header) return undefined
   const bytes = parseInt(header.value || '0', 10)
   return isNaN(bytes) ? undefined : bytes
 }
 
-export function registerChromeNetworkMonitor (monitor: NetworkMonitor) {
+export function registerChromeNetworkMonitor (monitor: NetworkMonitor, routeFor: RouteForRequest) {
   const sentBytesByRequest = new Map<string, number>()
+  const takeSentBytes = (requestId: string) => {
+    const bytes = sentBytesByRequest.get(requestId) ?? 0
+    sentBytesByRequest.delete(requestId)
+    return bytes
+  }
 
   browser.webRequest.onBeforeSendHeaders.addListener(
     details => {
       if (!monitor.isTabMonitored(details.tabId)) return
       const bytes = contentLengthBytes(details.requestHeaders)
       if (bytes !== undefined) sentBytesByRequest.set(details.requestId, bytes)
+      void routeFor(details.url).then(route => monitor.noteRoute(details.requestId, details.tabId, route))
     },
     { urls: ['<all_urls>'] },
     ['requestHeaders'],
   )
 
   browser.webRequest.onCompleted.addListener(
-    (details: CompletedDetails) => {
-      const sentBytes = sentBytesByRequest.get(details.requestId) ?? 0
-      sentBytesByRequest.delete(details.requestId)
-      monitor.recordTransfer(details.tabId, details.url, {
-        sentBytes,
-        receivedBytes: details.encodedDataLength ?? 0,
+    details => {
+      const receivedBytes = contentLengthBytes(details.responseHeaders)
+      monitor.recordRequest(details.tabId, details.requestId, {
+        pageHost: pageHostFor(details.url, details.documentUrl),
+        requestUrl: details.url,
+        resourceType: details.type,
+        statusCode: details.statusCode,
+        fromCache: details.fromCache,
+        sentBytes: takeSentBytes(details.requestId),
+        receivedBytes: receivedBytes ?? 0,
+        receivedSizeKnown: receivedBytes !== undefined,
       })
     },
     { urls: ['<all_urls>'] },
+    ['responseHeaders'],
   )
 
   browser.webRequest.onErrorOccurred.addListener(
     details => {
-      sentBytesByRequest.delete(details.requestId)
+      monitor.recordRequest(details.tabId, details.requestId, {
+        pageHost: pageHostFor(details.url, details.documentUrl),
+        requestUrl: details.url,
+        resourceType: details.type,
+        error: details.error,
+        fromCache: details.fromCache,
+        sentBytes: takeSentBytes(details.requestId),
+        receivedBytes: 0,
+        receivedSizeKnown: true,
+      })
     },
     { urls: ['<all_urls>'] },
   )

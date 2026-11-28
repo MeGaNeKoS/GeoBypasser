@@ -3,12 +3,14 @@ import { answerProxyAuthWhenReady, type AuthChallenge, type ProxyAuthResponse, t
 import { createProxyControl, isGetProxyControlMessage, type ProxyControlPorts } from '@core/proxyControl'
 import { createPacRouting, type PacPorts } from '@core/routing'
 import { applySectionChanges, createConfigState, type ConfigState, type StorageChanges } from '@core/config'
-import { createNetworkMonitor, type NetworkMonitor } from '@core/networkMonitor'
+import { createNetworkMonitor, type NetworkMonitor, type RouteForRequest } from '@core/networkMonitor'
 import { createReadinessGate, type ReadinessGate } from '@core/readinessGate'
 import type { StoredSections } from '@utils/storage'
 import { isNetworkMessage, isTestProxyMessage } from '@utils/messages'
 import { answerTestProxyMessage } from '@core/proxyTest'
 import { runProxyTest } from '@utils/proxy'
+import { expectedRoute } from '@utils/expectedRoute'
+import { expectedRecordedRoute } from '@utils/networkUsage'
 
 export type ChromeBackgroundPorts = {
   readStoredSections: () => Promise<StoredSections>;
@@ -19,7 +21,7 @@ export type ChromeBackgroundPorts = {
   onProxyLevelChanged: (listener: (levelOfControl: Types.LevelOfControl) => Promise<void>) => void;
   onRuntimeMessage: (listener: (message: unknown) => unknown) => void;
   onStorageChanged: (listener: (changes: StorageChanges, areaName: string) => Promise<void>) => void;
-  registerNetworkMonitor: (monitor: NetworkMonitor) => void;
+  registerNetworkMonitor: (monitor: NetworkMonitor, routeFor: RouteForRequest) => void;
   onTabRemoved: (listener: (tabId: number) => void) => void;
 };
 
@@ -50,7 +52,7 @@ export function startChromeBackground (ports: ChromeBackgroundPorts) {
   })
 
   const networkMonitor = createNetworkMonitor()
-  ports.registerNetworkMonitor(networkMonitor)
+  ports.registerNetworkMonitor(networkMonitor, requestUrl => configGate.whenReady(config => expectedRecordedRoute(expectedRoute(config.settings, requestUrl))))
   ports.onRuntimeMessage(message => {
     if (isNetworkMessage(message)) return Promise.resolve(networkMonitor.answerNetworkMessage(message))
     return undefined

@@ -38,7 +38,7 @@ const rows: Array<[string, ReturnType<typeof settingsFor>, string, ExpectedRoute
     'a rule proxy that does not resolve and no default proxy',
     settingsFor({ rules: [{ ...exampleRule, proxyId: 'missing' } as ProxyRule] }),
     'https://a.example.com/x',
-    { route: DIRECT, reason: 'rule', ruleName: 'example' },
+    { route: DIRECT, reason: 'rule', rule: { index: 0, name: 'example' } },
   ],
   [
     'a static extension under https, which the Chrome PAC cannot see',
@@ -46,7 +46,7 @@ const rows: Array<[string, ReturnType<typeof settingsFor>, string, ExpectedRoute
       rules: [{ ...exampleRule, staticExtensions: '/\\.(png|jpg)$/i' } as ProxyRule],
     }),
     'https://a.example.com/logo.png',
-    { route: PROXY_GOOD, reason: 'rule', ruleName: 'example' },
+    { route: PROXY_GOOD, reason: 'rule', rule: { index: 0, name: 'example' } },
   ],
   [
     'a Firefox-only resource type and page scope, which the PAC does not evaluate',
@@ -58,7 +58,7 @@ const rows: Array<[string, ReturnType<typeof settingsFor>, string, ExpectedRoute
       } as ProxyRule],
     }),
     'https://a.example.com/logo.png',
-    { route: PROXY_GOOD, reason: 'rule', ruleName: 'example' },
+    { route: PROXY_GOOD, reason: 'rule', rule: { index: 0, name: 'example' } },
   ],
 ]
 

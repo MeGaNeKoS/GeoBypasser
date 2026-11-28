@@ -32,19 +32,19 @@ const rows: Array<[string, ReturnType<typeof settingsFor>, string, ExpectedRoute
     'a rule match with its proxy',
     settingsFor({ rules: [exampleRule] }),
     'https://a.example.com/x',
-    { route: PROXY_GOOD, reason: 'rule', ruleName: 'example' },
+    { route: PROXY_GOOD, reason: 'rule', rule: { index: 0, name: 'example' } },
   ],
   [
     'a rule whose proxy is direct',
     settingsFor({ rules: [{ ...exampleRule, proxyId: 'direct' } as ProxyRule] }),
     'https://a.example.com/x',
-    { route: DIRECT, reason: 'rule', ruleName: 'example' },
+    { route: DIRECT, reason: 'rule', rule: { index: 0, name: 'example' } },
   ],
   [
     'a rule with fallback direct',
     settingsFor({ rules: [{ ...exampleRule, fallbackDirect: true } as ProxyRule] }),
     'https://a.example.com/x',
-    { route: `${PROXY_GOOD}; DIRECT`, reason: 'rule', ruleName: 'example' },
+    { route: `${PROXY_GOOD}; DIRECT`, reason: 'rule', rule: { index: 0, name: 'example' } },
   ],
   [
     'a force pattern beats a bypass pattern for the same URL',
@@ -56,7 +56,7 @@ const rows: Array<[string, ReturnType<typeof settingsFor>, string, ExpectedRoute
       } as ProxyRule],
     }),
     'http://a.example.com/x',
-    { route: PROXY_GOOD, reason: 'rule', ruleName: 'example' },
+    { route: PROXY_GOOD, reason: 'rule', rule: { index: 0, name: 'example' } },
   ],
   [
     'a bypass pattern on an http URL',
@@ -64,7 +64,7 @@ const rows: Array<[string, ReturnType<typeof settingsFor>, string, ExpectedRoute
       rules: [{ ...exampleRule, bypassUrlPatterns: ['*://*.example.com/private/*'] } as ProxyRule],
     }),
     'http://a.example.com/private/x',
-    { route: DIRECT, reason: 'bypass', ruleName: 'example' },
+    { route: DIRECT, reason: 'bypass', rule: { index: 0, name: 'example' } },
   ],
   [
     'a static extension on an http URL',
@@ -72,7 +72,7 @@ const rows: Array<[string, ReturnType<typeof settingsFor>, string, ExpectedRoute
       rules: [{ ...exampleRule, staticExtensions: '/\\.(png|jpg)$/i' } as ProxyRule],
     }),
     'http://a.example.com/logo.PNG',
-    { route: DIRECT, reason: 'staticExtension', ruleName: 'example' },
+    { route: DIRECT, reason: 'staticExtension', rule: { index: 0, name: 'example' } },
   ],
   [
     'the default proxy when nothing matches',
