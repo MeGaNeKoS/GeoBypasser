@@ -1,5 +1,5 @@
 ---
-status: open
+status: done
 owner: extension
 depends_on: [E04/S06/T01]
 ---
@@ -25,3 +25,12 @@ From the designer's review of `E04/S06` (and the reviewer's walk, added below wh
 13. Headings in sentence case ("Rule priority").
 14. The Test timeout note reads "Tests time out after 5 seconds, or 30 for an HTTP proxy with a username."
 15. About's features and links are plain bulleted lists.
+
+## Reviewer
+
+16. A stored default proxy that no longer exists reads "Unavailable: <id>" in the select, as a set aside one does, in every proxy select.
+17. Section headings in Defaults, Test, and About, and the About links, keep focus across a storage write from another tab. About re-renders only when something it shows changes.
+18. The Test custom proxy fields keep focus and their uncommitted typed text across a storage write from another tab (they carry focus keys and keep the draft across re-renders).
+19. When a focused Test button becomes disabled by the not in control state, focus moves to the reason line (made focusable for this), and returns to the button when it is enabled again.
+
+Each of 16 to 19 is checked in both browsers with real keys and a second tab, the way `.chrome-cdp-work/ux-s06-run.mjs` does.
