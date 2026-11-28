@@ -87,7 +87,11 @@ export const URL_IMPORT_FILE = {
 
 export async function serveImportFile (body) {
   const server = createServer((_, res) => {
-    res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' })
+    res.writeHead(200, {
+      'content-type': 'application/json',
+      'access-control-allow-origin': '*',
+      'content-length': Buffer.byteLength(body),
+    })
     res.end(body)
   })
   await new Promise(done => server.listen(0, '127.0.0.1', done))
